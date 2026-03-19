@@ -7,7 +7,7 @@ from pathlib import Path
 
 from openpyxl import load_workbook
 
-from base_builder import build_management_workbook
+from app.services.base_builder import build_management_workbook
 from main import process_text_file
 
 

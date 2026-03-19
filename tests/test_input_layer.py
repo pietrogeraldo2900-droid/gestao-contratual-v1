@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from input_layer import (
+from app.core.input_layer import (
     OfficialMessageParser,
     ServiceDictionaryV2,
     normalizar_unidade,

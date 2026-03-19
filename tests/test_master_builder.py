@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from master_builder import update_master_from_output
+from app.services.master_builder import update_master_from_output
 
 
 class MasterBuilderTests(unittest.TestCase):

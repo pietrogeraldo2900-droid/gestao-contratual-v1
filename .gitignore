@@ -1,4 +1,5 @@
 __pycache__/
+**/__pycache__/
 *.pyc
 *.pyo
 *.pyd
@@ -17,12 +18,21 @@ Thumbs.db
 *.log
 
 BASE_CONSOLIDADA/
-BASE_MESTRA/
 saida_entrada_interface/
 saida_temp/
 saida_teste/
 saida_teste_layout_final/
+
+# Runtime/local folders (nao versionar dados gerados)
+BASE_MESTRA/
 saidas/
+data/web_drafts/
+data/runtime/*
+!data/runtime/.gitkeep
+data/drafts/*
+!data/drafts/.gitkeep
+data/drafts/web/*
+!data/drafts/web/.gitkeep
 
 *.db
 *.sqlite3

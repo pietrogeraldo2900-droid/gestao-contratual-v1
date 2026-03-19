@@ -10,7 +10,7 @@ from pathlib import Path
 
 from docx import Document
 
-from web_app import create_app
+from app.routes.web_app import create_app
 
 
 class WebAppTests(unittest.TestCase):
@@ -20,8 +20,8 @@ class WebAppTests(unittest.TestCase):
 
         self.outputs_root = self.tmp_path / "saidas"
         self.master_dir = self.tmp_path / "BASE_MESTRA"
-        self.history_file = self.tmp_path / "data" / "processing_history.csv"
-        self.draft_dir = self.tmp_path / "data" / "web_drafts"
+        self.history_file = self.tmp_path / "data" / "runtime" / "processing_history.csv"
+        self.draft_dir = self.tmp_path / "data" / "drafts" / "web"
         self.nucleo_reference_file = self.tmp_path / "config" / "nucleo_reference.json"
         self.nucleo_reference_file.parent.mkdir(parents=True, exist_ok=True)
         self.nucleo_reference_file.write_text(

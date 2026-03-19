@@ -15,25 +15,30 @@ def _friendly_import_error(exc: Exception) -> None:
 
 
 try:
-    from report_system import ReportGenerator, ServiceDictionary, WhatsAppReportParser, save_parsed_outputs
-    from base_builder import build_management_workbook
-    from master_builder import consolidate_outputs_folder, update_master_from_output
-    from input_layer import OfficialMessageParser, aplicar_regra_primeira_equipe, carregar_dicionario_servicos
-    from nucleo_master import load_nucleo_registry, reconcile_parsed_with_registry
+    from config.settings import load_settings
+    from app.core.input_layer import OfficialMessageParser, aplicar_regra_primeira_equipe, carregar_dicionario_servicos
+    from app.core.nucleo_master import load_nucleo_registry, reconcile_parsed_with_registry
+    from app.services.base_builder import build_management_workbook
+    from app.services.master_builder import consolidate_outputs_folder, update_master_from_output
+    from app.services.report_system import ReportGenerator, ServiceDictionary, WhatsAppReportParser, save_parsed_outputs
 except ModuleNotFoundError as exc:
     _friendly_import_error(exc)
 
 
 BASE_DIR = Path(__file__).resolve().parent
+SETTINGS = load_settings(BASE_DIR)
+SERVICE_DICTIONARY_CSV = SETTINGS.service_dictionary_csv
+SERVICE_DICTIONARY_V2_JSON = SETTINGS.service_dictionary_v2_json
+NUCLEO_REFERENCE_JSON = SETTINGS.nucleo_reference_file
 
 
 def process_text_file(input_path: Path, output_dir: Path, master_dir: Path | None = None) -> Path:
-    dictionary = ServiceDictionary(BASE_DIR / "config" / "service_dictionary.csv")
+    dictionary = ServiceDictionary(SERVICE_DICTIONARY_CSV)
     text = Path(input_path).read_text(encoding="utf-8")
     parsed = None
-    nucleo_registry = load_nucleo_registry(BASE_DIR / "config" / "nucleo_reference.json")
+    nucleo_registry = load_nucleo_registry(NUCLEO_REFERENCE_JSON)
 
-    official_dict_path = BASE_DIR / "config" / "service_dictionary_v2.json"
+    official_dict_path = SERVICE_DICTIONARY_V2_JSON
     if official_dict_path.exists():
         official_parser = OfficialMessageParser(carregar_dicionario_servicos(official_dict_path))
         parsed = official_parser.parse_text(text, source_name=Path(input_path).name)
@@ -49,15 +54,15 @@ def process_text_file(input_path: Path, output_dir: Path, master_dir: Path | Non
     generator.generate_nucleus_reports(parsed, output_dir / "relatorios_nucleos")
     build_management_workbook(
         output_dir,
-        BASE_DIR / "config" / "service_dictionary.csv",
-        nucleo_reference_file=BASE_DIR / "config" / "nucleo_reference.json",
+        SERVICE_DICTIONARY_CSV,
+        nucleo_reference_file=NUCLEO_REFERENCE_JSON,
     )
     if master_dir:
         update_master_from_output(
             output_dir,
             master_dir,
-            BASE_DIR / "config" / "service_dictionary.csv",
-            nucleo_reference_file=BASE_DIR / "config" / "nucleo_reference.json",
+            SERVICE_DICTIONARY_CSV,
+            nucleo_reference_file=NUCLEO_REFERENCE_JSON,
         )
     return output_dir
 
@@ -87,8 +92,8 @@ def cmd_update_master(args):
     stats = update_master_from_output(
         Path(args.output_dir),
         Path(args.master_dir),
-        BASE_DIR / "config" / "service_dictionary.csv",
-        nucleo_reference_file=BASE_DIR / "config" / "nucleo_reference.json",
+        SERVICE_DICTIONARY_CSV,
+        nucleo_reference_file=NUCLEO_REFERENCE_JSON,
     )
     print(f"Base mestra atualizada em: {args.master_dir}")
     print(
@@ -101,8 +106,8 @@ def cmd_consolidate_master(args):
     stats = consolidate_outputs_folder(
         Path(args.outputs_parent),
         Path(args.output),
-        BASE_DIR / "config" / "service_dictionary.csv",
-        nucleo_reference_file=BASE_DIR / "config" / "nucleo_reference.json",
+        SERVICE_DICTIONARY_CSV,
+        nucleo_reference_file=NUCLEO_REFERENCE_JSON,
     )
     print(f"Base consolidada gerada em: {args.output}")
     print(
@@ -112,14 +117,15 @@ def cmd_consolidate_master(args):
 
 
 def cmd_web(args):
-    from web_app import create_app
+    from run_web import run
 
-    app = create_app()
-    app.run(host=args.host, port=args.port, debug=False)
+    run(host=args.host, port=args.port, debug=False)
 
 
 def build_cli():
-    cli = argparse.ArgumentParser(description="Sistema de relatorios de obra")
+    cli = argparse.ArgumentParser(
+        description="CLI legada/local para processamento operacional. Para interface web oficial, use: python run_web.py"
+    )
     sub = cli.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("parse", help="Processa um consolidado de WhatsApp")
@@ -144,8 +150,8 @@ def build_cli():
     c.set_defaults(func=cmd_consolidate_master)
 
     w = sub.add_parser("web", help="Inicia a interface web local")
-    w.add_argument("--host", default="127.0.0.1", help="Host local para subir o servidor")
-    w.add_argument("--port", type=int, default=5000, help="Porta da interface web")
+    w.add_argument("--host", default=SETTINGS.web_host, help="Host local para subir o servidor")
+    w.add_argument("--port", type=int, default=SETTINGS.web_port, help="Porta da interface web")
     w.set_defaults(func=cmd_web)
 
     return cli

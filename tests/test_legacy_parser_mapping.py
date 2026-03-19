@@ -3,7 +3,7 @@
 import unittest
 from pathlib import Path
 
-from report_system import ServiceDictionary, WhatsAppReportParser
+from app.services.report_system import ServiceDictionary, WhatsAppReportParser
 
 
 class LegacyParserMappingTests(unittest.TestCase):
