@@ -1,21 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="dashboard-shell">
-  <section class="page-hero">
+  <section class="page-hero compact">
     <div class="dashboard-topline">
       <div class="dashboard-topline-copy">
-        <div class="hero-eyebrow">Visao resumida</div>
+        <div class="hero-eyebrow">Leitura rapida</div>
         <h2 class="hero-title">Dashboard operacional</h2>
-        <p class="hero-subtitle">Mostre primeiro os indicadores principais e expanda os detalhes apenas quando precisar navegar para contratos e relatorios.</p>
-        <div class="hero-chip-row">
-          <span class="hero-chip">Contratos reais</span>
-          <span class="hero-chip">Relatorios vinculados</span>
-          <span class="hero-chip">Fluxo web ativo</span>
-        </div>
-      </div>
-      <div class="actions">
-        <a href="{{ url_for('web_contracts_new') }}"><button type="button">Novo contrato</button></a>
-        <a href="{{ url_for('web_contracts_list') }}"><button type="button" class="secondary">Ver contratos</button></a>
+        <p class="hero-subtitle">Visao central do sistema com foco no que importa agora: volume, saude da base e proximos passos do uso diario.</p>
       </div>
     </div>
 
@@ -30,144 +21,161 @@
       <div class="kpi-card executive">
         <div class="kpi-title">Contratos</div>
         <div class="kpi-value">{{ total_contracts }}</div>
-        <div class="kpi-subtitle">Cadastros mestres disponiveis para operacao.</div>
+        <div class="kpi-subtitle">Cadastros mestres disponiveis.</div>
       </div>
       <div class="kpi-card executive">
         <div class="kpi-title">Relatorios</div>
         <div class="kpi-value">{{ total_reports }}</div>
-        <div class="kpi-subtitle">Arquivos registrados e vinculados aos contratos.</div>
+        <div class="kpi-subtitle">Arquivos vinculados aos contratos.</div>
       </div>
       <div class="kpi-card executive">
         <div class="kpi-title">Recentes</div>
         <div class="kpi-value">{{ recent_reports_count }}</div>
-        <div class="kpi-subtitle">Registros criados nos ultimos {{ recent_window_days }} dias.</div>
+        <div class="kpi-subtitle">Registros dos ultimos {{ recent_window_days }} dias.</div>
       </div>
     </div>
   </section>
 
-  <div class="dashboard-panel-grid">
-    <section class="section">
-      <h3>Acesso rapido</h3>
-      <div class="body">
-        <p class="section-lead">Mantenha o foco no uso do produto. Os detalhes completos ficam logo abaixo em secoes recolhiveis.</p>
-        <div class="actions" style="margin-top: 0;">
-          <a href="{{ url_for('web_contracts_new') }}"><button type="button">Cadastrar contrato</button></a>
-          <a href="{{ url_for('web_contracts_list') }}"><button type="button" class="secondary">Abrir listagem</button></a>
-          <a href="{{ url_for('dashboard', _anchor='reports') }}"><button type="button" class="secondary">Ir para relatorios</button></a>
-        </div>
-      </div>
-    </section>
+  <div class="dashboard-clean-grid">
+    <div class="dashboard-flow">
+      <section class="vision-card">
+        <p class="vision-kicker">Visao do sistema</p>
+        <h3 class="vision-title">Resumo operacional do momento</h3>
+        <p class="vision-text">
+          O ambiente web esta acompanhando <strong>{{ total_contracts }}</strong> contrato(s) e <strong>{{ total_reports }}</strong> relatorio(s) registrados.
+          Nos ultimos {{ recent_window_days }} dias, houve <strong>{{ recent_reports_count }}</strong> movimentacao(oes) recente(s).
+        </p>
+        <p class="vision-text">
+          {% if total_contracts > 0 or total_reports > 0 %}
+            A base ja possui dados reais para navegacao e acompanhamento rapido dentro do produto.
+          {% else %}
+            O dashboard esta pronto e passa a ganhar valor assim que os primeiros contratos e relatorios forem cadastrados.
+          {% endif %}
+        </p>
+      </section>
 
-    <section class="section" data-collapsible="1" data-collapsed="true">
-      <h3>Leitura complementar</h3>
-      <div class="body">
-        <p class="section-lead">Resumo textual para consulta rapida sem sobrecarregar a tela inicial.</p>
-        <div class="kpi-grid">
-          <div class="kpi-card executive">
-            <div class="kpi-title">Base contratual</div>
-            <div class="kpi-value">{{ total_contracts }}</div>
-            <div class="kpi-subtitle">Contratos totais hoje.</div>
-          </div>
-          <div class="kpi-card executive">
-            <div class="kpi-title">Base documental</div>
-            <div class="kpi-value">{{ total_reports }}</div>
-            <div class="kpi-subtitle">Relatorios totais hoje.</div>
+      <section class="section">
+        <h3>Acoes rapidas</h3>
+        <div class="body">
+          <div class="quick-action-grid">
+            <div class="quick-action-card">
+              <h4>Novo contrato</h4>
+              <p>Abra o fluxo minimo de cadastro para alimentar a base principal do sistema.</p>
+              <div class="actions">
+                <a href="{{ url_for('web_contracts_new') }}"><button type="button">Cadastrar contrato</button></a>
+              </div>
+            </div>
+            <div class="quick-action-card">
+              <h4>Consultar contratos</h4>
+              <p>Veja a listagem completa dos contratos ja cadastrados e acompanhe o progresso da base.</p>
+              <div class="actions">
+                <a href="{{ url_for('web_contracts_list') }}"><button type="button" class="secondary">Ver contratos</button></a>
+              </div>
+            </div>
+            <div class="quick-action-card">
+              <h4>Resultados gerados</h4>
+              <p>Consulte as saidas mais recentes do pipeline com filtros e download seguro.</p>
+              <div class="actions">
+                <a href="{{ url_for('results_list') }}"><button type="button" class="secondary">Abrir resultados</button></a>
+              </div>
+            </div>
+            <div class="quick-action-card">
+              <h4>Ir para relatorios</h4>
+              <p>Role direto para a lista compacta dos relatorios recentes dentro do dashboard.</p>
+              <div class="actions">
+                <a href="{{ url_for('dashboard', _anchor='reports') }}"><button type="button" class="secondary">Ver relatorios</button></a>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </div>
+
+    <div class="dashboard-flow">
+      <section id="reports" class="section">
+        <h3>Relatorios recentes</h3>
+        <div class="body">
+          <div class="dashboard-list-block">
+            {% if recent_reports %}
+              <div class="dashboard-list">
+                {% for report in recent_reports[:5] %}
+                  <article class="dashboard-list-item">
+                    <div class="dashboard-item-top">
+                      <div>
+                        <p class="dashboard-item-title">{{ report.file_name }}</p>
+                        <p class="dashboard-item-subtitle">
+                          {% if report.numero_contrato or report.contract_code %}
+                            {{ report.numero_contrato or report.contract_code }} - {{ report.nome_contrato or report.contract_title }}
+                          {% else %}
+                            Contrato #{{ report.contract_id }}
+                          {% endif %}
+                        </p>
+                      </div>
+                      <div class="dashboard-item-meta">
+                        <span class="dashboard-item-chip">{{ report.created_at or "-" }}</span>
+                      </div>
+                    </div>
+                  </article>
+                {% endfor %}
+              </div>
+              {% if recent_reports|length > 5 %}
+                <p class="dashboard-list-note">Exibindo os 5 relatorios mais recentes para manter a leitura imediata.</p>
+              {% endif %}
+            {% else %}
+              <div class="dashboard-empty">Nenhum relatorio recente encontrado. Quando novos arquivos forem registrados, eles aparecerao aqui automaticamente.</div>
+            {% endif %}
+          </div>
+        </div>
+      </section>
+
+      <section id="contracts" class="section">
+        <h3>Contratos ativos</h3>
+        <div class="body">
+          <div class="dashboard-list-block">
+            {% set active_contracts = contracts | selectattr('status_contrato', 'equalto', 'ativo') | list %}
+            {% if active_contracts %}
+              <div class="dashboard-list">
+                {% for contract in active_contracts[:5] %}
+                  <article class="dashboard-list-item">
+                    <div class="dashboard-item-top">
+                      <div>
+                        <p class="dashboard-item-title">{{ contract.numero_contrato or contract.contract_code }} - {{ contract.nome_contrato or contract.title }}</p>
+                        <p class="dashboard-item-subtitle">{{ contract.municipios_atendidos or "-" }}</p>
+                      </div>
+                      <div class="dashboard-item-meta">
+                        <span class="badge info">{{ contract.status_contrato or contract.status or "ativo" }}</span>
+                      </div>
+                    </div>
+                  </article>
+                {% endfor %}
+              </div>
+              {% if active_contracts|length > 5 %}
+                <p class="dashboard-list-note">Exibindo os 5 contratos ativos mais recentes no dashboard.</p>
+              {% endif %}
+            {% elif contracts %}
+              <div class="dashboard-list">
+                {% for contract in contracts[:5] %}
+                  <article class="dashboard-list-item">
+                    <div class="dashboard-item-top">
+                      <div>
+                        <p class="dashboard-item-title">{{ contract.numero_contrato or contract.contract_code }} - {{ contract.nome_contrato or contract.title }}</p>
+                        <p class="dashboard-item-subtitle">{{ contract.municipios_atendidos or "-" }}</p>
+                      </div>
+                      <div class="dashboard-item-meta">
+                        <span class="badge info">{{ contract.status_contrato or contract.status or "em_implantacao" }}</span>
+                      </div>
+                    </div>
+                  </article>
+                {% endfor %}
+              </div>
+              <p class="dashboard-list-note">Ainda nao ha contratos com status ativo. Exibindo os registros mais recentes da base.</p>
+            {% else %}
+              <div class="dashboard-empty">Nenhum contrato encontrado ainda. Assim que os primeiros contratos forem cadastrados, eles aparecem aqui com os dados reais do sistema.</div>
+            {% endif %}
+          </div>
+        </div>
+      </section>
+    </div>
   </div>
-
-  <section id="contracts" class="section" data-collapsible="1" data-collapsed="true">
-    <h3>Contratos</h3>
-    <div class="body">
-      <div class="panel-header">
-        <div class="panel-meta">
-          <div class="panel-kicker">Cadastro mestre</div>
-          <p class="panel-title">Contratos vinculadores</p>
-          <p class="panel-subtitle">Use esta visao quando precisar revisar rapidamente os contratos que alimentam o dashboard.</p>
-        </div>
-        <span class="panel-tag">{{ contracts|length }} exibidos</span>
-      </div>
-
-      {% if contracts %}
-        <div class="table-wrap compact-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Numero</th>
-                <th>Nome</th>
-                <th>Municipios</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for contract in contracts[:5] %}
-                <tr>
-                  <td>{{ contract.numero_contrato or contract.contract_code }}</td>
-                  <td>{{ contract.nome_contrato or contract.title }}</td>
-                  <td>{{ contract.municipios_atendidos or "-" }}</td>
-                  <td><span class="badge info">{{ contract.status_contrato or contract.status or "em_implantacao" }}</span></td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-        {% if contracts|length > 5 %}
-          <p class="filter-status">Exibindo os 5 contratos mais recentes no dashboard. Use "Ver contratos" para consultar a lista completa.</p>
-        {% endif %}
-      {% else %}
-        <div class="dashboard-empty">Nenhum contrato encontrado ainda. Assim que os primeiros contratos forem cadastrados, eles aparecem aqui com os dados reais do sistema.</div>
-      {% endif %}
-    </div>
-  </section>
-
-  <section id="reports" class="section" data-collapsible="1" data-collapsed="true">
-    <h3>Relatorios recentes</h3>
-    <div class="body">
-      <div class="panel-header">
-        <div class="panel-meta">
-          <div class="panel-kicker">Ultimas movimentacoes</div>
-          <p class="panel-title">Historico recente de arquivos</p>
-          <p class="panel-subtitle">Arquivos gerados e registrados com vinculo contratual, usando somente os dados reais do ambiente.</p>
-        </div>
-        <span class="panel-tag">{{ recent_reports|length }} itens</span>
-      </div>
-
-      {% if recent_reports %}
-        <div class="table-wrap compact-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Gerado em</th>
-                <th>Arquivo</th>
-                <th>Contrato</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for report in recent_reports[:5] %}
-                <tr>
-                  <td>{{ report.created_at or "-" }}</td>
-                  <td>{{ report.file_name }}</td>
-                  <td>
-                    {% if report.numero_contrato or report.contract_code %}
-                      {{ report.numero_contrato or report.contract_code }} - {{ report.nome_contrato or report.contract_title }}
-                    {% else %}
-                      Contrato #{{ report.contract_id }}
-                    {% endif %}
-                  </td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-        {% if recent_reports|length > 5 %}
-          <p class="filter-status">Exibindo apenas os 5 itens mais recentes para manter a leitura limpa.</p>
-        {% endif %}
-      {% else %}
-        <div class="dashboard-empty">Nenhum relatorio recente encontrado. Quando novos arquivos forem registrados, eles aparecerao aqui automaticamente.</div>
-      {% endif %}
-    </div>
-  </section>
 </div>
 {% endblock %}
