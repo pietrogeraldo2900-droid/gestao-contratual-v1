@@ -5,16 +5,16 @@
     <div>
       <div class="hero-eyebrow">Fluxo operacional</div>
       <h2 class="hero-title">Nova entrada operacional</h2>
-      <p class="hero-subtitle">Cole a mensagem do WhatsApp, complemente os campos principais quando precisar e siga o fluxo de análise, revisão e geração sem sair da mesma trilha operacional.</p>
+      <p class="hero-subtitle">Concentre a atencao na mensagem principal e expanda o contexto operacional apenas quando precisar complementar o processamento.</p>
       <div class="hero-chip-row">
         <span class="hero-chip">Entrada guiada</span>
-        <span class="hero-chip">Revisão antes da geração</span>
-        <span class="hero-chip">Saídas consolidadas</span>
+        <span class="hero-chip">Revisao antes da geracao</span>
+        <span class="hero-chip">Saidas consolidadas</span>
       </div>
     </div>
     <div class="hero-stat-grid">
       <div class="hero-stat">
-        <div class="hero-stat-label">Núcleos cadastrados</div>
+        <div class="hero-stat-label">Nucleos cadastrados</div>
         <div class="hero-stat-value">{{ (nucleo_reference.options|length) if nucleo_reference else 0 }}</div>
         <div class="hero-stat-subtitle">Base pronta para autopreenchimento seguro</div>
       </div>
@@ -41,59 +41,96 @@
 {% endif %}
 
 <form method="post" action="{{ url_for('preview') }}">
-  <div class="grid-2">
-    <div class="field">
-      <label for="data">Data</label>
-      <input id="data" name="data" value="{{ form_data.data }}" placeholder="dd/mm/aaaa">
+  <section class="section">
+    <h3>Mensagem principal</h3>
+    <div class="body">
+      <p class="section-lead">Cole a mensagem completa do WhatsApp e use o contexto operacional apenas se precisar corrigir ou orientar o processamento.</p>
+      <div class="field">
+        <label for="mensagem">Mensagem WhatsApp</label>
+        <textarea id="mensagem" name="mensagem" placeholder="Cole aqui a mensagem completa...">{{ mensagem }}</textarea>
+      </div>
+      <div class="actions">
+        <button type="submit">Processar mensagem</button>
+        <button type="reset" class="secondary">Limpar campos</button>
+      </div>
     </div>
-    <div class="field">
-      <label for="nucleo">Nucleo</label>
-      <input id="nucleo" name="nucleo" value="{{ form_data.nucleo }}" placeholder="Nucleo oficial" list="nucleo-options">
-      <datalist id="nucleo-options">
-        {% for nome in (nucleo_reference.options if nucleo_reference else []) %}
-          <option value="{{ nome }}"></option>
-        {% endfor %}
-      </datalist>
-      <p id="index-nucleo-profile" class="muted">Selecione um nucleo cadastrado para sugerir municipio e defaults com seguranca.</p>
-    </div>
-    <div class="field">
-      <label for="logradouro">Logradouro</label>
-      <input id="logradouro" name="logradouro" value="{{ form_data.logradouro }}" placeholder="Use / ; ou quebra de linha para multiplos logradouros">
-    </div>
-    <div class="field">
-      <label for="municipio">Municipio</label>
-      <input id="municipio" name="municipio" value="{{ form_data.municipio }}" placeholder="Municipio">
-    </div>
-    <div class="field">
-      <label for="equipe">Equipe</label>
-      <input id="equipe" name="equipe" value="{{ form_data.equipe }}" placeholder="Use / ; ou quebra de linha para multiplas equipes">
-    </div>
-    <div class="field">
-      <label for="contract_id">Contrato ID (opcional)</label>
-      <input id="contract_id" name="contract_id" value="{{ form_data.contract_id }}" placeholder="Ex.: 1">
-    </div>
-  </div>
+  </section>
 
-  <div class="multi-preview-grid" style="margin-bottom: 12px;">
-    <div class="multi-preview-card">
-      <div class="multi-preview-title">Logradouros identificados (<span id="index-logradouro-count">0</span>)</div>
-      <ul id="index-logradouro-list" class="simple-list"></ul>
-    </div>
-    <div class="multi-preview-card">
-      <div class="multi-preview-title">Equipes identificadas (<span id="index-equipe-count">0</span>)</div>
-      <ul id="index-equipe-list" class="simple-list"></ul>
-    </div>
-  </div>
+  <section class="section" data-collapsible="1" data-collapsed="true">
+    <h3>Contexto operacional e vinculo</h3>
+    <div class="body">
+      <p class="surface-note">Use esta area para guiar o processamento com mais precisao. Ela fica recolhida por padrao para reduzir ruido visual.</p>
+      <div class="grid-2">
+        <div class="field">
+          <label for="data">Data</label>
+          <input id="data" name="data" value="{{ form_data.data }}" placeholder="dd/mm/aaaa">
+        </div>
+        <div class="field">
+          <label for="nucleo">Nucleo</label>
+          <select id="nucleo" name="nucleo">
+            <option value="">Selecione um nucleo</option>
+            {% if form_data.nucleo and form_data.nucleo not in (nucleo_reference.options if nucleo_reference else []) %}
+              <option value="{{ form_data.nucleo }}" selected>{{ form_data.nucleo }} (manual)</option>
+            {% endif %}
+            {% for nome in (nucleo_reference.options if nucleo_reference else []) %}
+              <option value="{{ nome }}" {% if form_data.nucleo == nome %}selected{% endif %}>{{ nome }}</option>
+            {% endfor %}
+          </select>
+          <p id="index-nucleo-profile" class="field-hint">Selecione um nucleo cadastrado para sugerir municipio e defaults com seguranca.</p>
+        </div>
 
-  <div class="field">
-    <label for="mensagem">Mensagem WhatsApp</label>
-    <textarea id="mensagem" name="mensagem" placeholder="Cole aqui a mensagem completa...">{{ mensagem }}</textarea>
-  </div>
+        <div class="field">
+          <label for="logradouro">Logradouro</label>
+          <input id="logradouro" name="logradouro" value="{{ form_data.logradouro }}" placeholder="Use / ; ou quebra de linha para multiplos logradouros">
+        </div>
+        <div class="field">
+          <label for="municipio">Municipio</label>
+          <input id="municipio" name="municipio" value="{{ form_data.municipio }}" placeholder="Municipio" list="municipio-options">
+          <datalist id="municipio-options">
+            {% for entry in (nucleo_reference.entries if nucleo_reference else []) %}
+              {% if entry.municipio %}
+                <option value="{{ entry.municipio }}"></option>
+              {% endif %}
+            {% endfor %}
+          </datalist>
+        </div>
 
-  <div class="actions">
-    <button type="submit">Processar mensagem</button>
-    <button type="reset" class="secondary">Limpar campos</button>
-  </div>
+        <div class="field">
+          <label for="equipe">Equipe</label>
+          <input id="equipe" name="equipe" value="{{ form_data.equipe }}" placeholder="Use / ; ou quebra de linha para multiplas equipes" list="equipe-options">
+          <datalist id="equipe-options">
+            {% for entry in (nucleo_reference.entries if nucleo_reference else []) %}
+              {% for equipe_nome in (entry.equipes_padrao or []) %}
+                <option value="{{ equipe_nome }}"></option>
+              {% endfor %}
+            {% endfor %}
+          </datalist>
+        </div>
+        <div class="field">
+          <label for="contract_id">Contrato ID (opcional)</label>
+          <input id="contract_id" name="contract_id" type="number" min="1" value="{{ form_data.contract_id }}" placeholder="Ex.: 1">
+          <p class="field-hint">Mantido como identificador livre nesta etapa para evitar mudar o backend de contratos.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" data-collapsible="1" data-collapsed="true">
+    <h3>Leitura rapida dos multiplos valores</h3>
+    <div class="body">
+      <p class="section-lead">Use esta previa apenas quando a mensagem trouxer mais de um logradouro ou mais de uma equipe.</p>
+      <div class="multi-preview-grid" style="margin-bottom: 0;">
+        <div class="multi-preview-card">
+          <div class="multi-preview-title">Logradouros identificados (<span id="index-logradouro-count">0</span>)</div>
+          <ul id="index-logradouro-list" class="simple-list"></ul>
+        </div>
+        <div class="multi-preview-card">
+          <div class="multi-preview-title">Equipes identificadas (<span id="index-equipe-count">0</span>)</div>
+          <ul id="index-equipe-list" class="simple-list"></ul>
+        </div>
+      </div>
+    </div>
+  </section>
 </form>
 
 <script>
@@ -190,7 +227,6 @@
   if (nucleoInput) {
     nucleoInput.addEventListener('change', applyProfileFromNucleo);
     nucleoInput.addEventListener('blur', applyProfileFromNucleo);
-    nucleoInput.addEventListener('input', applyProfileFromNucleo);
   }
   if (logradouroInput) {
     logradouroInput.addEventListener('input', refreshMultiPreview);
@@ -204,5 +240,3 @@
 })();
 </script>
 {% endblock %}
-
-

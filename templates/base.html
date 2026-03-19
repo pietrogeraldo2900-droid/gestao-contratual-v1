@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ title or "Sistema de Gestao de Relatorios" }}</title>
   <style>
+    @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap");
     :root {
       --navy-980: #071425;
       --navy-950: #0a1f39;
@@ -51,7 +52,7 @@
       scroll-behavior: smooth;
     }
     body {
-      font-family: "Aptos", "Segoe UI Variable Text", "Trebuchet MS", sans-serif;
+      font-family: "Inter", "Segoe UI Variable Text", "Trebuchet MS", sans-serif;
       margin: 0;
       min-height: 100vh;
       color: var(--text);
@@ -67,8 +68,11 @@
       pointer-events: none;
       background-image: linear-gradient(rgba(255, 255, 255, 0.10) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
       background-size: 36px 36px;
-      opacity: 0.18;
+      opacity: 0.12;
       mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.25), transparent 75%);
+    }
+    h1, h2, h3, h4, .hero-title, .sidebar-title, .panel-title, .chart-title, .app-context h1, header h1 {
+      font-family: "Manrope", "Inter", sans-serif;
     }
     a {
       color: var(--blue-700);
@@ -163,7 +167,7 @@
     }
     .container {
       max-width: 1680px;
-      margin: 30px auto 42px;
+      margin: 24px auto 38px;
       padding: 0 28px 20px;
       background: transparent;
       border: 0;
@@ -172,9 +176,9 @@
       position: relative;
       overflow: hidden;
       display: grid;
-      gap: 18px;
-      margin-bottom: 24px;
-      padding: 28px 30px;
+      gap: 16px;
+      margin-bottom: 18px;
+      padding: 24px 26px;
       border-radius: 28px;
       background:
         radial-gradient(circle at top right, rgba(104, 208, 255, 0.22), transparent 28%),
@@ -232,7 +236,7 @@
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
-      margin-top: 18px;
+      margin-top: 14px;
     }
     .hero-chip {
       display: inline-flex;
@@ -289,7 +293,7 @@
       display: grid;
       grid-template-columns: repeat(2, minmax(240px, 1fr));
       gap: 16px;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
     }
     .field {
       display: flex;
@@ -314,6 +318,13 @@
       font-family: inherit;
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
       transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+    }
+    select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5 7.5L10 12.5L15 7.5' stroke='%2372879d' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 42px;
     }
     input:focus, textarea:focus, select:focus {
       outline: none;
@@ -388,18 +399,18 @@
       border-radius: 12px;
     }
     .section {
-      margin-top: 24px;
+      margin-top: 18px;
       overflow: hidden;
-      border: 1px solid rgba(214, 225, 236, 0.88);
+      border: 1px solid rgba(214, 225, 236, 0.72);
       border-radius: var(--radius-xl);
       background: var(--surface-soft);
-      box-shadow: var(--shadow-md);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
       backdrop-filter: blur(16px);
     }
     .section h3 {
       margin: 0;
       padding: 16px 20px;
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 800;
       letter-spacing: -0.01em;
       color: var(--slate-900);
@@ -408,6 +419,64 @@
     }
     .section .body {
       padding: 18px 20px;
+    }
+    .section[data-collapsible] h3 {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .section[data-collapsible].is-collapsed .body {
+      display: none;
+    }
+    .collapse-inline-btn {
+      border: 1px solid rgba(93, 170, 248, 0.20);
+      background: rgba(255, 255, 255, 0.78);
+      color: var(--blue-800);
+      min-height: 32px;
+      padding: 0 12px;
+      border-radius: 999px;
+      box-shadow: none;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .collapse-inline-btn:hover {
+      box-shadow: none;
+      filter: none;
+      transform: translateY(-1px);
+    }
+    .section-lead {
+      margin: 0 0 14px;
+      color: var(--slate-500);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+    .surface-note {
+      margin: 0 0 14px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(214, 225, 236, 0.80);
+      background: rgba(248, 251, 255, 0.78);
+      color: var(--slate-600);
+      line-height: 1.65;
+      font-size: 13px;
+    }
+    .field-hint {
+      margin: 2px 0 0;
+      color: var(--slate-500);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .filter-toolbar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+    }
+    .filter-status {
+      margin-top: 8px;
+      color: var(--slate-500);
+      font-size: 12px;
     }
     .review-grid {
       display: grid;
@@ -825,7 +894,7 @@
     .chart-panel {
       border-radius: var(--radius-lg);
       background: rgba(255, 255, 255, 0.96);
-      padding: 16px;
+      padding: 18px;
     }
     .chart-panel.wide {
       grid-column: span 2;
@@ -874,16 +943,17 @@
     }
     .hbar-track {
       width: 100%;
-      height: 11px;
+      height: 8px;
       border-radius: 999px;
-      background: #e5edf6;
+      background: linear-gradient(180deg, rgba(229, 237, 246, 0.72), rgba(219, 229, 240, 0.92));
       overflow: hidden;
-      border: 1px solid rgba(214, 225, 236, 0.82);
+      border: 1px solid rgba(214, 225, 236, 0.55);
     }
     .hbar-fill {
       height: 100%;
       border-radius: 999px;
-      background: linear-gradient(90deg, var(--blue-700), var(--blue-500));
+      background: linear-gradient(90deg, rgba(44, 100, 255, 0.96), rgba(91, 175, 255, 0.96));
+      box-shadow: 0 0 18px rgba(45, 126, 208, 0.20);
     }
     .hbar-fill.alert {
       background: linear-gradient(90deg, #c2410c, #fb923c);
@@ -924,16 +994,16 @@
       display: flex;
       align-items: end;
       justify-content: center;
-      background: linear-gradient(180deg, #f8fafc 0%, #eef4fb 100%);
-      border: 1px solid #dbe5f0;
+      background: linear-gradient(180deg, rgba(248, 250, 252, 0.82) 0%, rgba(238, 244, 251, 0.92) 100%);
+      border: 1px solid rgba(219, 229, 240, 0.72);
       border-radius: 16px 16px 8px 8px;
       padding: 10px;
     }
     .vbar-fill {
       width: 100%;
       border-radius: 10px 10px 5px 5px;
-      background: linear-gradient(180deg, var(--blue-500) 0%, var(--blue-700) 100%);
-      box-shadow: inset 0 -10px 14px rgba(10, 31, 57, 0.10);
+      background: linear-gradient(180deg, rgba(93, 170, 248, 0.98) 0%, rgba(37, 99, 235, 0.98) 100%);
+      box-shadow: inset 0 -10px 14px rgba(10, 31, 57, 0.12), 0 10px 18px rgba(37, 99, 235, 0.12);
     }
     .vbar-label {
       font-size: 11px;
@@ -943,11 +1013,11 @@
     }
     .stack-meter {
       display: flex;
-      height: 20px;
+      height: 14px;
       border-radius: 999px;
       overflow: hidden;
-      background: #e5edf6;
-      border: 1px solid #dbe5f0;
+      background: linear-gradient(180deg, rgba(229, 237, 246, 0.70), rgba(219, 229, 240, 0.92));
+      border: 1px solid rgba(219, 229, 240, 0.72);
       margin: 12px 0 14px;
     }
     .stack-fill {
@@ -963,9 +1033,9 @@
       width: 100%;
       overflow: auto;
       border-radius: 16px;
-      border: 1px solid rgba(214, 225, 236, 0.96);
-      background: rgba(255, 255, 255, 0.96);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+      border: 1px solid rgba(214, 225, 236, 0.55);
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
     }
     table {
       width: 100%;
@@ -978,18 +1048,13 @@
       padding: 12px 12px;
       text-align: left;
       vertical-align: top;
-      border-bottom: 1px solid #e5edf6;
-      border-right: 1px solid #edf3f9;
-    }
-    th:last-child,
-    td:last-child {
-      border-right: 0;
+      border-bottom: 1px solid rgba(229, 237, 246, 0.68);
     }
     tbody tr:last-child td {
       border-bottom: 0;
     }
     th {
-      background: linear-gradient(180deg, #f9fbfe 0%, #eef4fb 100%);
+      background: linear-gradient(180deg, rgba(249, 251, 254, 0.96) 0%, rgba(238, 244, 251, 0.96) 100%);
       font-weight: 800;
       color: var(--slate-900);
       position: sticky;
@@ -997,7 +1062,7 @@
       z-index: 1;
     }
     tbody tr:hover td {
-      background: #f8fbff;
+      background: rgba(248, 251, 255, 0.76);
     }
     .row-warning td,
     .row-warning {
@@ -1388,12 +1453,11 @@
       color: #e2e8f0;
     }
     body.auth-shell-mode td {
-      border-bottom: 1px solid #1b2a40;
-      border-right: 1px solid #1b2a40;
+      border-bottom: 1px solid rgba(27, 42, 64, 0.78);
       color: #d4deed;
     }
     body.auth-shell-mode tbody tr:hover td {
-      background: rgba(26, 36, 54, 0.9);
+      background: rgba(24, 34, 52, 0.72);
     }
     body.auth-shell-mode input,
     body.auth-shell-mode textarea,
@@ -1464,7 +1528,7 @@
     }
     .dashboard-summary-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(180px, 1fr));
+      grid-template-columns: repeat(3, minmax(180px, 1fr));
       gap: 16px;
     }
     .dashboard-topline {
@@ -1611,6 +1675,7 @@
   {% set dashboard_endpoints = ['dashboard'] %}
   {% set entries_endpoints = ['index', 'nova_entrada_redirect', 'preview', 'generate'] %}
   {% set history_endpoints = ['history'] %}
+  {% set results_endpoints = ['results_list', 'result_detail', 'result_file'] %}
   {% set gerencial_endpoints = ['gerencial'] %}
   {% set institucional_endpoints = ['institucional', 'institucional_export'] %}
   {% set nucleos_endpoints = ['nucleos', 'nucleos_save'] %}
@@ -1627,6 +1692,8 @@
     'preview': 'Entradas',
     'generate': 'Entradas',
     'history': 'Historico',
+    'results_list': 'Resultados gerados',
+    'result_detail': 'Resultado do processamento',
     'gerencial': 'Painel Gerencial',
     'institucional': 'Institucional',
     'institucional_export': 'Institucional',
@@ -1642,6 +1709,8 @@
     'index': 'Entrada operacional para processamento de mensagens e geracao de documentos.',
     'nova_entrada_redirect': 'Entrada operacional para processamento de mensagens e geracao de documentos.',
     'history': 'Historico de processamentos com filtros e acompanhamento operacional.',
+    'results_list': 'Saidas geradas pelo pipeline para visualizacao e download dentro da plataforma.',
+    'result_detail': 'Detalhes do processamento selecionado e acesso aos arquivos gerados.',
     'gerencial': 'Leitura analitica com indicadores consolidados do sistema.',
     'institucional': 'Resumo institucional para apresentacao executiva.',
     'web_contracts_list': 'Cadastros mestres de contratos para alimentar o fluxo operacional.',
@@ -1664,6 +1733,7 @@
             <a href="{{ url_for('dashboard') }}" class="sidebar-link {% if endpoint in dashboard_endpoints %}active{% endif %}">Dashboard</a>
             <a href="{{ url_for('nova_entrada_redirect') }}" class="sidebar-link {% if endpoint in entries_endpoints %}active{% endif %}">Entradas</a>
             <a href="{{ url_for('history') }}" class="sidebar-link {% if history_active %}active{% endif %}">Historico</a>
+            <a href="{{ url_for('results_list') }}" class="sidebar-link {% if endpoint in results_endpoints %}active{% endif %}">Resultados</a>
           </div>
         </div>
 
@@ -1752,5 +1822,36 @@
       </div>
     </div>
   {% endif %}
+  <script>
+  (function () {
+    const sections = Array.from(document.querySelectorAll('.section[data-collapsible]'));
+    sections.forEach((section) => {
+      if (section.dataset.collapseReady === '1') return;
+      const header = section.querySelector('h3');
+      const body = section.querySelector('.body');
+      if (!header || !body) return;
+
+      section.dataset.collapseReady = '1';
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'collapse-inline-btn';
+
+      const sync = () => {
+        const collapsed = String(section.dataset.collapsed || 'false') === 'true';
+        section.classList.toggle('is-collapsed', collapsed);
+        button.textContent = collapsed ? 'Expandir' : 'Recolher';
+        button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      };
+
+      button.addEventListener('click', () => {
+        section.dataset.collapsed = String(section.dataset.collapsed || 'false') === 'true' ? 'false' : 'true';
+        sync();
+      });
+
+      header.appendChild(button);
+      sync();
+    });
+  })();
+  </script>
 </body>
 </html>

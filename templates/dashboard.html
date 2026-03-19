@@ -6,7 +6,7 @@
       <div class="dashboard-topline-copy">
         <div class="hero-eyebrow">Visao resumida</div>
         <h2 class="hero-title">Dashboard operacional</h2>
-        <p class="hero-subtitle">Resumo rapido de contratos e relatorios para apoiar a navegacao diaria sem alterar o fluxo atual do sistema.</p>
+        <p class="hero-subtitle">Mostre primeiro os indicadores principais e expanda os detalhes apenas quando precisar navegar para contratos e relatorios.</p>
         <div class="hero-chip-row">
           <span class="hero-chip">Contratos reais</span>
           <span class="hero-chip">Relatorios vinculados</span>
@@ -42,104 +42,87 @@
         <div class="kpi-value">{{ recent_reports_count }}</div>
         <div class="kpi-subtitle">Registros criados nos ultimos {{ recent_window_days }} dias.</div>
       </div>
-      <div class="kpi-card executive">
-        <div class="kpi-title">Em tela</div>
-        <div class="kpi-value">{{ contracts|length }}</div>
-        <div class="kpi-subtitle">Contratos exibidos no painel resumido atual.</div>
-      </div>
     </div>
   </section>
 
   <div class="dashboard-panel-grid">
-    <section id="contracts" class="section">
-      <h3>Contratos</h3>
+    <section class="section">
+      <h3>Acesso rapido</h3>
       <div class="body">
-        <div class="panel-header">
-          <div class="panel-meta">
-            <div class="panel-kicker">Cadastro mestre</div>
-            <p class="panel-title">Contratos vinculadores</p>
-            <p class="panel-subtitle">Use esta visao para acompanhar os contratos que alimentam o dashboard e servem de base para os relatorios operacionais.</p>
-          </div>
-          <span class="panel-tag">{{ contracts|length }} exibidos</span>
+        <p class="section-lead">Mantenha o foco no uso do produto. Os detalhes completos ficam logo abaixo em secoes recolhiveis.</p>
+        <div class="actions" style="margin-top: 0;">
+          <a href="{{ url_for('web_contracts_new') }}"><button type="button">Cadastrar contrato</button></a>
+          <a href="{{ url_for('web_contracts_list') }}"><button type="button" class="secondary">Abrir listagem</button></a>
+          <a href="{{ url_for('dashboard', _anchor='reports') }}"><button type="button" class="secondary">Ir para relatorios</button></a>
         </div>
-
-        {% if contracts %}
-          <div class="table-wrap compact-table">
-            <table>
-              <thead>
-                <tr>
-                  <th>Numero</th>
-                  <th>Nome</th>
-                  <th>Municipios</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for contract in contracts %}
-                  <tr>
-                    <td>{{ contract.numero_contrato or contract.contract_code }}</td>
-                    <td>{{ contract.nome_contrato or contract.title }}</td>
-                    <td>{{ contract.municipios_atendidos or "-" }}</td>
-                    <td><span class="badge info">{{ contract.status_contrato or contract.status or "em_implantacao" }}</span></td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        {% else %}
-          <div class="dashboard-empty">Nenhum contrato encontrado ainda. Assim que os primeiros contratos forem cadastrados, eles aparecem aqui com os dados reais do sistema.</div>
-        {% endif %}
       </div>
     </section>
 
-    <div class="dashboard-stack">
-      <section class="section">
-        <h3>Estado do painel</h3>
-        <div class="body">
-          <div class="panel-header">
-            <div class="panel-meta">
-              <div class="panel-kicker">Leitura rapida</div>
-              <p class="panel-title">Visao atual do sistema</p>
-              <p class="panel-subtitle">Resumo consolidado com os numeros que ja estao ativos no ambiente web.</p>
-            </div>
+    <section class="section" data-collapsible="1" data-collapsed="true">
+      <h3>Leitura complementar</h3>
+      <div class="body">
+        <p class="section-lead">Resumo textual para consulta rapida sem sobrecarregar a tela inicial.</p>
+        <div class="kpi-grid">
+          <div class="kpi-card executive">
+            <div class="kpi-title">Base contratual</div>
+            <div class="kpi-value">{{ total_contracts }}</div>
+            <div class="kpi-subtitle">Contratos totais hoje.</div>
           </div>
-
-          <div class="kpi-grid">
-            <div class="kpi-card executive">
-              <div class="kpi-title">Base contratual</div>
-              <div class="kpi-value">{{ total_contracts }}</div>
-              <div class="kpi-subtitle">Contratos totais hoje.</div>
-            </div>
-            <div class="kpi-card executive">
-              <div class="kpi-title">Base documental</div>
-              <div class="kpi-value">{{ total_reports }}</div>
-              <div class="kpi-subtitle">Relatorios totais hoje.</div>
-            </div>
+          <div class="kpi-card executive">
+            <div class="kpi-title">Base documental</div>
+            <div class="kpi-value">{{ total_reports }}</div>
+            <div class="kpi-subtitle">Relatorios totais hoje.</div>
           </div>
         </div>
-      </section>
-
-      <section class="section">
-        <h3>Acesso rapido</h3>
-        <div class="body">
-          <div class="panel-header">
-            <div class="panel-meta">
-              <div class="panel-kicker">Fluxo atual</div>
-              <p class="panel-title">Atalhos principais</p>
-              <p class="panel-subtitle">Acesse o cadastro de contratos e a visao completa sem sair do painel.</p>
-            </div>
-          </div>
-          <div class="actions">
-            <a href="{{ url_for('web_contracts_new') }}"><button type="button">Cadastrar contrato</button></a>
-            <a href="{{ url_for('web_contracts_list') }}"><button type="button" class="secondary">Abrir listagem</button></a>
-            <a href="{{ url_for('dashboard', _anchor='reports') }}"><button type="button" class="secondary">Ir para relatorios</button></a>
-          </div>
-        </div>
-      </section>
-    </div>
+      </div>
+    </section>
   </div>
 
-  <section id="reports" class="section">
+  <section id="contracts" class="section" data-collapsible="1" data-collapsed="true">
+    <h3>Contratos</h3>
+    <div class="body">
+      <div class="panel-header">
+        <div class="panel-meta">
+          <div class="panel-kicker">Cadastro mestre</div>
+          <p class="panel-title">Contratos vinculadores</p>
+          <p class="panel-subtitle">Use esta visao quando precisar revisar rapidamente os contratos que alimentam o dashboard.</p>
+        </div>
+        <span class="panel-tag">{{ contracts|length }} exibidos</span>
+      </div>
+
+      {% if contracts %}
+        <div class="table-wrap compact-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Numero</th>
+                <th>Nome</th>
+                <th>Municipios</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for contract in contracts[:5] %}
+                <tr>
+                  <td>{{ contract.numero_contrato or contract.contract_code }}</td>
+                  <td>{{ contract.nome_contrato or contract.title }}</td>
+                  <td>{{ contract.municipios_atendidos or "-" }}</td>
+                  <td><span class="badge info">{{ contract.status_contrato or contract.status or "em_implantacao" }}</span></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% if contracts|length > 5 %}
+          <p class="filter-status">Exibindo os 5 contratos mais recentes no dashboard. Use "Ver contratos" para consultar a lista completa.</p>
+        {% endif %}
+      {% else %}
+        <div class="dashboard-empty">Nenhum contrato encontrado ainda. Assim que os primeiros contratos forem cadastrados, eles aparecem aqui com os dados reais do sistema.</div>
+      {% endif %}
+    </div>
+  </section>
+
+  <section id="reports" class="section" data-collapsible="1" data-collapsed="true">
     <h3>Relatorios recentes</h3>
     <div class="body">
       <div class="panel-header">
@@ -162,7 +145,7 @@
               </tr>
             </thead>
             <tbody>
-              {% for report in recent_reports %}
+              {% for report in recent_reports[:5] %}
                 <tr>
                   <td>{{ report.created_at or "-" }}</td>
                   <td>{{ report.file_name }}</td>
@@ -178,6 +161,9 @@
             </tbody>
           </table>
         </div>
+        {% if recent_reports|length > 5 %}
+          <p class="filter-status">Exibindo apenas os 5 itens mais recentes para manter a leitura limpa.</p>
+        {% endif %}
       {% else %}
         <div class="dashboard-empty">Nenhum relatorio recente encontrado. Quando novos arquivos forem registrados, eles aparecerao aqui automaticamente.</div>
       {% endif %}

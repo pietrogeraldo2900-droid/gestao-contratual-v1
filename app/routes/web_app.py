@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Dict
 from urllib.parse import urlparse
 
-from flask import Flask, flash, g, make_response, redirect, render_template, request, session, url_for
+from flask import Flask, abort, flash, g, make_response, redirect, render_template, request, send_file, session, url_for
 
 from config.settings import AppSettings, load_settings
 from app.database import build_database_manager, init_db
@@ -225,6 +225,9 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
 
     protected_web_endpoints = {
         "dashboard",
+        "results_list",
+        "result_detail",
+        "result_file",
         "web_contracts_list",
         "web_contracts_new",
         "web_contracts_create",
@@ -268,6 +271,31 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         if candidate is not None and all(callable(getattr(candidate, name, None)) for name in required):
             return candidate  # type: ignore[return-value]
         return None
+
+    def _resolve_contract_context(contract_id_raw: object) -> tuple[str, dict[str, object] | None]:
+        raw = str(contract_id_raw or "").strip()
+        if not raw:
+            return "", None
+        candidate = app.config.get("CONTRACTS_SERVICE")
+        getter = getattr(candidate, "get_contract_report_context", None)
+        if not callable(getter):
+            return raw, None
+        try:
+            context = getter(int(raw))
+        except Exception:
+            return raw, None
+        if not isinstance(context, dict):
+            return raw, None
+
+        numero = str(context.get("numero_contrato", context.get("contract_code", "")) or "").strip()
+        nome = str(context.get("nome_contrato", context.get("contract_title", "")) or "").strip()
+        if numero and nome:
+            return f"{numero} - {nome}", context
+        if nome:
+            return nome, context
+        if numero:
+            return numero, context
+        return raw, context
 
     def _clear_web_auth_session() -> None:
         session.pop(SESSION_USER_ID_KEY, None)
@@ -612,6 +640,59 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             recent_reports=recent_reports,
         )
 
+    @app.get("/resultados")
+    def results_list():
+        rows = service.list_processing_results(limit=200)
+        for row in rows:
+            if row.get("contract_label"):
+                continue
+            resolved_label, _ = _resolve_contract_context(row.get("contract_id", ""))
+            if resolved_label and resolved_label != str(row.get("contract_id", "") or "").strip():
+                row["contract_label"] = resolved_label
+
+        summary = {
+            "total": len(rows),
+            "success": sum(1 for row in rows if row.get("status_level") == "sucesso"),
+            "error": sum(1 for row in rows if row.get("status_level") == "erro"),
+            "with_files": sum(1 for row in rows if row.get("has_files")),
+        }
+        return render_template(
+            "results.html",
+            title="Resultados gerados",
+            rows=rows,
+            summary=summary,
+        )
+
+    @app.get("/resultados/<output_name>")
+    def result_detail(output_name: str):
+        row = service.get_processing_result(output_name)
+        if row is None:
+            abort(404)
+
+        if not row.get("contract_label"):
+            resolved_label, _ = _resolve_contract_context(row.get("contract_id", ""))
+            if resolved_label and resolved_label != str(row.get("contract_id", "") or "").strip():
+                row["contract_label"] = resolved_label
+
+        return render_template(
+            "result_detail.html",
+            title="Resultado do processamento",
+            row=row,
+        )
+
+    @app.get("/resultados/arquivo/<path:relative_path>")
+    def result_file(relative_path: str):
+        file_path = service.resolve_result_file(relative_path)
+        if file_path is None:
+            abort(404)
+
+        download = str(request.args.get("download", "") or "").strip().lower() in {"1", "true", "on", "sim"}
+        return send_file(
+            file_path,
+            as_attachment=download,
+            download_name=file_path.name,
+        )
+
     def _render_contract_form(
         form_data: Dict[str, str] | None = None,
         error_message: str = "",
@@ -899,6 +980,8 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         action = str(request.form.get("action", "generate") or "generate").strip()
         form_data = _collect_form_fields(request.form)
         form_data, autofill_info = service.apply_nucleo_defaults(form_data)
+        contract_id_raw = str(form_data.get("contract_id", "") or "").strip()
+        contract_label, contract_context = _resolve_contract_context(contract_id_raw)
 
         if not draft_id:
             return render_template(
@@ -933,9 +1016,20 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             )
 
         try:
-            result = service.generate_from_draft(draft_id, form_data)
+            result = service.generate_from_draft(
+                draft_id,
+                form_data,
+                contract_id=contract_id_raw,
+                contract_label=contract_label,
+            )
         except Exception as exc:
-            service.register_error_history(draft_id, form_data, str(exc))
+            service.register_error_history(
+                draft_id,
+                form_data,
+                str(exc),
+                contract_id=contract_id_raw,
+                contract_label=contract_label,
+            )
             parsed = service.apply_overrides(draft.get("parsed", {}), form_data)
             main_fields = service.extract_main_fields(parsed)
             context_overview = service.collect_context_overview(parsed)
@@ -987,11 +1081,12 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             result.get("main_fields", {}),
             autofill_info,
         )
+        result["contract_label"] = contract_label
+        result["contract_context"] = contract_context or {}
         result["output_dir_uri"] = service._to_file_uri(result.get("output_dir", ""))
         result["base_gerencial_uri"] = service._to_file_uri(result.get("base_gerencial_path", ""))
 
         report_sync = {"success": True, "data": {"registered": 0, "items": []}}
-        contract_id_raw = str(form_data.get("contract_id", "") or "").strip()
         if contract_id_raw:
             if report_service is None:
                 report_sync = {

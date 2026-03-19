@@ -35,13 +35,11 @@
 {% endif %}
 
 <form method="get" action="{{ url_for('nucleos') }}" class="section">
-  <h3>Busca</h3>
-  <div class="body grid-2">
-    <div class="field">
-      <label>Busca livre</label>
-      <input name="q" value="{{ q }}" placeholder="Nucleo, municipio, alias ou observacao">
-    </div>
-    <div class="field">
+  <h3>Filtros</h3>
+  <div class="body">
+    <p class="section-lead">Use apenas o filtro de status para reduzir ruido visual na consulta do cadastro atual.</p>
+    <input type="hidden" name="q" value="">
+    <div class="field" style="max-width: 360px;">
       <label>Status</label>
       <select name="status">
         <option value="" {% if not status_filter %}selected{% endif %}>Todos</option>
@@ -58,9 +56,14 @@
   </div>
 </form>
 
-<form method="post" action="{{ url_for('nucleos_save') }}" class="section">
-  <h3>{% if form_data.original_nucleo %}Editar nucleo{% else %}Novo nucleo{% endif %}</h3>
+<form method="post" action="{{ url_for('nucleos_save') }}" class="section" data-collapsible="1" data-collapsed="{% if form_data.original_nucleo %}false{% else %}true{% endif %}">
+  <h3>Cadastrar nucleo</h3>
   <div class="body">
+    {% if form_data.original_nucleo %}
+      <p class="section-lead">Modo edicao ativo para o nucleo <strong>{{ form_data.original_nucleo }}</strong>.</p>
+    {% else %}
+      <p class="section-lead">Expanda esta secao apenas quando precisar cadastrar ou ajustar um nucleo.</p>
+    {% endif %}
     <input type="hidden" name="original_nucleo" value="{{ form_data.original_nucleo }}">
     <input type="hidden" name="q" value="{{ q }}">
     <input type="hidden" name="status_filter" value="{{ status_filter }}">
@@ -126,11 +129,7 @@
           <thead>
             <tr>
               <th>Nucleo</th>
-              <th>Municipio</th>
-              <th>Status</th>
-              <th>Alias</th>
               <th>Logradouro principal</th>
-              <th>Atualizado</th>
               <th>Acoes</th>
             </tr>
           </thead>
@@ -138,11 +137,7 @@
             {% for row in rows %}
               <tr>
                 <td>{{ row.nucleo }}</td>
-                <td>{{ row.municipio or '-' }}</td>
-                <td>{{ row.status }}</td>
-                <td>{{ row.aliases_text or '-' }}</td>
                 <td>{{ row.logradouro_principal or '-' }}</td>
-                <td>{{ row.updated_at or row.created_at or '-' }}</td>
                 <td><a href="{{ url_for('nucleos', q=q, status=status_filter, edit=row.nucleo) }}">Editar</a></td>
               </tr>
             {% endfor %}

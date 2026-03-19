@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-hero compact">
+  <div class="page-hero-grid">
+    <div>
+      <div class="hero-eyebrow">Resultados do pipeline</div>
+      <h2 class="hero-title">Resultados gerados</h2>
+      <p class="hero-subtitle">Filtre primeiro o recorte desejado e so depois abra a lista de saidas. Isso deixa a leitura mais limpa e mais proxima da experiencia SaaS.</p>
+      <div class="hero-chip-row">
+        <span class="hero-chip">Arquivos reais</span>
+        <span class="hero-chip">Acesso protegido</span>
+        <span class="hero-chip">Download seguro</span>
+      </div>
+    </div>
+    <div class="hero-stat-grid">
+      <div class="hero-stat">
+        <div class="hero-stat-label">Processamentos</div>
+        <div class="hero-stat-value">{{ summary.total }}</div>
+        <div class="hero-stat-subtitle">Registros indexados na plataforma</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">Com arquivos</div>
+        <div class="hero-stat-value">{{ summary.with_files }}</div>
+        <div class="hero-stat-subtitle">Saidas prontas para consulta</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="kpi-grid">
+  <div class="kpi-card executive">
+    <div class="kpi-title">Sucesso</div>
+    <div class="kpi-value">{{ summary.success }}</div>
+    <div class="kpi-subtitle">Processamentos concluidos com saida registrada.</div>
+  </div>
+  <div class="kpi-card executive">
+    <div class="kpi-title">Erro</div>
+    <div class="kpi-value">{{ summary.error }}</div>
+    <div class="kpi-subtitle">Execucoes com falha registradas no historico.</div>
+  </div>
+  <div class="kpi-card executive">
+    <div class="kpi-title">Arquivos</div>
+    <div class="kpi-value">{{ summary.with_files }}</div>
+    <div class="kpi-subtitle">Resultados com algum arquivo disponivel.</div>
+  </div>
+</div>
+
+<section class="section">
+  <h3>Filtros para consulta</h3>
+  <div class="body">
+    <p class="section-lead">Selecione ao menos um filtro para carregar a grade de resultados.</p>
+    <div class="filter-toolbar">
+      <div class="field">
+        <label for="results-contract-filter">Contrato</label>
+        <select id="results-contract-filter">
+          <option value="">Selecionar contrato</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="results-nucleo-filter">Nucleo</label>
+        <select id="results-nucleo-filter">
+          <option value="">Selecionar nucleo</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="results-date-filter">Data</label>
+        <input id="results-date-filter" type="date">
+      </div>
+    </div>
+    <div class="actions">
+      <button id="results-apply-filters" type="button">Aplicar filtros</button>
+      <button id="results-clear-filters" type="button" class="secondary">Limpar</button>
+    </div>
+    <p id="results-filter-status" class="filter-status">Nenhum filtro aplicado ainda.</p>
+  </div>
+</section>
+
+<section class="section" id="results-table-section">
+  <h3>Saidas disponiveis</h3>
+  <div class="body">
+    {% if rows %}
+      <div id="results-waiting-state" class="dashboard-empty">Escolha contrato, nucleo ou data para exibir os resultados gerados.</div>
+      <div id="results-empty-state" class="dashboard-empty" hidden>Nenhum resultado encontrado para os filtros selecionados.</div>
+      <div class="table-wrap" id="results-table-wrap" hidden>
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Processo</th>
+              <th>Contrato</th>
+              <th>Status</th>
+              <th>Relatorio</th>
+              <th>Planilha</th>
+              <th>Acoes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              {% set date_iso = (row.processed_at[6:10] ~ '-' ~ row.processed_at[3:5] ~ '-' ~ row.processed_at[0:2]) if row.processed_at and row.processed_at|length >= 10 else '' %}
+              <tr
+                data-result-row
+                data-contract="{{ row.contract_label or ('Contrato #' ~ row.contract_id if row.contract_id else '-') }}"
+                data-nucleo="{{ row.nucleo or '-' }}"
+                data-date="{{ date_iso }}"
+                class="{% if row.status_level == 'erro' %}row-critical{% elif row.alert_count|int > 0 %}row-warning{% endif %}"
+              >
+                <td>{{ row.processed_at or '-' }}</td>
+                <td>
+                  <strong>{{ row.process_type }}</strong>
+                  <div class="muted">{{ row.output_name or 'Sem pasta de saida' }}</div>
+                </td>
+                <td>
+                  {% if row.contract_label %}
+                    {{ row.contract_label }}
+                  {% elif row.contract_id %}
+                    Contrato #{{ row.contract_id }}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td>
+                  {% if row.status_level == 'erro' %}
+                    <span class="badge error">erro</span>
+                  {% else %}
+                    <span class="badge success">sucesso</span>
+                  {% endif %}
+                  <div class="muted">{{ row.status }}</div>
+                </td>
+                <td>
+                  {% if row.report_files %}
+                    {% for file in row.report_files[:2] %}
+                      <div>{{ file.name }}</div>
+                    {% endfor %}
+                    {% if row.report_files|length > 2 %}
+                      <div class="muted">+{{ row.report_files|length - 2 }} arquivo(s)</div>
+                    {% endif %}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td>
+                  {% if row.spreadsheet_files %}
+                    {% for file in row.spreadsheet_files[:2] %}
+                      <div>{{ file.name }}</div>
+                    {% endfor %}
+                    {% if row.spreadsheet_files|length > 2 %}
+                      <div class="muted">+{{ row.spreadsheet_files|length - 2 }} arquivo(s)</div>
+                    {% endif %}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="actions" style="margin-top:0;">
+                    {% if row.result_id %}
+                      <a href="{{ url_for('result_detail', output_name=row.result_id) }}"><button type="button" class="secondary small">Visualizar</button></a>
+                    {% endif %}
+                    {% if row.primary_download_relative_path %}
+                      <a href="{{ url_for('result_file', relative_path=row.primary_download_relative_path, download=1) }}"><button type="button" class="small">Baixar</button></a>
+                    {% else %}
+                      <span class="muted">Sem arquivo</span>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="dashboard-empty">Nenhum resultado gerado foi encontrado ainda. Assim que novos processamentos forem concluidos, as saidas aparecem aqui automaticamente.</div>
+    {% endif %}
+  </div>
+</section>
+
+<script>
+(function () {
+  const rows = Array.from(document.querySelectorAll('[data-result-row]'));
+  const contractFilter = document.getElementById('results-contract-filter');
+  const nucleoFilter = document.getElementById('results-nucleo-filter');
+  const dateFilter = document.getElementById('results-date-filter');
+  const applyButton = document.getElementById('results-apply-filters');
+  const clearButton = document.getElementById('results-clear-filters');
+  const waitingState = document.getElementById('results-waiting-state');
+  const emptyState = document.getElementById('results-empty-state');
+  const tableWrap = document.getElementById('results-table-wrap');
+  const status = document.getElementById('results-filter-status');
+
+  if (!rows.length || !contractFilter || !nucleoFilter || !dateFilter || !applyButton || !clearButton) {
+    return;
+  }
+
+  const appendUniqueOptions = (select, values) => {
+    const seen = new Set();
+    values.forEach((value) => {
+      const clean = String(value || '').trim();
+      if (!clean || clean === '-' || seen.has(clean)) return;
+      seen.add(clean);
+      const option = document.createElement('option');
+      option.value = clean;
+      option.textContent = clean;
+      select.appendChild(option);
+    });
+  };
+
+  appendUniqueOptions(contractFilter, rows.map((row) => row.dataset.contract || ''));
+  appendUniqueOptions(nucleoFilter, rows.map((row) => row.dataset.nucleo || ''));
+
+  const updateView = () => {
+    const selectedContract = String(contractFilter.value || '').trim();
+    const selectedNucleo = String(nucleoFilter.value || '').trim();
+    const selectedDate = String(dateFilter.value || '').trim();
+    const hasFilter = Boolean(selectedContract || selectedNucleo || selectedDate);
+
+    if (!hasFilter) {
+      rows.forEach((row) => {
+        row.hidden = true;
+      });
+      if (tableWrap) tableWrap.hidden = true;
+      if (emptyState) emptyState.hidden = true;
+      if (waitingState) waitingState.hidden = false;
+      if (status) status.textContent = 'Nenhum filtro aplicado ainda.';
+      return;
+    }
+
+    let visible = 0;
+    rows.forEach((row) => {
+      const matchesContract = !selectedContract || String(row.dataset.contract || '') === selectedContract;
+      const matchesNucleo = !selectedNucleo || String(row.dataset.nucleo || '') === selectedNucleo;
+      const matchesDate = !selectedDate || String(row.dataset.date || '') === selectedDate;
+      const show = matchesContract && matchesNucleo && matchesDate;
+      row.hidden = !show;
+      if (show) visible += 1;
+    });
+
+    if (waitingState) waitingState.hidden = true;
+    if (tableWrap) tableWrap.hidden = visible === 0;
+    if (emptyState) emptyState.hidden = visible !== 0;
+    if (status) status.textContent = visible + ' resultado(s) encontrado(s) para o recorte atual.';
+  };
+
+  applyButton.addEventListener('click', updateView);
+  clearButton.addEventListener('click', () => {
+    contractFilter.value = '';
+    nucleoFilter.value = '';
+    dateFilter.value = '';
+    updateView();
+  });
+
+  [contractFilter, nucleoFilter, dateFilter].forEach((input) => {
+    input.addEventListener('change', updateView);
+  });
+
+  updateView();
+})();
+</script>
+{% endblock %}

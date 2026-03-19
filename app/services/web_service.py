@@ -1768,6 +1768,8 @@ class WebPipelineService:
             "nucleo_status_cadastro",
             "equipe",
             "status",
+            "contract_id",
+            "contract_label",
             "output_dir",
             "base_gerencial_path",
             "master_dir",
@@ -1828,6 +1830,28 @@ class WebPipelineService:
         except Exception:
             return ""
 
+    def _path_within_outputs_root(self, path: Path) -> bool:
+        try:
+            path.resolve().relative_to(self.outputs_root.resolve())
+            return True
+        except Exception:
+            return False
+
+    def _relative_result_path(self, path: Path) -> str:
+        try:
+            relative = path.resolve().relative_to(self.outputs_root.resolve())
+        except Exception:
+            return ""
+        return relative.as_posix()
+
+    def _classify_generated_file(self, file_path: Path) -> str:
+        suffix = file_path.suffix.lower()
+        if suffix in {".xlsx", ".xls", ".csv"}:
+            return "spreadsheet"
+        if suffix in {".pdf", ".doc", ".docx", ".txt"}:
+            return "report"
+        return "other"
+
     def _infer_municipio_from_output(self, output_dir: Path) -> str:
         rows = reconcile_rows_with_registry(
             self._read_csv_rows(output_dir / "execucao.csv"),
@@ -1859,6 +1883,23 @@ class WebPipelineService:
         generated: List[dict] = []
         seen = set()
 
+        def _append_file(file_path: Path) -> None:
+            if not file_path.exists() or not file_path.is_file():
+                return
+            abs_path = str(file_path.resolve())
+            if abs_path in seen:
+                return
+            seen.add(abs_path)
+            generated.append(
+                {
+                    "name": file_path.name,
+                    "path": abs_path,
+                    "uri": self._to_file_uri(abs_path),
+                    "relative_path": self._relative_result_path(file_path),
+                    "category": self._classify_generated_file(file_path),
+                }
+            )
+
         if output_dir.exists() and output_dir.is_dir():
             expected = [
                 "execucao.csv",
@@ -1870,29 +1911,15 @@ class WebPipelineService:
                 "entrada_original.txt",
             ]
             for name in expected:
-                file_path = output_dir / name
-                if not file_path.exists() or not file_path.is_file():
-                    continue
-                abs_path = str(file_path.resolve())
-                seen.add(abs_path)
-                generated.append(
-                    {
-                        "name": name,
-                        "path": abs_path,
-                        "uri": self._to_file_uri(abs_path),
-                    }
-                )
+                _append_file(output_dir / name)
+
+            reports_dir = output_dir / "relatorios_nucleos"
+            if reports_dir.exists() and reports_dir.is_dir():
+                for file_path in sorted(reports_dir.rglob("*")):
+                    _append_file(file_path)
 
         if base_gerencial_path and base_gerencial_path.exists() and base_gerencial_path.is_file():
-            abs_bg = str(base_gerencial_path.resolve())
-            if abs_bg not in seen:
-                generated.append(
-                    {
-                        "name": base_gerencial_path.name,
-                        "path": abs_bg,
-                        "uri": self._to_file_uri(abs_bg),
-                    }
-                )
+            _append_file(base_gerencial_path)
 
         return generated
 
@@ -1913,6 +1940,17 @@ class WebPipelineService:
                 val = str(row_data.get(h, "") or "")
                 clean[h] = " ".join(val.split())
             writer.writerow(clean)
+
+    def resolve_result_file(self, relative_path: str) -> Path | None:
+        safe_relative = str(relative_path or "").strip().replace("\\", "/").lstrip("/")
+        if not safe_relative:
+            return None
+        candidate = (self.outputs_root / safe_relative).resolve()
+        if not self._path_within_outputs_root(candidate):
+            return None
+        if not candidate.exists() or not candidate.is_file():
+            return None
+        return candidate
 
     def read_history(self, limit: int = 100) -> List[dict]:
         if not self.history_file.exists():
@@ -2006,6 +2044,52 @@ class WebPipelineService:
                 }
             )
         return out
+
+    def list_processing_results(self, limit: int = 200) -> List[dict]:
+        try:
+            safe_limit = int(limit)
+        except Exception:
+            safe_limit = 200
+        safe_limit = max(1, min(safe_limit, 1000))
+
+        results: List[dict] = []
+        for row in self.read_history(limit=safe_limit):
+            generated_files = list(row.get("generated_files", []) or [])
+            report_files = [item for item in generated_files if item.get("category") == "report"]
+            spreadsheet_files = [item for item in generated_files if item.get("category") == "spreadsheet"]
+
+            primary_download = None
+            if spreadsheet_files:
+                primary_download = spreadsheet_files[0]
+            elif report_files:
+                primary_download = report_files[0]
+            elif generated_files:
+                primary_download = generated_files[0]
+
+            results.append(
+                {
+                    **row,
+                    "result_id": str(row.get("output_name", "") or "").strip(),
+                    "process_type": "Processamento de entrada",
+                    "contract_id": str(row.get("contract_id", "") or "").strip(),
+                    "contract_label": str(row.get("contract_label", "") or "").strip(),
+                    "report_files": report_files,
+                    "spreadsheet_files": spreadsheet_files,
+                    "primary_download_relative_path": str((primary_download or {}).get("relative_path", "") or ""),
+                    "primary_download_name": str((primary_download or {}).get("name", "") or ""),
+                    "has_files": bool(generated_files),
+                }
+            )
+        return results
+
+    def get_processing_result(self, output_name: str) -> dict | None:
+        target = str(output_name or "").strip()
+        if not target:
+            return None
+        for row in self.list_processing_results(limit=1000):
+            if str(row.get("result_id", "") or "").strip() == target:
+                return row
+        return None
 
     def _parse_date_flexible(self, value: object) -> date | None:
         text = str(value or "").strip()
@@ -4767,7 +4851,13 @@ class WebPipelineService:
         filename = f"relatorio_institucional_{datetime.now():%Y%m%d_%H%M%S}.docx"
         return buffer.getvalue(), filename
 
-    def generate_from_draft(self, draft_id: str, overrides: Dict[str, object]) -> dict:
+    def generate_from_draft(
+        self,
+        draft_id: str,
+        overrides: Dict[str, object],
+        contract_id: object = "",
+        contract_label: object = "",
+    ) -> dict:
         draft = self.load_draft(draft_id)
         raw_message = str(draft.get("raw_message", "") or "")
         parsed = self.apply_overrides(draft.get("parsed", {}), overrides)
@@ -4852,6 +4942,8 @@ class WebPipelineService:
                 "nucleo_status_cadastro": str(parsed.get("nucleo_status_cadastro", "") or ""),
                 "equipe": main.get("equipe", ""),
                 "status": "sucesso",
+                "contract_id": str(contract_id or "").strip(),
+                "contract_label": str(contract_label or "").strip(),
                 "output_dir": result["output_dir"],
                 "base_gerencial_path": result["base_gerencial_path"],
                 "master_dir": result["master_dir"],
@@ -4862,7 +4954,14 @@ class WebPipelineService:
         )
         return result
 
-    def register_error_history(self, draft_id: str, overrides: Dict[str, object], error_message: str) -> None:
+    def register_error_history(
+        self,
+        draft_id: str,
+        overrides: Dict[str, object],
+        error_message: str,
+        contract_id: object = "",
+        contract_label: object = "",
+    ) -> None:
         try:
             draft = self.load_draft(draft_id)
             parsed = self.apply_overrides(draft.get("parsed", {}), overrides)
@@ -4870,6 +4969,7 @@ class WebPipelineService:
             raw_message = str(draft.get("raw_message", "") or "")
             main = self.extract_main_fields(parsed)
         except Exception:
+            parsed = {}
             raw_message = ""
             main = {"data": "", "nucleo": "", "logradouro": "", "municipio": "", "equipe": ""}
 
@@ -4887,6 +4987,8 @@ class WebPipelineService:
                 "nucleo_status_cadastro": str(parsed.get("nucleo_status_cadastro", "") or ""),
                 "equipe": main.get("equipe", ""),
                 "status": f"erro: {error_message}",
+                "contract_id": str(contract_id or "").strip(),
+                "contract_label": str(contract_label or "").strip(),
                 "output_dir": "",
                 "base_gerencial_path": "",
                 "master_dir": str(self.master_dir),

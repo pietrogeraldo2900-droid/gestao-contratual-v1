@@ -37,7 +37,7 @@
   </div>
 </section>
 
-<form method="get" action="{{ url_for('gerencial') }}" class="section">
+<form method="get" action="{{ url_for('gerencial') }}" class="section" data-collapsible="1" data-collapsed="true">
   <h3>Filtros gerenciais</h3>
   <div class="body grid-2">
     <div class="field">
@@ -281,7 +281,7 @@
   </div>
 </div>
 
-<div class="section">
+<div class="section" data-collapsible="1" data-collapsed="true">
   <h3>Comparativos simples</h3>
   <div class="body">
     {% if dashboard.comparativos_basicos.has_comparativo %}
@@ -324,7 +324,7 @@
   </div>
 </div>
 
-<div class="section">
+<div class="section" data-collapsible="1" data-collapsed="true">
   <h3>Leitura de risco e classificação</h3>
   <div class="body detail-grid">
     <div class="chart-panel">
@@ -352,7 +352,7 @@
   </div>
 </div>
 
-<div class="section">
+<div class="section" data-collapsible="1" data-collapsed="true">
   <h3>Consolidado do período</h3>
   <div class="body table-wrap">
     <table>
@@ -371,7 +371,7 @@
   </div>
 </div>
 
-<div class="section">
+<div class="section" data-collapsible="1" data-collapsed="true">
   <h3>Resumo por período</h3>
   <div class="body">
     {% if dashboard.resumo_por_periodo %}
