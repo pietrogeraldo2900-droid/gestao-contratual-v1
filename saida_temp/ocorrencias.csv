@@ -1,0 +1,4 @@
+﻿id_ocorrencia,id_frente,data_referencia,contrato,programa,nucleo,equipe,tipo_ocorrencia,descricao,impacto_producao,arquivo_origem
+O0001,F001,03/03/2026,Oeste 1,Água Legal,Santa Terezinha,Reggis,vistoria,"Realizados cortes d’água, vistoria de Caixa UMA e reparos de vazamentos.",parcial,entrada_interface.txt
+O0002,F002,03/03/2026,Oeste 1,Água Legal,José Bonifácio,Sidomar,vistoria,"Equipe direcionada para vistorias de vazamento e verificação de contas altas (Viela Diamante nº 33 / Viela 1 nº 8 / Viela 2 nº 3 / Viela Ametista nº 6), impactando a produtividade.",parcial,entrada_interface.txt
+O0003,F003,03/03/2026,Oeste 1,Água Legal,Mississipi,Xavier,restricao_operacional,Produtividade impactada pela espera da mangueira do compressor.,parcial,entrada_interface.txt

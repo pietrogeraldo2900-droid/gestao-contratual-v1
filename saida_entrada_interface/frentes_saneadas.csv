@@ -1,0 +1,8 @@
+﻿id_frente,data_referencia,contrato,programa,nucleo,equipe,logradouro,status_frente,observacao_frente,arquivo_origem,nucleo_oficial,frente_operacional
+F001,27/02/2026,Oeste 1,Água Legal,Patrocínio,Sidomar,Tv. Rancharia / Rua Rio Tocantins,com_producao,,entrada_interface.txt,Patrocínio,
+F002,27/02/2026,Oeste 1,Água Legal,Patrocínio,Sidney,Rua Rio Tocantins,com_producao,,entrada_interface.txt,Patrocínio,
+F003,27/02/2026,Oeste 1,Água Legal,Mississipi,Carlos,Viela Mississipi,com_producao,,entrada_interface.txt,Mississipi,
+F004,27/02/2026,Oeste 1,Água Legal,Viela 1 / Viela 7,Xavier,Viela 1 / Viela 7,com_producao,,entrada_interface.txt,(não identificado),Trecho sem núcleo definido
+F005,27/02/2026,Oeste 1,Água Legal,Mississipi — Esgoto,Weslyn,Viela Mississipi,com_producao,,entrada_interface.txt,Mississipi,Esgoto
+F006,27/02/2026,Oeste 1,Água Legal,Cerejas,Reggis,Tv. Haitiana / Tv. do Alemão / Tv. do Bala / Rua Dezesseis,com_producao,,entrada_interface.txt,Cerejas,
+F007,27/02/2026,Oeste 1,Água Legal,Mississipi — Caixa UMA,Resp. Paulo Vilela,,com_producao,,entrada_interface.txt,Mississipi,Caixa UMA

@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-hero compact">
+  <div class="page-hero-grid">
+    <div>
+      <div class="hero-eyebrow">Rastreabilidade operacional</div>
+      <h2 class="hero-title">Historico de processamentos</h2>
+      <p class="hero-subtitle">Acompanhe os processamentos recentes, filtre o contexto operacional e identifique rapidamente alertas, não mapeados recorrentes e arquivos gerados.</p>
+      <div class="hero-chip-row">
+        <span class="hero-chip">Busca por contexto</span>
+        <span class="hero-chip">Alertas recorrentes</span>
+        <span class="hero-chip">Rastreabilidade de arquivos</span>
+      </div>
+    </div>
+    <div class="hero-stat-grid">
+      <div class="hero-stat">
+        <div class="hero-stat-label">Total na janela</div>
+        <div class="hero-stat-value">{{ summary.total }}</div>
+        <div class="hero-stat-subtitle">Processamentos disponíveis no recorte</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">Exibindo</div>
+        <div class="hero-stat-value">{{ summary.filtrado }}</div>
+        <div class="hero-stat-subtitle">Linhas após aplicar os filtros</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-title">Total (janela)</div>
+    <div class="kpi-value">{{ summary.total }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-title">Sucesso</div>
+    <div class="kpi-value">{{ summary.sucesso }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-title">Erro</div>
+    <div class="kpi-value">{{ summary.erro }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-title">Exibindo</div>
+    <div class="kpi-value">{{ summary.filtrado }}</div>
+  </div>
+</div>
+
+<form method="get" action="{{ url_for('history') }}" class="section">
+  <h3>Filtros</h3>
+  <div class="body grid-2">
+    <div class="field">
+      <label>Busca livre</label>
+      <input name="q" value="{{ q }}" placeholder="Nucleo, equipe, municipio, logradouro, status...">
+    </div>
+    <div class="field">
+      <label>Status</label>
+      <select name="status">
+        <option value="" {% if not status_filter %}selected{% endif %}>Todos</option>
+        <option value="sucesso" {% if status_filter == 'sucesso' %}selected{% endif %}>Sucesso</option>
+        <option value="erro" {% if status_filter == 'erro' %}selected{% endif %}>Erro</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Data da obra</label>
+      <input name="obra_data" value="{{ obra_data_filter }}" placeholder="dd/mm/aaaa">
+    </div>
+    <div class="field">
+      <label>Nucleo</label>
+      <input name="nucleo" value="{{ nucleo_filter }}" placeholder="Ex.: Mississipi">
+    </div>
+
+    <div class="field">
+      <label>Municipio</label>
+      <input name="municipio" value="{{ municipio_filter }}" placeholder="Ex.: Carapicuiba">
+    </div>
+    <div class="field">
+      <label>Equipe</label>
+      <input name="equipe" value="{{ equipe_filter }}" placeholder="Ex.: Weslyn">
+    </div>
+
+    <div class="field">
+      <label>Alertas</label>
+      <select name="alertas">
+        <option value="" {% if not alertas_filter %}selected{% endif %}>Todos</option>
+        <option value="com_alerta" {% if alertas_filter == 'com_alerta' %}selected{% endif %}>Com alerta</option>
+        <option value="sem_alerta" {% if alertas_filter == 'sem_alerta' %}selected{% endif %}>Sem alerta</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Processado de</label>
+      <input type="date" name="processed_from" value="{{ processed_from }}">
+    </div>
+
+    <div class="field">
+      <label>Processado ate</label>
+      <input type="date" name="processed_to" value="{{ processed_to }}">
+    </div>
+    <div class="field">
+      <label>Janela nao mapeados (dias)</label>
+      <input type="number" min="1" max="3650" name="nm_days" value="{{ nm_days }}">
+    </div>
+
+    <div class="field">
+      <label>Ultimos processamentos para analise</label>
+      <input type="number" min="1" max="5000" name="nm_runs" value="{{ nm_runs }}">
+    </div>
+  </div>
+  <div class="body" style="padding-top:0;">
+    <div class="actions" style="margin-top:0;">
+      <button type="submit">Aplicar filtros</button>
+      <a href="{{ url_for('history') }}"><button type="button" class="secondary">Limpar</button></a>
+    </div>
+  </div>
+</form>
+
+<div class="section" id="gestao-nao-mapeados">
+  <h3>Gestao de servicos nao mapeados</h3>
+  <div class="body">
+    <p class="muted">Janela: ultimos {{ unmapped_dashboard.window_days }} dia(s) | Ate {{ unmapped_dashboard.recent_runs }} processamentos analisados.</p>
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-title">Itens nao mapeados</div>
+        <div class="kpi-value">{{ unmapped_dashboard.total_itens }}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Termos distintos</div>
+        <div class="kpi-value">{{ unmapped_dashboard.termos_distintos }}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Runs com nao mapeado</div>
+        <div class="kpi-value">{{ unmapped_dashboard.runs_com_nao_mapeado }}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Ultima ocorrencia</div>
+        <div class="kpi-value" style="font-size:16px;">{{ unmapped_dashboard.ultima_ocorrencia_global }}</div>
+      </div>
+    </div>
+
+    {% if unmapped_dashboard.alias_candidates_count %}
+      <div class="notice info">
+        Candidatos a alias gerados: <strong>{{ unmapped_dashboard.alias_candidates_count }}</strong>.
+        {% if unmapped_dashboard.alias_candidates_uri %}
+          <a href="{{ unmapped_dashboard.alias_candidates_uri }}">Abrir CSV de candidatos</a>
+        {% endif %}
+        <div class="mono">{{ unmapped_dashboard.alias_candidates_path }}</div>
+      </div>
+    {% endif %}
+
+    {% if unmapped_dashboard.top_terms %}
+      <h4 style="margin:10px 0 6px;">Mais recorrentes</h4>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Termo</th>
+              <th class="text-right">Frequencia</th>
+              <th>Ultima ocorrencia</th>
+              <th>Ultimo contexto</th>
+              <th>Contextos recorrentes</th>
+              <th>Sugestao/Regra</th>
+              <th>Correcao manual</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in unmapped_dashboard.top_terms %}
+              <tr class="row-warning">
+                <td>
+                  <div><strong>{{ row.termo }}</strong></div>
+                  {% if row.exemplo_servico_bruto %}
+                    <div class="muted">Exemplo: {{ row.exemplo_servico_bruto }}</div>
+                  {% endif %}
+                </td>
+                <td class="text-right"><strong>{{ row.ocorrencias }}</strong></td>
+                <td>{{ row.ultima_ocorrencia }}</td>
+                <td>
+                  <div><strong>Nucleo:</strong> {{ row.ultimo_nucleo or '-' }}</div>
+                  <div><strong>Municipio:</strong> {{ row.ultimo_municipio or '-' }}</div>
+                  <div><strong>Equipe:</strong> {{ row.ultimo_equipe or '-' }}</div>
+                </td>
+                <td>{{ row.contexto_recorrente or '-' }}</td>
+                <td>
+                  <div><strong>Categoria:</strong> {{ row.sugestao_categoria_recorrente or '-' }}</div>
+                  <div><strong>Regra:</strong> {{ row.regra_recorrente or '-' }}</div>
+                </td>
+                <td>
+                  <div><strong>Corrigidos:</strong> {{ row.corrigidos_manuais or 0 }}</div>
+                  <div><strong>Servico:</strong> {{ row.servico_corrigido_recorrente or '-' }}</div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if unmapped_dashboard.alias_candidates %}
+        <h4 style="margin:12px 0 6px;">Candidatos de alias (amostra)</h4>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Termo candidato</th>
+                <th class="text-right">Frequencia</th>
+                <th>Sugestao categoria</th>
+                <th>Sugestao servico</th>
+                <th>Recomendacao</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in unmapped_dashboard.alias_candidates %}
+                <tr>
+                  <td>{{ row.termo_candidato }}</td>
+                  <td class="text-right">{{ row.ocorrencias }}</td>
+                  <td>{{ row.sugestao_categoria or '-' }}</td>
+                  <td>{{ row.servico_corrigido_recorrente or '-' }}</td>
+                  <td>{{ row.recomendacao or '-' }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+
+      <h4 style="margin:12px 0 6px;">Ultimas ocorrencias de nao mapeados</h4>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Processado em</th>
+              <th>Data obra</th>
+              <th>Termo</th>
+              <th class="text-right">Qtd</th>
+              <th>Unidade</th>
+              <th>Contexto</th>
+              <th>Sugestao</th>
+              <th>Regra</th>
+              <th>Corrigido</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in unmapped_dashboard.recent_items %}
+              <tr>
+                <td>{{ row.processed_at }}</td>
+                <td>{{ row.data_obra or '-' }}</td>
+                <td>{{ row.termo }}</td>
+                <td class="text-right">{{ row.quantidade or '-' }}</td>
+                <td>{{ row.unidade or '-' }}</td>
+                <td>{{ row.contexto or '-' }}</td>
+                <td>{{ row.sugestao_categoria or '-' }}</td>
+                <td>{{ row.regra_disparada or '-' }}</td>
+                <td>{{ row.corrigido_manual or '-' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="notice success">Nenhum servico nao mapeado encontrado na janela selecionada.</div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="section">
+  <h3>Processamentos registrados</h3>
+  <div class="body">
+    {% if rows %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Data/hora</th>
+              <th>Data obra</th>
+              <th>Nucleo</th>
+              <th>Municipio</th>
+              <th>Equipe</th>
+              <th>Logradouro</th>
+              <th>Status</th>
+              <th>Nao mapeados</th>
+              <th>Alertas</th>
+              <th>Arquivos</th>
+              <th>Caminhos</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr class="{% if row.status_level == 'erro' %}row-critical{% elif row.alert_count|int > 0 %}row-warning{% endif %}">
+                <td>{{ row.processed_at }}</td>
+                <td>{{ row.obra_data }}</td>
+                <td>{{ row.nucleo }}</td>
+                <td>{{ row.municipio or '-' }}</td>
+                <td>{{ row.equipe }}</td>
+                <td>{{ row.logradouro }}</td>
+                <td>
+                  {% if row.status_level == 'erro' %}
+                    <span class="badge error">erro</span>
+                  {% else %}
+                    <span class="badge success">sucesso</span>
+                  {% endif %}
+                  <div class="muted">{{ row.status }}</div>
+                </td>
+                <td>{{ row.nao_mapeados }}</td>
+                <td>
+                  {% if row.alert_count|int > 0 %}
+                    <span class="badge warning">{{ row.alert_count }} alerta(s)</span>
+                    <div class="muted">{{ row.alert_preview }}</div>
+                    <details>
+                      <summary>Detalhes</summary>
+                      <ul class="simple-list">
+                        {% for alert in row.alert_list %}
+                          <li>{{ alert }}</li>
+                        {% endfor %}
+                      </ul>
+                    </details>
+                  {% else %}
+                    <span class="badge success">0 alerta</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if row.generated_files %}
+                    <ul class="simple-list">
+                      {% for file in row.generated_files %}
+                        <li>
+                          {% if file.uri %}
+                            <a href="{{ file.uri }}">{{ file.name }}</a>
+                          {% else %}
+                            {{ file.name }}
+                          {% endif %}
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  {% else %}
+                    <div>{{ row.generated_files_preview or '-' }}</div>
+                  {% endif %}
+                  {% if row.output_dir_uri %}
+                    <div><a href="{{ row.output_dir_uri }}">Abrir pasta de saida</a></div>
+                  {% endif %}
+                  {% if row.base_gerencial_uri %}
+                    <div><a href="{{ row.base_gerencial_uri }}">Abrir base gerencial</a></div>
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="mono">{{ row.output_dir or '-' }}</div>
+                  <div class="mono">{{ row.base_gerencial_path or '-' }}</div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p>Nenhum processamento registrado para os filtros informados.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

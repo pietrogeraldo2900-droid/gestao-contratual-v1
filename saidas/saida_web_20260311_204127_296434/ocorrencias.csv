@@ -1,0 +1,2 @@
+﻿id_ocorrencia,id_frente,data_referencia,contrato,programa,nucleo,equipe,tipo_ocorrencia,descricao,impacto_producao,arquivo_origem,data,logradouro,municipio
+O0001,F002,28/02/2026,Oeste 1,Água Legal,Santa Terezinha,Reggis,ocorrencia_operacional,Equipe reduzida (4 membros). Apoio de 1 colaborador da equipe Sidney.,parcial,mensagem_web_20260311_204052.txt,28/02/2026,Av. Deputado Emílio Carlos,Carapicuíba

@@ -1,0 +1,718 @@
+[
+    {
+        "servico_oficial":  "hidrometro",
+        "categoria":  "hidrometro",
+        "unidades_aceitas":  [
+                                 "un"
+                             ],
+        "aliases":  [
+                        "hidrometro",
+                        "hidrometros",
+                        "instalacao de hidrometro",
+                        "instalacao de hidrometros",
+                        "instalacao hidrometro",
+                        "instalar hidrometro",
+                        "troca de hidrometro",
+                        "substituicao de hidrometro",
+                        "regularizacao de hidrometro",
+                        "hidrometro instalado",
+                        "hidrometros instalados",
+                        "troca de hidrometros",
+                        "substituicao de hidrometros",
+                        "instalacao de medidor",
+                        "instalacao de medidor de agua",
+                        "medidor de agua instalado",
+                        "medidor instalado"
+                    ]
+    },
+    {
+        "servico_oficial":  "cavalete",
+        "categoria":  "ligacao",
+        "unidades_aceitas":  [
+                                 "un"
+                             ],
+        "aliases":  [
+                        "cavalete",
+                        "cavaletes",
+                        "instalacao de cavalete",
+                        "troca de cavalete",
+                        "substituicao de cavalete",
+                        "cavalete instalado",
+                        "montagem de cavalete",
+                        "cavaletes instalados",
+                        "instalacao de cavaletes",
+                        "substituicao de cavaletes",
+                        "troca de cavaletes",
+                        "montagem de cavaletes",
+                        "adequacao de cavalete"
+                    ]
+    },
+    {
+        "servico_oficial":  "rede_agua",
+        "categoria":  "rede",
+        "unidades_aceitas":  [
+                                 "m"
+                             ],
+        "aliases":  [
+                        "rede de agua",
+                        "rede agua",
+                        "assentamento de rede",
+                        "lancamento de rede",
+                        "implantacao de rede",
+                        "implantacao de rede de agua",
+                        "extensao de rede",
+                        "troca de rede",
+                        "substituicao de rede",
+                        "tubulacao",
+                        "tubulacao de agua",
+                        "assentamento de tubo",
+                        "lancamento de tubulacao",
+                        "capeamento de rede",
+                        "capeamento rede",
+                        "execucao de rede",
+                        "prolongamento rede agua",
+                        "prolongamento de rede agua",
+                        "prolongamento de rede",
+                        "rede pead executada",
+                        "rede 63mm pead executada",
+                        "prolongamento rede 63",
+                        "prolongamento rede pead",
+                        "rede pead",
+                        "rede pead agua",
+                        "rede pead 63",
+                        "rede pead 32",
+                        "rede 63mm pead",
+                        "rede 32mm pead",
+                        "prolongamento rede agua pead",
+                        "prolongamento de rede agua pead",
+                        "prolongamento rede pead 63",
+                        "prolongamento rede pead 32",
+                        "prolongamento rede 63mm",
+                        "prolongamento rede 32mm",
+                        "prolongamento de rede 63",
+                        "prolongamento de rede 32",
+                        "rede de abastecimento de agua",
+                        "extensao de rede de agua",
+                        "lancamento de rede pead",
+                        "assentamento de rede pead",
+                        "substituicao de rede de agua",
+                        "capeamento de rede pvc",
+                        "capeamento de rede pvc 100",
+                        "rede 32mm pead executada"
+                    ]
+    },
+    {
+        "servico_oficial":  "ligacao_agua",
+        "categoria":  "ligacao",
+        "unidades_aceitas":  [
+                                 "un"
+                             ],
+        "aliases":  [
+                        "ligacao de agua",
+                        "ligacao agua",
+                        "ligacao domiciliar",
+                        "nova ligacao",
+                        "ligacao nova",
+                        "instalacao de ligacao",
+                        "execucao de ligacao",
+                        "ativacao de ligacao",
+                        "ligacao executada",
+                        "ligacoes de agua",
+                        "ligacoes agua",
+                        "ligacao predial de agua",
+                        "ligacao domiciliar de agua",
+                        "nova ligacao de agua",
+                        "instalacao de ligacao de agua",
+                        "execucao de ligacao de agua",
+                        "ligacao de agua executada",
+                        "ligacao de agua executado",
+                        "ligacoes de agua executadas"
+                    ]
+    },
+    {
+        "servico_oficial":  "reparo_vazamento",
+        "categoria":  "reparo",
+        "unidades_aceitas":  [
+                                 "un"
+                             ],
+        "aliases":  [
+                        "reparo de vazamento",
+                        "conserto de vazamento",
+                        "correcao de vazamento",
+                        "vazamento",
+                        "vazamento reparado",
+                        "manutencao de vazamento",
+                        "estanqueamento de vazamento",
+                        "reparo de vazamentos",
+                        "conserto de vazamentos",
+                        "vazamento corrigido",
+                        "correcao de vazamentos",
+                        "manutencao de vazamentos",
+                        "reparo em vazamento",
+                        "conserto de rede com vazamento"
+                    ]
+    },
+    {
+        "servico_oficial":  "ramal",
+        "categoria":  "ligacao",
+        "unidades_aceitas":  [
+                                 "m",
+                                 "un"
+                             ],
+        "aliases":  [
+                        "ramal",
+                        "execucao de ramal",
+                        "substituicao de ramal",
+                        "instalacao de ramal",
+                        "ramal predial",
+                        "ramal domiciliar",
+                        "ramal executado",
+                        "execucao de ramal predial",
+                        "ramal predial executado",
+                        "ramal domiciliar executado",
+                        "substituicao de ramal predial",
+                        "ramal interno executado",
+                        "execucao de ramais"
+                    ]
+    },
+    {
+        "servico_oficial":  "recomposicao_passeio",
+        "categoria":  "recomposicao",
+        "unidades_aceitas":  [
+                                 "m",
+                                 "m2"
+                             ],
+        "aliases":  [
+                        "recomposicao de passeio",
+                        "recomposicao passeio",
+                        "recomposicao de calcada",
+                        "calcada",
+                        "passeio",
+                        "regularizacao de passeio",
+                        "regularizacao de calcada",
+                        "acabamento de calcada",
+                        "acerto de passeio",
+                        "recomposicao de passeio publico",
+                        "recomposicao de calcadas",
+                        "recomposicao calcada",
+                        "recomposicao de calcada em concreto",
+                        "recomposicao de piso",
+                        "acerto de calcada",
+                        "nivelamento de passeio",
+                        "recomposicao de passeio em concreto"
+                    ]
+    },
+    {
+        "servico_oficial":  "recomposicao_asfalto",
+        "categoria":  "recomposicao",
+        "unidades_aceitas":  [
+                                 "m2"
+                             ],
+        "aliases":  [
+                        "recomposicao asfaltica",
+                        "recomposicao de asfalto",
+                        "asfalto",
+                        "massa asfaltica",
+                        "tapa buraco",
+                        "reparo asfaltico",
+                        "recapeamento",
+                        "asfalto frio",
+                        "asfalto quente",
+                        "recomposicao de valas asfaltica",
+                        "recomposicao de vala asfaltica",
+                        "recomposicao asfaltica de vala",
+                        "recomposicao de asfalto em vala",
+                        "valas recompostas asfaltica",
+                        "asfalto recomposto",
+                        "reparo asfaltico em vala",
+                        "tapa buraco em asfalto",
+                        "recapeamento de vala"
+                    ]
+    },
+    {
+        "servico_oficial":  "vala",
+        "categoria":  "escavacao",
+        "unidades_aceitas":  [
+                                 "m"
+                             ],
+        "aliases":  [
+                        "abertura de vala",
+                        "vala",
+                        "escavacao de vala",
+                        "escavacao",
+                        "abertura de valeta",
+                        "vala aberta",
+                        "abertura de valas",
+                        "escavacao de valas",
+                        "vala manual",
+                        "vala mecanica",
+                        "abertura de vala manual",
+                        "abertura de vala mecanica"
+                    ]
+    },
+    {
+        "servico_oficial":  "reaterro",
+        "categoria":  "escavacao",
+        "unidades_aceitas":  [
+                                 "m"
+                             ],
+        "aliases":  [
+                        "reaterro",
+                        "compactacao",
+                        "fechamento de vala",
+                        "aterro de vala",
+                        "reaterro compactado",
+                        "compactacao de vala",
+                        "reaterro de vala",
+                        "reaterro de valas",
+                        "compactacao de valas",
+                        "fechamento de valas",
+                        "aterro de valas",
+                        "reaterro e compactacao"
+                    ]
+    },
+    {
+        "servico_oficial":  "interligacao",
+        "categoria":  "rede",
+        "unidades_aceitas":  [
+                                 "un",
+                                 "m"
+                             ],
+        "aliases":  [
+                        "interligacao",
+                        "interligacao de rede",
+                        "interligacao de ramal",
+                        "interligacao de adutora",
+                        "conexao de rede",
+                        "amarracao de rede",
+                        "tie in",
+                        "interligacao executada",
+                        "interligacoes",
+                        "interligacoes executadas",
+                        "interligacao 63 x 63",
+                        "interligacao 63x63",
+                        "interligacao 110 x 63",
+                        "interligacao 63 x 32",
+                        "interligacao de rede de agua",
+                        "interligacao rede agua",
+                        "interligacao de agua",
+                        "interligacao 63x32",
+                        "interligacao 110x63",
+                        "interligacao 32 x 63",
+                        "interligacao executada no dia",
+                        "interligacoes de rede",
+                        "interligacoes de agua",
+                        "amarracao de rede de agua",
+                        "conexao de rede de agua"
+                    ]
+    },
+    {
+        "servico_oficial":  "intradomiciliar",
+        "categoria":  "ligacao",
+        "unidades_aceitas":  [
+                                 "un",
+                                 "m"
+                             ],
+        "aliases":  [
+                        "intradomiciliar",
+                        "ligacao intradomiciliar",
+                        "instalacao intradomiciliar",
+                        "tubulacao intradomiciliar",
+                        "ramal intradomiciliar",
+                        "ramal interno",
+                        "adequacao intradomiciliar",
+                        "intra domiciliar",
+                        "intradomiciliares",
+                        "ligacoes intradomiciliares",
+                        "instalacoes intradomiciliares",
+                        "instalacao de ligacao intradomiciliar",
+                        "ligacao intra domiciliar",
+                        "rede intradomiciliar",
+                        "execucao intradomiciliar",
+                        "intradomiciliar executado",
+                        "intradomiciliar executada"
+                    ]
+    },
+    {
+        "servico_oficial":  "caixa_uma",
+        "categoria":  "ligacao",
+        "unidades_aceitas":  [
+                                 "un"
+                             ],
+        "aliases":  [
+                        "caixa uma",
+                        "caixa u m a",
+                        "cx uma",
+                        "caixa padrao",
+                        "caixa para hidrometro",
+                        "abrigo de hidrometro",
+                        "instalacao de caixa uma",
+                        "caixa de protecao do hidrometro",
+                        "caixas uma",
+                        "caixa uma instalada",
+                        "caixas uma instaladas",
+                        "embutida",
+                        "embutido",
+                        "mureta",
+                        "com mureta",
+                        "caixa uma embutida",
+                        "caixa uma com mureta",
+                        "reboco de mureta",
+                        "caixas uma embutidas",
+                        "caixas uma com mureta",
+                        "instalacao de caixas uma",
+                        "instalacao de caixa uma embutida",
+                        "instalacao de caixa uma com mureta",
+                        "caixa uma mureta",
+                        "caixa uma embutida finalizada",
+                        "caixa uma com mureta finalizada",
+                        "caixa uma padrao",
+                        "caixa padrao de hidrometro",
+                        "reboco de mureta finalizado"
+                    ]
+    },
+    {
+        "servico_oficial":  "caps",
+        "categoria":  "insumo",
+        "unidades_aceitas":  [
+                                 "un"
+                             ],
+        "aliases":  [
+                        "cap",
+                        "caps",
+                        "caps utilizados",
+                        "cap utilizado",
+                        "tampao",
+                        "tampao de rede",
+                        "tampa de cap",
+                        "vedacao com cap",
+                        "caps utilizados no dia",
+                        "cap de pvc",
+                        "caps de pvc",
+                        "cap utilizado no capeamento",
+                        "caps para capeamento",
+                        "utilizacao de cap",
+                        "utilizacao de caps"
+                    ]
+    },
+    {
+        "servico_oficial":  "concretagem_vala",
+        "categoria":  "recomposicao",
+        "unidades_aceitas":  [
+                                 "m",
+                                 "m2",
+                                 "un"
+                             ],
+        "aliases":  [
+                        "concretagem de vala",
+                        "concretagem vala",
+                        "concreto em vala",
+                        "concretagem de valeta",
+                        "vala concretada",
+                        "concretagem de vala realizada",
+                        "concretagem de valas",
+                        "concretagem em vala",
+                        "vala concretada em trecho",
+                        "concreto de vala",
+                        "concretagem de vala executada"
+                    ]
+    },
+    {
+        "servico_oficial":  "corte_pavimento",
+        "categoria":  "escavacao",
+        "unidades_aceitas":  [
+                                 "m",
+                                 "m2"
+                             ],
+        "aliases":  [
+                        "corte de pavimento",
+                        "corte de asfalto",
+                        "serragem de asfalto",
+                        "corte de passeio",
+                        "demolicao de calcada",
+                        "demolicao de passeio",
+                        "corte de concreto",
+                        "corte de pavimento com serra clip",
+                        "corte de pavimento com serra clipe",
+                        "corte de pavimento com serra",
+                        "corte de asfalto com serra",
+                        "corte de pavimento serra clip",
+                        "corte de pavimento serra clipe",
+                        "corte de pavimento para vala",
+                        "corte de pavimento para troca de trecho",
+                        "serra clip",
+                        "serra clipe"
+                    ]
+    },
+    {
+        "servico_oficial":  "retirada_entulho",
+        "categoria":  "apoio",
+        "unidades_aceitas":  [
+                                 "un",
+                                 "m2"
+                             ],
+        "aliases":  [
+                        "retirada de entulho",
+                        "coleta de entulho",
+                        "bota fora",
+                        "destinacao de entulho",
+                        "limpeza de obra",
+                        "remocao de entulho",
+                        "retirada de material",
+                        "retirada de big bag",
+                        "retirada de bigbag",
+                        "retirada de big bags",
+                        "big bag",
+                        "big bags",
+                        "retirada de bag",
+                        "retirada de material de escavacao",
+                        "retirada de material excedente",
+                        "remocao de big bag"
+                    ]
+    },
+    {
+        "servico_oficial":  "limpeza_rede",
+        "categoria":  "apoio",
+        "unidades_aceitas":  [
+                                 "un",
+                                 "m"
+                             ],
+        "aliases":  [
+                        "limpeza de rede",
+                        "lavagem de rede",
+                        "descarga de rede",
+                        "desinfeccao de rede",
+                        "higienizacao de rede",
+                        "flush de rede",
+                        "limpeza de rede de agua",
+                        "lavagem de rede de agua",
+                        "descarga de rede de agua",
+                        "desinfeccao de rede de agua",
+                        "higienizacao de rede de agua",
+                        "flush de rede de agua"
+                    ]
+    },
+    {
+        "servico_oficial":  "teste_pressao",
+        "categoria":  "teste",
+        "unidades_aceitas":  [
+                                 "un"
+                             ],
+        "aliases":  [
+                        "teste de pressao",
+                        "teste hidraulico",
+                        "ensaio de pressao",
+                        "pressurizacao de rede",
+                        "teste de estanqueidade",
+                        "teste operacional",
+                        "teste de pressao da rede",
+                        "teste hidraulico da rede",
+                        "ensaio de pressao da rede",
+                        "teste de estanqueidade da rede",
+                        "pressurizacao de rede de agua"
+                    ]
+    },
+    {
+        "servico_oficial":  "pavimento_intertravado",
+        "categoria":  "recomposicao",
+        "unidades_aceitas":  [
+                                 "m2"
+                             ],
+        "aliases":  [
+                        "recomposicao de intertravado",
+                        "recomposicao de bloquete",
+                        "recomposicao de bloco",
+                        "paver",
+                        "intertravado",
+                        "bloco intertravado",
+                        "recomposicao de pavimento intertravado",
+                        "recomposicao de paver",
+                        "piso intertravado",
+                        "pavimento intertravado"
+                    ]
+    },
+    {
+        "servico_oficial":  "regularizacao_passeio",
+        "categoria":  "recomposicao",
+        "unidades_aceitas":  [
+                                 "m2",
+                                 "m"
+                             ],
+        "aliases":  [
+                        "regularizacao de passeio",
+                        "regularizacao de calcada",
+                        "acerto de calcada",
+                        "nivelamento de passeio",
+                        "acabamento de passeio",
+                        "regularizacao de piso",
+                        "nivelamento de calcada"
+                    ]
+    },
+    {
+        "servico_oficial":  "servico_complementar",
+        "categoria":  "apoio",
+        "unidades_aceitas":  [
+                                 "un",
+                                 "m",
+                                 "m2"
+                             ],
+        "aliases":  [
+                        "servico complementar",
+                        "servico comp",
+                        "atividade complementar",
+                        "complementar",
+                        "servico complementar executado",
+                        "atividade complementar executada",
+                        "servico auxiliar",
+                        "apoio complementar"
+                    ]
+    },
+    {
+        "servico_oficial":  "caixa_inspecao",
+        "categoria":  "esgoto",
+        "unidades_aceitas":  [
+                                 "un"
+                             ],
+        "aliases":  [
+                        "instalacao de caixa de inspecao",
+                        "caixa de inspecao",
+                        "instalacao caixa de inspecao",
+                        "instalacao de pi",
+                        "pi",
+                        "pis",
+                        "pi instalado",
+                        "pi instalados",
+                        "poco de inspecao",
+                        "poco inspecao",
+                        "instalacao de poco de inspecao",
+                        "instalacao de caixa de inspecao 0 80 x 0 80",
+                        "caixa de inspecao 0 80 x 0 80",
+                        "instalacao de ci",
+                        "caixa de inspecao instalada",
+                        "pi 600",
+                        "pi 600mm",
+                        "instalacao de pi 600",
+                        "pis instalados"
+                    ]
+    },
+    {
+        "servico_oficial":  "ramal_agua",
+        "categoria":  "ligacao",
+        "unidades_aceitas":  [
+                                 "un"
+                             ],
+        "aliases":  [
+                        "ramal agua",
+                        "ramais agua",
+                        "ramais de agua",
+                        "ramais agua executados",
+                        "ramal de agua",
+                        "ramal de agua executado",
+                        "ramal agua executado",
+                        "ramais de agua executados",
+                        "execucao de ramal de agua",
+                        "execucao de ramais de agua",
+                        "ramais de agua no dia"
+                    ]
+    },
+    {
+        "servico_oficial":  "ramal_esgoto",
+        "categoria":  "ligacao",
+        "unidades_aceitas":  [
+                                 "un"
+                             ],
+        "aliases":  [
+                        "ramal esgoto",
+                        "ramais esgoto",
+                        "ramais de esgoto",
+                        "ramais esgoto executados",
+                        "ramal de esgoto",
+                        "ramais de esgoto executados",
+                        "execucao de ramal de esgoto",
+                        "execucao de ramais de esgoto",
+                        "ramal de esgoto executado"
+                    ]
+    },
+    {
+        "servico_oficial":  "rede_esgoto",
+        "categoria":  "esgoto",
+        "unidades_aceitas":  [
+                                 "m"
+                             ],
+        "aliases":  [
+                        "rede de esgoto",
+                        "rede esgoto",
+                        "prolongamento de esgoto",
+                        "prolongamento rede esgoto",
+                        "prolongamento de rede de esgoto",
+                        "rede esgoto executada",
+                        "rede de esgoto executada",
+                        "prolongamento de rede esgoto",
+                        "prolongamento rede de esgoto",
+                        "prolongamento de esgoto 200",
+                        "prolongamento de esgoto 250",
+                        "rede 200mm esgoto",
+                        "rede 250mm esgoto",
+                        "rede de esgoto 200",
+                        "rede de esgoto 250",
+                        "rede coletora de esgoto",
+                        "lancamento de rede de esgoto",
+                        "assentamento de rede de esgoto",
+                        "extensao de rede de esgoto"
+                    ]
+    },
+    {
+        "servico_oficial":  "luvas",
+        "categoria":  "insumo",
+        "unidades_aceitas":  [
+                                 "un"
+                             ],
+        "aliases":  [
+                        "luva",
+                        "luvas",
+                        "luva 63",
+                        "luvas 63",
+                        "luva de 63",
+                        "luva 63mm",
+                        "luvas 63mm",
+                        "luva pead",
+                        "luvas pead",
+                        "luvas utilizadas",
+                        "luvas utilizadas 63"
+                    ]
+    },
+    {
+        "servico_oficial":  "corte_agua",
+        "categoria":  "apoio",
+        "unidades_aceitas":  [
+                                 "un"
+                             ],
+        "aliases":  [
+                        "corte de agua",
+                        "cortes de agua",
+                        "corte d agua",
+                        "cortes d agua",
+                        "corte de abastecimento",
+                        "suspensao de abastecimento",
+                        "corte de ligacao"
+                    ]
+    },
+    {
+        "servico_oficial":  "vistoria",
+        "categoria":  "apoio",
+        "unidades_aceitas":  [
+                                 "un"
+                             ],
+        "aliases":  [
+                        "vistoria",
+                        "vistorias",
+                        "vistoria tecnica",
+                        "vistoria de caixa uma",
+                        "vistoria de vazamento",
+                        "vistoria de leitura",
+                        "conferencia de leitura",
+                        "verificacao de contas altas",
+                        "inspecao em campo"
+                    ]
+    }
+]

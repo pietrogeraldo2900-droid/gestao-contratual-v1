@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-hero">
+  <div class="page-hero-grid">
+    <div>
+      <div class="hero-eyebrow">Fluxo operacional</div>
+      <h2 class="hero-title">Nova entrada operacional</h2>
+      <p class="hero-subtitle">Cole a mensagem do WhatsApp, complemente os campos principais quando precisar e siga o fluxo de análise, revisão e geração sem sair da mesma trilha operacional.</p>
+      <div class="hero-chip-row">
+        <span class="hero-chip">Entrada guiada</span>
+        <span class="hero-chip">Revisão antes da geração</span>
+        <span class="hero-chip">Saídas consolidadas</span>
+      </div>
+    </div>
+    <div class="hero-stat-grid">
+      <div class="hero-stat">
+        <div class="hero-stat-label">Núcleos cadastrados</div>
+        <div class="hero-stat-value">{{ (nucleo_reference.options|length) if nucleo_reference else 0 }}</div>
+        <div class="hero-stat-subtitle">Base pronta para autopreenchimento seguro</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">Fluxo</div>
+        <div class="hero-stat-value">3</div>
+        <div class="hero-stat-subtitle">Analisar, revisar e gerar</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% if error_message %}
+  <div class="notice error">{{ error_message }}</div>
+{% endif %}
+
+{% if autofill_info and autofill_info.applied %}
+  <div class="notice info">
+    <strong>Preenchimento automatico por nucleo:</strong>
+    {% for campo, valor in autofill_info.applied.items() %}
+      {{ campo }} = {{ valor }}{% if not loop.last %} | {% endif %}
+    {% endfor %}
+  </div>
+{% endif %}
+
+<form method="post" action="{{ url_for('preview') }}">
+  <div class="grid-2">
+    <div class="field">
+      <label for="data">Data</label>
+      <input id="data" name="data" value="{{ form_data.data }}" placeholder="dd/mm/aaaa">
+    </div>
+    <div class="field">
+      <label for="nucleo">Nucleo</label>
+      <input id="nucleo" name="nucleo" value="{{ form_data.nucleo }}" placeholder="Nucleo oficial" list="nucleo-options">
+      <datalist id="nucleo-options">
+        {% for nome in (nucleo_reference.options if nucleo_reference else []) %}
+          <option value="{{ nome }}"></option>
+        {% endfor %}
+      </datalist>
+      <p id="index-nucleo-profile" class="muted">Selecione um nucleo cadastrado para sugerir municipio e defaults com seguranca.</p>
+    </div>
+    <div class="field">
+      <label for="logradouro">Logradouro</label>
+      <input id="logradouro" name="logradouro" value="{{ form_data.logradouro }}" placeholder="Use / ; ou quebra de linha para multiplos logradouros">
+    </div>
+    <div class="field">
+      <label for="municipio">Municipio</label>
+      <input id="municipio" name="municipio" value="{{ form_data.municipio }}" placeholder="Municipio">
+    </div>
+    <div class="field">
+      <label for="equipe">Equipe</label>
+      <input id="equipe" name="equipe" value="{{ form_data.equipe }}" placeholder="Use / ; ou quebra de linha para multiplas equipes">
+    </div>
+  </div>
+
+  <div class="multi-preview-grid" style="margin-bottom: 12px;">
+    <div class="multi-preview-card">
+      <div class="multi-preview-title">Logradouros identificados (<span id="index-logradouro-count">0</span>)</div>
+      <ul id="index-logradouro-list" class="simple-list"></ul>
+    </div>
+    <div class="multi-preview-card">
+      <div class="multi-preview-title">Equipes identificadas (<span id="index-equipe-count">0</span>)</div>
+      <ul id="index-equipe-list" class="simple-list"></ul>
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="mensagem">Mensagem WhatsApp</label>
+    <textarea id="mensagem" name="mensagem" placeholder="Cole aqui a mensagem completa...">{{ mensagem }}</textarea>
+  </div>
+
+  <div class="actions">
+    <button type="submit">Processar mensagem</button>
+    <button type="reset" class="secondary">Limpar campos</button>
+  </div>
+</form>
+
+<script>
+(function () {
+  const nucleoInput = document.getElementById('nucleo');
+  const municipioInput = document.getElementById('municipio');
+  const logradouroInput = document.getElementById('logradouro');
+  const equipeInput = document.getElementById('equipe');
+  const profileHint = document.getElementById('index-nucleo-profile');
+  const logradouroList = document.getElementById('index-logradouro-list');
+  const equipeList = document.getElementById('index-equipe-list');
+  const logradouroCount = document.getElementById('index-logradouro-count');
+  const equipeCount = document.getElementById('index-equipe-count');
+
+  const nucleoProfilesByKey = {{ (nucleo_reference.profiles_by_key if nucleo_reference else {}) | tojson }};
+
+  const normalizeKey = (value) => {
+    return String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  };
+
+  const splitMulti = (value) => {
+    const raw = String(value || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+    if (!raw) return [];
+    const out = [];
+    const seen = new Set();
+    raw.split(/\s*(?:\/|;|\n)+\s*/).forEach((part) => {
+      const clean = String(part || '').replace(/^[\u2022\-*]+\s*/, '').trim();
+      if (!clean) return;
+      const key = normalizeKey(clean);
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      out.push(clean);
+    });
+    return out;
+  };
+
+  const renderList = (items, listEl, countEl, emptyText) => {
+    if (!listEl || !countEl) return;
+    listEl.innerHTML = '';
+    countEl.textContent = String(items.length);
+    if (!items.length) {
+      const li = document.createElement('li');
+      li.textContent = emptyText;
+      li.className = 'muted';
+      listEl.appendChild(li);
+      return;
+    }
+    items.forEach((item) => {
+      const li = document.createElement('li');
+      li.textContent = item;
+      listEl.appendChild(li);
+    });
+  };
+
+  const refreshMultiPreview = () => {
+    renderList(splitMulti(logradouroInput ? logradouroInput.value : ''), logradouroList, logradouroCount, 'Nenhum logradouro separado.');
+    renderList(splitMulti(equipeInput ? equipeInput.value : ''), equipeList, equipeCount, 'Nenhuma equipe separada.');
+  };
+
+  const applyProfileFromNucleo = () => {
+    if (!nucleoInput) return;
+    const key = normalizeKey(nucleoInput.value);
+    const profile = nucleoProfilesByKey[key];
+    if (!profile) {
+      if (profileHint) profileHint.textContent = 'Nucleo sem cadastro de referencia.';
+      return;
+    }
+
+    if (profileHint) {
+      const partes = [];
+      if (profile.municipio) partes.push('Municipio padrao: ' + profile.municipio);
+      if ((profile.logradouros_padrao || []).length) partes.push('Logradouros padrao: ' + profile.logradouros_padrao.join(' | '));
+      if ((profile.equipes_padrao || []).length) partes.push('Equipes padrao: ' + profile.equipes_padrao.join(' | '));
+      profileHint.textContent = partes.length ? partes.join(' | ') : 'Nucleo cadastrado sem defaults adicionais.';
+    }
+
+    if (municipioInput && !String(municipioInput.value || '').trim() && profile.municipio) {
+      municipioInput.value = profile.municipio;
+    }
+    if (logradouroInput && !String(logradouroInput.value || '').trim() && (profile.logradouros_padrao || []).length === 1) {
+      logradouroInput.value = profile.logradouros_padrao[0];
+    }
+    if (equipeInput && !String(equipeInput.value || '').trim() && (profile.equipes_padrao || []).length === 1) {
+      equipeInput.value = profile.equipes_padrao[0];
+    }
+
+    refreshMultiPreview();
+  };
+
+  if (nucleoInput) {
+    nucleoInput.addEventListener('change', applyProfileFromNucleo);
+    nucleoInput.addEventListener('blur', applyProfileFromNucleo);
+    nucleoInput.addEventListener('input', applyProfileFromNucleo);
+  }
+  if (logradouroInput) {
+    logradouroInput.addEventListener('input', refreshMultiPreview);
+  }
+  if (equipeInput) {
+    equipeInput.addEventListener('input', refreshMultiPreview);
+  }
+
+  applyProfileFromNucleo();
+  refreshMultiPreview();
+})();
+</script>
+{% endblock %}
+
+

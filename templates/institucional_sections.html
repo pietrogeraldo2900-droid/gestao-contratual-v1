@@ -1,0 +1,240 @@
+{% set final = report.relatorio_final if report.relatorio_final is defined else report %}
+
+<div class="section">
+  <h3>Cabeçalho</h3>
+  <div class="body">
+    <p><strong>{{ final.header.titulo }}</strong></p>
+    <p class="muted">Período analisado: {{ final.header.periodo }} | Data de emissão: {{ final.header.emissao }}</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Filtro</th>
+            <th>Valor aplicado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in final.header.filtros_aplicados %}
+            <tr>
+              <td>{{ item.label }}</td>
+              <td>{{ item.valor }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Resumo executivo</h3>
+  <div class="body">
+    <ul class="simple-list">
+      {% for linha in final.resumo_executivo.linhas %}
+        <li>{{ linha }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Indicadores principais</h3>
+  <div class="body table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Indicador</th>
+          <th class="text-right">Valor</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Mensagens processadas</td><td class="text-right">{{ final.indicadores_principais.total_processamentos }}</td></tr>
+        <tr><td>Execuções registradas</td><td class="text-right">{{ final.indicadores_principais.total_execucoes }}</td></tr>
+        <tr><td>Frentes</td><td class="text-right">{{ final.indicadores_principais.total_frentes }}</td></tr>
+        <tr><td>Ocorrências</td><td class="text-right">{{ final.indicadores_principais.total_ocorrencias }}</td></tr>
+        <tr><td>Núcleos atendidos</td><td class="text-right">{{ final.indicadores_principais.total_nucleos }}</td></tr>
+        <tr><td>Municípios atendidos</td><td class="text-right">{{ final.indicadores_principais.total_municipios }}</td></tr>
+        <tr><td>Equipes envolvidas</td><td class="text-right">{{ final.indicadores_principais.total_equipes }}</td></tr>
+        <tr><td>Serviços mapeados</td><td class="text-right">{{ final.indicadores_principais.total_mapeados }}</td></tr>
+        <tr><td>Serviços não mapeados</td><td class="text-right">{{ final.indicadores_principais.total_nao_mapeados }}</td></tr>
+        <tr><td>Percentual mapeado</td><td class="text-right">{{ final.indicadores_principais.percentual_mapeado_fmt }}%</td></tr>
+        <tr><td>Percentual não mapeado</td><td class="text-right">{{ final.indicadores_principais.percentual_nao_mapeado_fmt }}%</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Panorama operacional</h3>
+  <div class="body">
+    {% if final.panorama_operacional.texto_analitico %}
+      <p>{{ final.panorama_operacional.texto_analitico }}</p>
+    {% endif %}
+    <div class="multi-preview-grid">
+      <div class="multi-preview-card">
+        <div class="multi-preview-title">Serviços mais recorrentes</div>
+        <ul class="simple-list">
+          {% for row in final.panorama_operacional.servicos_recorrentes %}
+            <li>{{ row.descricao_institucional }}</li>
+          {% else %}
+            <li class="muted">Sem serviços no recorte.</li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="multi-preview-card">
+        <div class="multi-preview-title">Categorias em destaque</div>
+        <ul class="simple-list">
+          {% for row in final.panorama_operacional.categorias_recorrentes %}
+            <li>{{ row.descricao_institucional }}</li>
+          {% else %}
+            <li class="muted">Sem categorias no recorte.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+
+    <div class="multi-preview-card" style="margin-top:10px;">
+      <div class="multi-preview-title">Ocorrências mais recorrentes</div>
+      <ul class="simple-list">
+        {% for row in final.panorama_operacional.ocorrencias_recorrentes %}
+          <li>{{ row.descricao_institucional }}</li>
+        {% else %}
+          <li class="muted">Sem ocorrências no recorte.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Análise por núcleo</h3>
+  <div class="body">
+    {% for nucleo in final.analise_por_nucleo %}
+      <div class="confirm-panel" style="margin-bottom:12px;">
+        <div class="confirm-panel-title">{{ nucleo.nucleo }}</div>
+        <div class="confirm-panel-body">
+          <div class="chips" style="margin-bottom:8px;">
+            <span class="chip">Atividade: {{ nucleo.processamentos }}</span>
+            <span class="chip">Com alerta: {{ nucleo.processamentos_alerta }}</span>
+            <span class="chip">Sucesso: {{ nucleo.sucesso }}</span>
+            <span class="chip">Erro: {{ nucleo.erro }}</span>
+            <span class="chip">Município: {{ nucleo.municipio }}</span>
+            <span class="chip">Logradouro: {{ nucleo.logradouro }}</span>
+          </div>
+          <p><strong>Equipes mobilizadas:</strong>
+            {% if nucleo.equipes %}
+              {{ nucleo.equipes | join(', ') }}
+            {% else %}
+              -
+            {% endif %}
+          </p>
+
+          <p><strong>Serviços predominantes:</strong></p>
+          <ul class="simple-list">
+            {% for item in nucleo.principais_servicos %}
+              <li>{{ item.descricao_institucional }}</li>
+            {% else %}
+              <li class="muted">Sem serviços relevantes.</li>
+            {% endfor %}
+          </ul>
+
+          <p><strong>Ocorrências relevantes:</strong></p>
+          <ul class="simple-list">
+            {% for item in nucleo.principais_ocorrencias %}
+              <li>{{ item.descricao_institucional }}</li>
+            {% else %}
+              <li class="muted">Sem ocorrências relevantes.</li>
+            {% endfor %}
+          </ul>
+
+          <p><strong>Observações do período:</strong></p>
+          <ul class="simple-list">
+            {% for item in nucleo.observacoes_relevantes %}
+              <li>{{ item }}</li>
+            {% else %}
+              <li class="muted">Sem observações recorrentes no recorte.</li>
+            {% endfor %}
+          </ul>
+
+          <p><strong>Leitura executiva:</strong> {{ nucleo.observacao_analitica }}</p>
+        </div>
+      </div>
+    {% else %}
+      <p>Nenhum núcleo encontrado para os filtros aplicados.</p>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="section">
+  <h3>Alertas e pendências</h3>
+  <div class="body">
+    <div class="chips" style="margin-bottom:8px;">
+      <span class="chip">Mensagens com alerta: {{ final.alertas_pendencias.processamentos_alerta }}</span>
+      <span class="chip">Mensagens com erro: {{ final.alertas_pendencias.processamentos_erro }}</span>
+      <span class="chip">Itens sem município informado: {{ final.alertas_pendencias.municipio_ausente }}</span>
+    </div>
+
+    <p><strong>Pendências relevantes:</strong></p>
+    <ul class="simple-list">
+      {% for item in final.alertas_pendencias.inconsistencias %}
+        <li>{{ item }}</li>
+      {% endfor %}
+    </ul>
+
+    <div class="table-wrap" style="margin-top:10px;">
+      <table>
+        <thead>
+          <tr>
+            <th>Termo não mapeado</th>
+            <th class="text-right">Ocorrências</th>
+            <th>Último núcleo</th>
+            <th>Última equipe</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in final.alertas_pendencias.nao_mapeados_recorrentes %}
+            <tr>
+              <td>{{ row.termo }}</td>
+              <td class="text-right">{{ row.ocorrencias }}</td>
+              <td>{{ row.ultimo_nucleo }}</td>
+              <td>{{ row.ultimo_equipe }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4">Sem termos não mapeados recorrentes no recorte.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Conclusão</h3>
+  <div class="body">
+    <p>{{ final.conclusao }}</p>
+  </div>
+</div>
+
+{% if show_previa_tecnica and report.previa_tecnica is defined %}
+<div class="section">
+  <h3>Prévia técnica interna (revisão)</h3>
+  <div class="body">
+    <p class="muted">Bloco interno para revisão operacional. Não compõe a versão institucional final exportada.</p>
+    <div class="chips" style="margin-bottom:8px;">
+      <span class="chip">Runs analisadas: {{ report.previa_tecnica.runs_analisadas }}</span>
+      <span class="chip">Múltiplos núcleos: {{ report.previa_tecnica.totais.multiplos_nucleos }}</span>
+      <span class="chip">Múltiplos logradouros: {{ report.previa_tecnica.totais.multiplos_logradouros }}</span>
+      <span class="chip">Múltiplas equipes: {{ report.previa_tecnica.totais.multiplas_equipes }}</span>
+      <span class="chip">Não mapeados: {{ report.previa_tecnica.totais.nao_mapeados }}</span>
+      <span class="chip">Processamentos com erro: {{ report.previa_tecnica.totais.processamentos_erro }}</span>
+    </div>
+
+    <p><strong>Alertas internos de revisão:</strong></p>
+    <ul class="simple-list">
+      {% for item in report.previa_tecnica.alertas_internos %}
+        <li>{{ item }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}

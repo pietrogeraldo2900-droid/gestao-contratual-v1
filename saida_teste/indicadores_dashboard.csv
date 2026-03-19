@@ -1,0 +1,9 @@
+﻿data_referencia,contrato,programa,nucleo,categoria_item,unidade,tipo_registro,registros,quantidade_total
+03/03/2026,Oeste 1,Ãgua Legal,Santa Terezinha,intradomiciliar,un,servico,1,3
+03/03/2026,Oeste 1,Ãgua Legal,Santa Terezinha,hidrometro,un,servico,1,2
+03/03/2026,Oeste 1,Ãgua Legal,José Bonifácio,intradomiciliar,un,servico,1,1
+03/03/2026,Oeste 1,Ãgua Legal,José Bonifácio,hidrometro,un,servico,1,1
+03/03/2026,Oeste 1,Ãgua Legal,José Bonifácio,caixa_uma,un,servico,1,1
+03/03/2026,Oeste 1,Ãgua Legal,Mississipi,ramal_agua,un,servico,2,22
+03/03/2026,Oeste 1,Ãgua Legal,Mississipi,rede_agua,m,servico,2,45
+03/03/2026,Oeste 1,Ãgua Legal,Mississipi,interligacao,un,servico,1,1

@@ -1,0 +1,7 @@
+﻿data_referencia,contrato,programa,nucleo,categoria_item,unidade,tipo_registro,registros,quantidade_total
+10/03/2026,Oeste 1,Ãgua Legal,Mississipi,ramal_agua,un,servico,1,4
+10/03/2026,Oeste 1,Ãgua Legal,Mississipi,rede_agua,m,servico,2,62
+10/03/2026,Oeste 1,Ãgua Legal,Cerejas,ramal_agua,un,servico,1,1
+10/03/2026,Oeste 1,Ãgua Legal,Cerejas,intradomiciliar,un,servico,1,4
+10/03/2026,Oeste 1,Ãgua Legal,Cerejas,hidrometro,un,servico,1,4
+10/03/2026,Oeste 1,Ãgua Legal,Cerejas,caixa_uma,un,servico,1,2

@@ -1,0 +1,5 @@
+﻿id_ocorrencia,id_frente,data_referencia,contrato,programa,nucleo,equipe,tipo_ocorrencia,descricao,impacto_producao,arquivo_origem
+O0001,F001,09/03/2026,Oeste 1,Água Legal,Santa Terezinha,Sidney,clima,Atividades paralisadas no período da manhã devido à chuva. Serviço executado após fechamento da rede.,sim,consolidado_2026_03_09.txt
+O0002,F002,09/03/2026,Oeste 1,Água Legal,Mississipi,Carlos,sem_producao,Sem produção,sim,consolidado_2026_03_09.txt
+O0003,F002,09/03/2026,Oeste 1,Água Legal,Mississipi,Carlos,clima,"Atividades interrompidas devido à tempestade, impossibilitando abertura de valas e execução dos serviços.",sim,consolidado_2026_03_09.txt
+O0004,F003,09/03/2026,Oeste 1,Água Legal,Mississipi,Weslyn,clima,"Devido à chuva contínua durante todo o dia, não foi possível executar a escavação da vala.",sim,consolidado_2026_03_09.txt

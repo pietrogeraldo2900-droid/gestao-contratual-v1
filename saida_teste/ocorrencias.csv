@@ -1,0 +1,4 @@
+﻿id_ocorrencia,id_frente,data_referencia,contrato,programa,nucleo,equipe,logradouro,municipio,tipo_ocorrencia,descricao,impacto_producao,arquivo_origem
+O0001,F001,03/03/2026,Oeste 1,Ãgua Legal,Santa Terezinha,Reggis,Av. Dep. Emílio Carlos / Travessa Haitiana,,vistoria,"📌 Obs: Realizados cortes d’água, vistoria de Caixa UMA e reparos de vazamentos.",parcial,consolidado_2026_03_03.txt
+O0002,F002,03/03/2026,Oeste 1,Ãgua Legal,José Bonifácio,Sidomar,"Rua José Bonifácio / Rua Brigadeiro Tobias, nº 159",,vistoria,"⚠️ Obs: Equipe direcionada para vistorias de vazamento e verificação de contas altas (Viela Diamante nº 33 / Viela 1 nº 8 / Viela 2 nº 3 / Viela Ametista nº 6), impactando a produtividade.",parcial,consolidado_2026_03_03.txt
+O0003,F003,03/03/2026,Oeste 1,Ãgua Legal,Mississipi,Xavier,Viela 2,,restricao_operacional,⚠️ Obs: Produtividade impactada pela espera da mangueira do compressor.,parcial,consolidado_2026_03_03.txt

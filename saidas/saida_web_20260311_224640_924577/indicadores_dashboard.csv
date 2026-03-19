@@ -1,0 +1,11 @@
+﻿data_referencia,contrato,programa,nucleo,categoria_item,unidade,tipo_registro,registros,quantidade_total
+27/02/2026,Oeste 1,Ãgua Legal,Patrocínio,intradomiciliar,un,servico,1,14
+27/02/2026,Oeste 1,Ãgua Legal,Patrocínio,hidrometro,un,servico,1,14
+27/02/2026,Oeste 1,Ãgua Legal,Patrocínio,ramal_agua,un,servico,1,3
+27/02/2026,Oeste 1,Ãgua Legal,Mississipi,rede_agua,m,servico,1,52
+27/02/2026,Oeste 1,Ãgua Legal,Patrocínio,rede_agua,m,servico,1,19
+27/02/2026,Oeste 1,Ãgua Legal,Mississipi,ramal_esgoto,un,servico,1,3
+27/02/2026,Oeste 1,Ãgua Legal,Mississipi,caixa_inspecao,servico,servico,1,1
+27/02/2026,Oeste 1,Ãgua Legal,Cerejas,intradomiciliar,un,servico,1,8
+27/02/2026,Oeste 1,Ãgua Legal,Cerejas,hidrometro,un,servico,1,5
+27/02/2026,Oeste 1,Ãgua Legal,Mississipi,caixa_uma,un,servico,1,16

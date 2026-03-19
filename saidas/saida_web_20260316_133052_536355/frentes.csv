@@ -1,0 +1,4 @@
+﻿id_frente,data_referencia,contrato,programa,nucleo,equipe,logradouro,municipio,status_frente,observacao_frente,arquivo_origem,data
+F001,14/03/2026,Oeste 1,Água Legal,Mississipi,Xavier / Wesley,Viela Um / Viela Três,Barueri,producao_parcial,⚠️ Obs: Foi executado contrapiso para evitar infiltração em imóvel próximo.,mensagem_web_20260316_133038.txt,14/03/2026
+F002,14/03/2026,Oeste 1,Água Legal,Mississipi,Xavier / Wesley,Viela Um / Viela Três,Barueri,producao_parcial,⚠️ Obs: Equipe reduzida no dia. Aguardando confirmação da viela onde parte do prolongamento foi executado.,mensagem_web_20260316_133038.txt,14/03/2026
+F003,14/03/2026,Oeste 1,Água Legal,Savoy,Sidney,Rua General Carneiro,Carapicuíba,producao_parcial,⚠️ Obs: Equipe atuando na resolução de pendências e com efetivo reduzido.,mensagem_web_20260316_133038.txt,14/03/2026

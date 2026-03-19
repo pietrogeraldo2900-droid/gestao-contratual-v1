@@ -1,0 +1,588 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<section class="page-hero">
+  <div class="page-hero-grid">
+    <div>
+      <div class="hero-eyebrow">Leitura executiva</div>
+      <h2 class="hero-title">Painel gerencial</h2>
+      <p class="hero-subtitle">Uma visão gerencial mais clara do período: volume, recorrências, alertas, concentração operacional e qualidade de mapeamento em um dashboard pronto para acompanhamento de coordenação.</p>
+      <div class="hero-chip-row">
+        <span class="hero-chip">KPIs executivos</span>
+        <span class="hero-chip">Rankings por volume</span>
+        <span class="hero-chip">Filtros por contexto</span>
+      </div>
+    </div>
+    <div class="hero-stat-grid">
+      <div class="hero-stat">
+        <div class="hero-stat-label">Processamentos</div>
+        <div class="hero-stat-value">{{ dashboard.kpis_principais.total_processamentos }}</div>
+        <div class="hero-stat-subtitle">Mensagens consideradas no recorte</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">Mapeado</div>
+        <div class="hero-stat-value">{{ dashboard.kpis_principais.percentual_mapeado_fmt }}%</div>
+        <div class="hero-stat-subtitle">Itens classificados com sucesso</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">Execuções</div>
+        <div class="hero-stat-value">{{ dashboard.kpis_principais.total_execucoes }}</div>
+        <div class="hero-stat-subtitle">Registros consolidados no período</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">Ocorrências</div>
+        <div class="hero-stat-value">{{ dashboard.kpis_principais.total_ocorrencias }}</div>
+        <div class="hero-stat-subtitle">Impactos operacionais registrados</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<form method="get" action="{{ url_for('gerencial') }}" class="section">
+  <h3>Filtros gerenciais</h3>
+  <div class="body grid-2">
+    <div class="field">
+      <label>Período da obra (de)</label>
+      <input type="date" name="obra_from" value="{{ obra_from }}">
+    </div>
+    <div class="field">
+      <label>Período da obra (até)</label>
+      <input type="date" name="obra_to" value="{{ obra_to }}">
+    </div>
+
+    <div class="field">
+      <label>Processado em (de)</label>
+      <input type="date" name="processed_from" value="{{ processed_from }}">
+    </div>
+    <div class="field">
+      <label>Processado em (até)</label>
+      <input type="date" name="processed_to" value="{{ processed_to }}">
+    </div>
+
+    <div class="field">
+      <label>Núcleo</label>
+      <input name="nucleo" value="{{ nucleo }}" placeholder="Ex.: Mississipi">
+    </div>
+    <div class="field">
+      <label>Município</label>
+      <input name="municipio" value="{{ municipio }}" placeholder="Ex.: Carapicuíba">
+    </div>
+
+    <div class="field">
+      <label>Equipe</label>
+      <input name="equipe" value="{{ equipe }}" placeholder="Ex.: Weslyn">
+    </div>
+    <div class="field">
+      <label>Status</label>
+      <select name="status">
+        <option value="" {% if not status_filter %}selected{% endif %}>Todos</option>
+        <option value="sucesso" {% if status_filter == 'sucesso' %}selected{% endif %}>Sucesso</option>
+        <option value="erro" {% if status_filter == 'erro' %}selected{% endif %}>Erro</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Alertas</label>
+      <select name="alertas">
+        <option value="" {% if not alertas_filter %}selected{% endif %}>Todos</option>
+        <option value="com_alerta" {% if alertas_filter == 'com_alerta' %}selected{% endif %}>Com alerta</option>
+        <option value="sem_alerta" {% if alertas_filter == 'sem_alerta' %}selected{% endif %}>Sem alerta</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Top N (rankings)</label>
+      <input type="number" min="3" max="50" name="top_n" value="{{ top_n }}">
+    </div>
+  </div>
+  <div class="body" style="padding-top:0;">
+    <div class="actions" style="margin-top:0;">
+      <button type="submit">Atualizar painel</button>
+      <a href="{{ url_for('gerencial') }}"><button type="button" class="secondary">Limpar filtros</button></a>
+    </div>
+  </div>
+</form>
+
+{% if not dashboard.has_data and dashboard.kpis_principais.total_processamentos|int == 0 %}
+  <div class="notice warning">Sem dados para os filtros selecionados.</div>
+{% endif %}
+
+<div class="section">
+  <h3>Resumo executivo</h3>
+  <div class="body">
+    <p class="muted">Período de referência: <strong>{{ dashboard.resumo_executivo.periodo }}</strong></p>
+    <div class="dashboard-hero">
+      <div class="hero-card">
+        <h4>Leitura rápida</h4>
+        <ul class="hero-list">
+          {% for linha in dashboard.resumo_executivo.linhas %}
+            <li>{{ linha }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="hero-card">
+        <h4>Contexto do recorte</h4>
+        <div class="chips">
+          <span class="chip">Obra: {{ dashboard.consolidado_periodo.periodo_obra }}</span>
+          <span class="chip">Processamento: {{ dashboard.consolidado_periodo.periodo_processamento }}</span>
+          <span class="chip">Runs válidas: {{ dashboard.consolidado_periodo.runs_com_dados }}</span>
+          <span class="chip">Volume total: {{ dashboard.consolidado_periodo.volume_total_fmt }}</span>
+        </div>
+        {% if dashboard.comparativos_basicos.has_comparativo %}
+          <p style="margin-top:10px;">Comparativo ativo entre <strong>{{ dashboard.comparativos_basicos.label_atual }}</strong> e <strong>{{ dashboard.comparativos_basicos.label_anterior }}</strong>.</p>
+        {% else %}
+          <p style="margin-top:10px;">Sem comparativo temporal suficiente para o recorte atual.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      {% for card in dashboard.cards_executivos %}
+        <div class="kpi-card executive {% if card.tone %}state-{{ card.tone }}{% endif %}">
+          <div class="kpi-title">{{ card.title }}</div>
+          <div class="kpi-value">{{ card.value }}</div>
+          <div class="kpi-subtitle">{{ card.subtitle }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Gráficos executivos</h3>
+  <div class="body">
+    <div class="chart-grid">
+      <div class="chart-panel wide">
+        <p class="chart-title">Evolução de processamentos por período</p>
+        <p class="chart-subtitle">Leitura diária do volume processado no recorte filtrado.</p>
+        {% if dashboard.graficos_executivos.periodo.has_data %}
+          <div class="vchart-scroll">
+            <div class="vchart-list">
+          {% for row in dashboard.graficos_executivos.periodo["items"] %}
+                <div class="vbar-item">
+                  <div class="vbar-value">{{ row.value_fmt }}</div>
+                  <div class="vbar-track">
+                    <div class="vbar-fill" style="height: {{ row.height_pct }}%;"></div>
+                  </div>
+                  <div class="vbar-label">{{ row.short_label }}</div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% else %}
+          <p class="muted">Sem série temporal para exibir no recorte atual.</p>
+        {% endif %}
+      </div>
+
+      <div class="chart-panel">
+        <p class="chart-title">Mapeado x não mapeado</p>
+        <p class="chart-subtitle">Qualidade de classificação dos itens processados.</p>
+        <div class="stack-meter">
+          <div class="stack-fill mapped" style="width: {{ dashboard.graficos_executivos.mapeamento.mapped_pct }}%;"></div>
+          <div class="stack-fill unmapped" style="width: {{ dashboard.graficos_executivos.mapeamento.unmapped_pct }}%;"></div>
+        </div>
+        <div class="legend-inline">
+          <span class="chip">Mapeado: {{ dashboard.graficos_executivos.mapeamento.mapped_pct_fmt }}% ({{ dashboard.graficos_executivos.mapeamento.mapped }})</span>
+          <span class="chip">Não mapeado: {{ dashboard.graficos_executivos.mapeamento.unmapped_pct_fmt }}% ({{ dashboard.graficos_executivos.mapeamento.unmapped }})</span>
+        </div>
+      </div>
+
+      <div class="chart-panel">
+        <p class="chart-title">Serviços mais recorrentes</p>
+        <p class="chart-subtitle">Ranking por volume consolidado.</p>
+        <div class="hbar-list">
+          {% for row in dashboard.graficos_executivos.servicos["items"] %}
+            <div class="hbar-row">
+              <div class="hbar-top">
+                <span class="hbar-label">{{ row.label }}</span>
+                <span class="hbar-value">{{ row.value_fmt }}</span>
+              </div>
+              {% if row.meta %}
+                <div class="hbar-meta">{{ row.meta }}</div>
+              {% endif %}
+              <div class="hbar-track"><div class="hbar-fill" style="width: {{ row.width_pct }}%;"></div></div>
+            </div>
+          {% else %}
+            <p class="muted">Sem dados de serviços.</p>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="chart-panel">
+        <p class="chart-title">Ocorrências mais recorrentes</p>
+        <p class="chart-subtitle">Principais impactos operacionais do recorte.</p>
+        <div class="hbar-list">
+          {% for row in dashboard.graficos_executivos.ocorrencias["items"] %}
+            <div class="hbar-row">
+              <div class="hbar-top">
+                <span class="hbar-label">{{ row.label }}</span>
+                <span class="hbar-value">{{ row.value_fmt }}</span>
+              </div>
+              <div class="hbar-track"><div class="hbar-fill occurrence" style="width: {{ row.width_pct }}%;"></div></div>
+            </div>
+          {% else %}
+            <p class="muted">Sem dados de ocorrências.</p>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="chart-panel">
+        <p class="chart-title">Núcleos com mais processamentos</p>
+        <p class="chart-subtitle">Concentração operacional por núcleo.</p>
+        <div class="hbar-list">
+          {% for row in dashboard.graficos_executivos.nucleos["items"] %}
+            <div class="hbar-row">
+              <div class="hbar-top">
+                <span class="hbar-label">{{ row.label }}</span>
+                <span class="hbar-value">{{ row.value_fmt }}</span>
+              </div>
+              <div class="hbar-track"><div class="hbar-fill success" style="width: {{ row.width_pct }}%;"></div></div>
+            </div>
+          {% else %}
+            <p class="muted">Sem dados de núcleos.</p>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="chart-panel">
+        <p class="chart-title">Equipes com mais processamentos</p>
+        <p class="chart-subtitle">Leitura rápida do volume por equipe.</p>
+        <div class="hbar-list">
+          {% for row in dashboard.graficos_executivos.equipes["items"] %}
+            <div class="hbar-row">
+              <div class="hbar-top">
+                <span class="hbar-label">{{ row.label }}</span>
+                <span class="hbar-value">{{ row.value_fmt }}</span>
+              </div>
+              <div class="hbar-track"><div class="hbar-fill" style="width: {{ row.width_pct }}%;"></div></div>
+            </div>
+          {% else %}
+            <p class="muted">Sem dados de equipes.</p>
+          {% endfor %}
+        </div>
+      </div>
+
+      {% if dashboard.graficos_executivos.categorias.has_data %}
+      <div class="chart-panel wide">
+        <p class="chart-title">Categorias mais recorrentes</p>
+        <p class="chart-subtitle">Distribuição do volume por categoria de serviço.</p>
+        <div class="hbar-list">
+          {% for row in dashboard.graficos_executivos.categorias["items"] %}
+            <div class="hbar-row">
+              <div class="hbar-top">
+                <span class="hbar-label">{{ row.label }}</span>
+                <span class="hbar-value">{{ row.value_fmt }}</span>
+              </div>
+              <div class="hbar-track"><div class="hbar-fill success" style="width: {{ row.width_pct }}%;"></div></div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Comparativos simples</h3>
+  <div class="body">
+    {% if dashboard.comparativos_basicos.has_comparativo %}
+      <p class="muted">Atual: <strong>{{ dashboard.comparativos_basicos.label_atual }}</strong> | Anterior: <strong>{{ dashboard.comparativos_basicos.label_anterior }}</strong></p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Indicador</th>
+              <th class="text-right">Atual</th>
+              <th class="text-right">Anterior</th>
+              <th class="text-right">Delta</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Processamentos</td>
+              <td class="text-right">{{ dashboard.comparativos_basicos.atual.processamentos }}</td>
+              <td class="text-right">{{ dashboard.comparativos_basicos.anterior.processamentos }}</td>
+              <td class="text-right">{{ dashboard.comparativos_basicos.delta.processamentos.absolute }} ({{ dashboard.comparativos_basicos.delta.processamentos.percent_fmt }}%)</td>
+            </tr>
+            <tr>
+              <td>Com alerta</td>
+              <td class="text-right">{{ dashboard.comparativos_basicos.atual.com_alerta }}</td>
+              <td class="text-right">{{ dashboard.comparativos_basicos.anterior.com_alerta }}</td>
+              <td class="text-right">{{ dashboard.comparativos_basicos.delta.com_alerta.absolute }} ({{ dashboard.comparativos_basicos.delta.com_alerta.percent_fmt }}%)</td>
+            </tr>
+            <tr>
+              <td>Não mapeados</td>
+              <td class="text-right">{{ dashboard.comparativos_basicos.atual.nao_mapeados }}</td>
+              <td class="text-right">{{ dashboard.comparativos_basicos.anterior.nao_mapeados }}</td>
+              <td class="text-right">{{ dashboard.comparativos_basicos.delta.nao_mapeados.absolute }} ({{ dashboard.comparativos_basicos.delta.nao_mapeados.percent_fmt }}%)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p>Comparativo indisponível para os filtros atuais.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="section">
+  <h3>Leitura de risco e classificação</h3>
+  <div class="body detail-grid">
+    <div class="chart-panel">
+      <p class="chart-title">Principais alertas recorrentes</p>
+      <p class="chart-subtitle">Ocorrências de atenção mais frequentes no histórico filtrado.</p>
+      <ul class="simple-list">
+        {% for row in dashboard.alertas_recorrentes %}
+          <li>{{ row.alerta }} - {{ row.ocorrencias }}</li>
+        {% else %}
+          <li class="muted">Sem alertas recorrentes.</li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div class="chart-panel">
+      <p class="chart-title">Termos não mapeados mais recorrentes</p>
+      <p class="chart-subtitle">Casos que ainda merecem expansão do dicionário.</p>
+      <ul class="simple-list">
+        {% for row in dashboard.ranking_nao_mapeados %}
+          <li>{{ row.termo }} - {{ row.ocorrencias }}</li>
+        {% else %}
+          <li class="muted">Sem recorrência de não mapeados.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Consolidado do período</h3>
+  <div class="body table-wrap">
+    <table>
+      <tbody>
+        <tr><th>Período da obra</th><td>{{ dashboard.consolidado_periodo.periodo_obra }}</td></tr>
+        <tr><th>Período de processamento</th><td>{{ dashboard.consolidado_periodo.periodo_processamento }}</td></tr>
+        <tr><th>Runs consideradas</th><td>{{ dashboard.consolidado_periodo.runs_consideradas }}</td></tr>
+        <tr><th>Runs com dados válidos</th><td>{{ dashboard.consolidado_periodo.runs_com_dados }}</td></tr>
+        <tr><th>Execução (registros)</th><td>{{ dashboard.consolidado_periodo.execucao_registros }}</td></tr>
+        <tr><th>Frentes com produção</th><td>{{ dashboard.consolidado_periodo.frentes_com_producao }}</td></tr>
+        <tr><th>Frentes sem produção</th><td>{{ dashboard.consolidado_periodo.frentes_sem_producao }}</td></tr>
+        <tr><th>Ocorrências</th><td>{{ dashboard.consolidado_periodo.ocorrencias }}</td></tr>
+        <tr><th>Volume total</th><td>{{ dashboard.consolidado_periodo.volume_total_fmt }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Resumo por período</h3>
+  <div class="body">
+    {% if dashboard.resumo_por_periodo %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Período</th>
+              <th class="text-right">Processamentos</th>
+              <th class="text-right">Com alerta</th>
+              <th class="text-right">Sucesso</th>
+              <th class="text-right">Erro</th>
+              <th class="text-right">Não mapeados</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in dashboard.resumo_por_periodo %}
+              <tr>
+                <td>{{ row.periodo }}</td>
+                <td class="text-right">{{ row.processamentos }}</td>
+                <td class="text-right">{{ row.processamentos_alerta }}</td>
+                <td class="text-right">{{ row.sucesso }}</td>
+                <td class="text-right">{{ row.erro }}</td>
+                <td class="text-right">{{ row.nao_mapeados }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p>Nenhum resumo por período para os filtros aplicados.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="section">
+  <h3>Indicadores detalhados</h3>
+  <div class="body detail-grid">
+    <div class="chart-panel">
+      <p class="chart-title">Indicadores por núcleo</p>
+      <p class="chart-subtitle">Top {{ top_n }} núcleos por volume e registros.</p>
+      {% if dashboard.indicadores_por_nucleo %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Núcleo</th>
+                <th class="text-right">Volume</th>
+                <th class="text-right">Execução</th>
+                <th class="text-right">Frentes</th>
+                <th class="text-right">Ocorrências</th>
+                <th class="text-right">Equipes</th>
+                <th class="text-right">Serviços</th>
+                <th class="text-right">Runs</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in dashboard.indicadores_por_nucleo %}
+                <tr>
+                  <td>{{ row.nucleo }}</td>
+                  <td class="text-right">{{ row.volume_total_fmt }}</td>
+                  <td class="text-right">{{ row.registros_execucao }}</td>
+                  <td class="text-right">{{ row.frentes }}</td>
+                  <td class="text-right">{{ row.ocorrencias }}</td>
+                  <td class="text-right">{{ row.equipes_ativas }}</td>
+                  <td class="text-right">{{ row.servicos_distintos }}</td>
+                  <td class="text-right">{{ row.runs }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p>Nenhum dado por núcleo para os filtros aplicados.</p>
+      {% endif %}
+    </div>
+
+    <div class="chart-panel">
+      <p class="chart-title">Indicadores por equipe</p>
+      <p class="chart-subtitle">Top {{ top_n }} equipes por volume e registros.</p>
+      {% if dashboard.indicadores_por_equipe %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Equipe</th>
+                <th class="text-right">Volume</th>
+                <th class="text-right">Execução</th>
+                <th class="text-right">Frentes</th>
+                <th class="text-right">Ocorrências</th>
+                <th class="text-right">Núcleos</th>
+                <th class="text-right">Serviços</th>
+                <th class="text-right">Runs</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in dashboard.indicadores_por_equipe %}
+                <tr>
+                  <td>{{ row.equipe }}</td>
+                  <td class="text-right">{{ row.volume_total_fmt }}</td>
+                  <td class="text-right">{{ row.registros_execucao }}</td>
+                  <td class="text-right">{{ row.frentes }}</td>
+                  <td class="text-right">{{ row.ocorrencias }}</td>
+                  <td class="text-right">{{ row.nucleos_ativos }}</td>
+                  <td class="text-right">{{ row.servicos_distintos }}</td>
+                  <td class="text-right">{{ row.runs }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p>Nenhum dado por equipe para os filtros aplicados.</p>
+      {% endif %}
+    </div>
+
+    <div class="chart-panel">
+      <p class="chart-title">Indicadores por município</p>
+      <p class="chart-subtitle">Top {{ top_n }} municípios do recorte.</p>
+      {% if dashboard.indicadores_por_municipio %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Município</th>
+                <th class="text-right">Processamentos</th>
+                <th class="text-right">Com alerta</th>
+                <th class="text-right">Não mapeados</th>
+                <th class="text-right">Núcleos</th>
+                <th class="text-right">Equipes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in dashboard.indicadores_por_municipio %}
+                <tr>
+                  <td>{{ row.municipio }}</td>
+                  <td class="text-right">{{ row.processamentos }}</td>
+                  <td class="text-right">{{ row.processamentos_alerta }}</td>
+                  <td class="text-right">{{ row.nao_mapeados }}</td>
+                  <td class="text-right">{{ row.nucleos_ativos }}</td>
+                  <td class="text-right">{{ row.equipes_ativas }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p>Nenhum dado por município para os filtros aplicados.</p>
+      {% endif %}
+    </div>
+
+    <div class="chart-panel">
+      <p class="chart-title">Rankings detalhados</p>
+      <p class="chart-subtitle">Abertura completa dos serviços e ocorrências mais recorrentes.</p>
+      <div class="table-wrap" style="margin-bottom:10px;">
+        <table>
+          <thead>
+            <tr>
+              <th>Serviço</th>
+              <th>Categoria</th>
+              <th class="text-right">Volume</th>
+              <th class="text-right">Registros</th>
+              <th>Unidades</th>
+              <th class="text-right">Núcleos</th>
+              <th class="text-right">Equipes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in dashboard.ranking_servicos %}
+              <tr>
+                <td>{{ row.servico }}</td>
+                <td>{{ row.categoria }}</td>
+                <td class="text-right">{{ row.volume_total_fmt }}</td>
+                <td class="text-right">{{ row.registros }}</td>
+                <td>{{ row.unidades }}</td>
+                <td class="text-right">{{ row.nucleos_ativos }}</td>
+                <td class="text-right">{{ row.equipes_ativas }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="7">Nenhum serviço encontrado para os filtros aplicados.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Tipo de ocorrência</th>
+              <th class="text-right">Ocorrências</th>
+              <th class="text-right">Núcleos impactados</th>
+              <th class="text-right">Equipes impactadas</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in dashboard.ranking_ocorrencias %}
+              <tr>
+                <td>{{ row.tipo_ocorrencia }}</td>
+                <td class="text-right">{{ row.ocorrencias }}</td>
+                <td class="text-right">{{ row.nucleos_ativos }}</td>
+                <td class="text-right">{{ row.equipes_ativas }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="4">Nenhuma ocorrência encontrada para os filtros aplicados.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+
