@@ -4,35 +4,53 @@ Sistema Python/Flask para processar mensagens operacionais, gerar saidas CSV/Exc
 
 ## Entrypoints oficiais
 
-- Aplicacao web (oficial): `python run_web.py`
+- Aplicacao web oficial: `python run_web.py`
 - CLI legado/local: `python main.py ...`
 
-`main.py` permanece ativo para processamento local e compatibilidade operacional. O ponto principal da aplicacao web e `run_web.py`.
+`run_web.py` e o entrypoint oficial da interface web.
+`main.py` permanece para processamento local/legado e compatibilidade operacional.
 
-## Estrutura oficial
+## Raiz consolidada (arquivos oficiais)
 
 ```text
 .
-├── app/
-│   ├── core/       # parsing, normalizacao e reconciliacao
-│   ├── routes/     # rotas Flask
-│   ├── services/   # pipeline, relatorios, consolidacao e workbook
-│   └── utils/      # utilitarios compartilhados
-├── config/
-│   ├── settings.py # configuracao centralizada de ambiente e paths
-│   └── ...         # dicionarios, template homologado e referencias
-├── data/
-│   ├── seed/       # dados base versionaveis
-│   ├── runtime/    # dados gerados em execucao
-│   └── drafts/     # rascunhos temporarios da interface web
-├── docs/
-├── scripts/
-├── templates/
-├── tests/
-├── main.py         # fluxo legado/local
-├── run_web.py      # entrypoint oficial web
-└── README.md
+|-- run_web.py
+|-- main.py
+|-- README.md
+|-- requirements.txt
+|-- .env.example
+|-- .gitignore
+|-- Dockerfile
+|-- .dockerignore
+|-- app/
+|-- config/
+|-- data/
+|-- docs/
+|-- samples/
+|-- scripts/
+|-- templates/
+`-- tests/
 ```
+
+## Estrutura oficial por area
+
+- `app/core`: parsing, normalizacao e reconciliacao
+- `app/routes`: rotas Flask
+- `app/services`: pipeline, relatorios e consolidadores
+- `app/utils`: utilitarios compartilhados
+- `config`: settings, dicionarios e template homologado
+- `data/seed`: dados base versionaveis
+- `data/runtime`: dados gerados em execucao
+- `data/drafts`: rascunhos temporarios da web
+- `scripts`: utilitarios operacionais e atalhos `.bat`
+- `samples`: entradas de exemplo
+
+## Consolidacao final da raiz
+
+- `interface.py` (wrapper) removido da raiz.
+- `processar_pasta_txt.py` (wrapper) removido da raiz.
+- `entrada_interface.txt` movido para `samples/entrada_interface.txt`.
+- `entrada_interface.txt` na raiz agora e ignorado no `.gitignore` (arquivo temporario de runtime).
 
 ## Configuracao centralizada
 
@@ -51,7 +69,7 @@ Variaveis suportadas:
 - `SERVICE_DICTIONARY_V2_JSON`
 - `BASE_GERENCIAL_TEMPLATE`
 
-Arquivo exemplo: `.env.example`
+Arquivo exemplo:
 
 ```powershell
 Copy-Item .env.example .env
@@ -79,7 +97,7 @@ Atalho:
 python run_web.py
 ```
 
-Customizando host e porta:
+Com host e porta customizados:
 
 ```powershell
 python run_web.py --host 127.0.0.1 --port 5000
@@ -95,19 +113,13 @@ Processar um TXT:
 python main.py parse "C:\caminho\entrada.txt" --output "C:\caminho\saida"
 ```
 
-Processar e atualizar base mestra:
-
-```powershell
-python main.py parse "C:\caminho\entrada.txt" --output "C:\caminho\saida" --master-dir "C:\caminho\BASE_MESTRA"
-```
-
 Processar pasta de TXTs:
 
 ```powershell
 python main.py batch "C:\caminho\pasta_txt"
 ```
 
-Atualizar base mestra com uma saida existente:
+Atualizar base mestra:
 
 ```powershell
 python main.py update-master "C:\caminho\saida" --master-dir "C:\caminho\BASE_MESTRA"
@@ -121,15 +133,16 @@ python main.py consolidate-master "C:\caminho\saidas" --output "C:\caminho\BASE_
 
 ## Scripts operacionais (`scripts/`)
 
-- `abrir_interface_web.bat`
-- `abrir_interface.bat`
-- `instalar_dependencias.bat`
+- `abrir_interface_web.bat` (web oficial)
+- `abrir_interface.bat` (desktop legado Tkinter)
 - `processar_arquivo_txt.bat`
 - `processar_arquivo_e_atualizar_base_mestra.bat`
 - `processar_pasta_txt.bat`
 - `atualizar_base_mestra.bat`
 - `consolidar_saidas_em_base_mestra.bat`
 - `processar_exemplo.bat`
+- `interface_legacy.py`
+- `processar_pasta_txt.py`
 
 ## Docker (preparacao para hospedagem)
 
@@ -139,13 +152,13 @@ Build da imagem:
 docker build -t sisg-web:latest .
 ```
 
-Execucao do container:
+Execucao:
 
 ```powershell
 docker run --rm -p 5000:5000 sisg-web:latest
 ```
 
-Com bind para persistir saidas e base mestra no host:
+Com persistencia de runtime no host:
 
 ```powershell
 docker run --rm -p 5000:5000 `
@@ -165,7 +178,7 @@ Pastas tratadas como runtime/local (nao codigo-fonte):
 - `data/runtime/`
 - `data/drafts/web/`
 
-`.gitignore` ja esta configurado para evitar versionamento dessas saidas, preservando `.gitkeep` quando necessario.
+`.gitignore` impede versionamento de caches e dados gerados, preservando `.gitkeep` quando aplicavel.
 
 ## Testes
 
@@ -175,6 +188,6 @@ python -m unittest tests.test_input_layer tests.test_legacy_parser_mapping tests
 
 ## Compatibilidade
 
-- Nao houve mudanca de regra de negocio nesta etapa.
-- `run_web.py` e o entrypoint oficial da web.
-- `main.py` continua disponivel para fluxo legado/local.
+- Nao houve mudanca de regra de negocio nesta consolidacao.
+- `run_web.py` permanece o entrypoint oficial web.
+- `main.py` permanece o entrypoint legado/local.

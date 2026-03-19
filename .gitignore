@@ -18,6 +18,7 @@ Thumbs.db
 *.log
 
 BASE_CONSOLIDADA/
+entrada_interface.txt
 saida_entrada_interface/
 saida_temp/
 saida_teste/
