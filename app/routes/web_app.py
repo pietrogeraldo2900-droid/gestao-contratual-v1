@@ -10,10 +10,11 @@ from flask import Flask, flash, g, make_response, redirect, render_template, req
 from config.settings import AppSettings, load_settings
 from app.database import build_database_manager, init_db
 from app.repositories import ContractRepository, ReportRepository, UserRepository
+from app.repositories.contract_repository import ContractConflictError
 from app.repositories.user_repository import UserAlreadyExistsError
 from app.routes.auth_api import register_auth_routes
 from app.routes.contracts_api import register_contract_routes
-from app.services.contract_service import ContractService
+from app.services.contract_service import ContractService, ContractValidationError
 from app.services.report_service import ReportService, create_report_service
 from app.services.user_service import UserAuthError, UserService, UserValidationError
 from app.utils.jwt_utils import generate_jwt_token
@@ -223,6 +224,10 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     app.config["USER_SERVICE"] = user_service
 
     protected_web_endpoints = {
+        "dashboard",
+        "web_contracts_list",
+        "web_contracts_new",
+        "web_contracts_create",
         "index",
         "nucleos",
         "nucleos_save",
@@ -239,6 +244,27 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     def _active_user_service() -> UserService | None:
         candidate = app.config.get("USER_SERVICE")
         required = ("authenticate_user", "register_user", "get_user_by_id")
+        if candidate is not None and all(callable(getattr(candidate, name, None)) for name in required):
+            return candidate  # type: ignore[return-value]
+        return None
+
+    def _active_contract_service() -> ContractService | None:
+        candidate = app.config.get("CONTRACTS_SERVICE")
+        required = ("count_contracts", "list_contracts")
+        if candidate is not None and all(callable(getattr(candidate, name, None)) for name in required):
+            return candidate  # type: ignore[return-value]
+        return None
+
+    def _active_contract_write_service() -> ContractService | None:
+        candidate = app.config.get("CONTRACTS_SERVICE")
+        required = ("create_contract", "list_contracts")
+        if candidate is not None and all(callable(getattr(candidate, name, None)) for name in required):
+            return candidate  # type: ignore[return-value]
+        return None
+
+    def _active_report_service() -> ReportService | None:
+        candidate = app.config.get("REPORT_SERVICE")
+        required = ("count_reports", "count_recent_reports", "list_recent_reports")
         if candidate is not None and all(callable(getattr(candidate, name, None)) for name in required):
             return candidate  # type: ignore[return-value]
         return None
@@ -266,6 +292,32 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         if _is_safe_internal_next(raw_next):
             return raw_next
         return url_for(default_endpoint)
+
+    def _render_entry_page(
+        form_data: Dict[str, object] | None = None,
+        mensagem: str = "",
+        error_message: str = "",
+        autofill_info: Dict[str, object] | None = None,
+    ):
+        defaults = {
+            "data": "",
+            "nucleo": "",
+            "logradouro": "",
+            "municipio": "",
+            "equipe": "",
+            "contract_id": "",
+            "aplicar_todos": "",
+        }
+        payload = dict(defaults)
+        payload.update(dict(form_data or {}))
+        return render_template(
+            "index.html",
+            form_data=payload,
+            mensagem=str(mensagem or ""),
+            error_message=str(error_message or ""),
+            nucleo_reference=service.get_nucleo_reference_ui(),
+            autofill_info=autofill_info or {"matched": False, "applied": {}, "profile": {}},
+        )
 
     @app.context_processor
     def _inject_web_auth_context():
@@ -313,7 +365,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     @app.route("/login", methods=["GET", "POST"])
     def web_login():
         auth_service = _active_user_service()
-        next_url = _resolve_next()
+        next_url = _resolve_next("dashboard")
 
         if auth_service is None:
             return (
@@ -385,7 +437,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     @app.route("/cadastro", methods=["GET", "POST"])
     def web_register():
         auth_service = _active_user_service()
-        next_url = _resolve_next()
+        next_url = _resolve_next("dashboard")
 
         if auth_service is None:
             return (
@@ -491,24 +543,248 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         flash("Sessao encerrada.", "info")
         return redirect(url_for("web_login"))
 
+    @app.get("/dashboard")
+    def dashboard():
+        contracts_data: list[dict[str, object]] = []
+        recent_reports: list[dict[str, object]] = []
+        total_contracts = 0
+        total_reports = 0
+        recent_reports_count = 0
+        recent_window_days = 7
+        warning_message = ""
+        empty_state_message = ""
+        load_errors: list[str] = []
+
+        dashboard_contract_service = _active_contract_service()
+        dashboard_report_service = _active_report_service()
+        if dashboard_contract_service is None or dashboard_report_service is None:
+            empty_state_message = (
+                "Ainda nao ha dados iniciais para exibir no dashboard. "
+                "Assim que contratos e relatorios forem cadastrados, os indicadores aparecem aqui."
+            )
+        else:
+            try:
+                total_contracts = max(0, int(dashboard_contract_service.count_contracts()))
+                contracts = dashboard_contract_service.list_contracts(limit=20)
+                contracts_data = [c.to_dict() for c in contracts]
+            except Exception as exc:
+                app.logger.warning("Falha ao carregar contratos do dashboard: %s", exc)
+                load_errors.append("contracts")
+
+            try:
+                total_reports = max(0, int(dashboard_report_service.count_reports()))
+                recent_reports_count = max(
+                    0,
+                    int(dashboard_report_service.count_recent_reports(days=recent_window_days)),
+                )
+                recent_reports = list(dashboard_report_service.list_recent_reports(limit=20))
+            except Exception as exc:
+                app.logger.warning("Falha ao carregar relatorios do dashboard: %s", exc)
+                load_errors.append("reports")
+
+            if load_errors:
+                warning_message = (
+                    "Os dados do dashboard nao puderam ser atualizados completamente agora. "
+                    "Exibindo o que foi possivel carregar."
+                )
+            elif (
+                total_contracts == 0
+                and total_reports == 0
+                and recent_reports_count == 0
+                and not contracts_data
+                and not recent_reports
+            ):
+                empty_state_message = (
+                    "Nenhum contrato ou relatorio encontrado ainda. "
+                    "Cadastre os primeiros registros para popular o dashboard."
+                )
+
+        return render_template(
+            "dashboard.html",
+            title="Dashboard",
+            warning_message=warning_message,
+            empty_state_message=empty_state_message,
+            total_contracts=total_contracts,
+            total_reports=total_reports,
+            recent_reports_count=recent_reports_count,
+            recent_window_days=recent_window_days,
+            contracts=contracts_data,
+            recent_reports=recent_reports,
+        )
+
+    def _render_contract_form(
+        form_data: Dict[str, str] | None = None,
+        error_message: str = "",
+    ):
+        defaults = {
+            "nome_contrato": "",
+            "numero_contrato": "",
+            "objeto_contrato": "",
+            "data_assinatura": "",
+            "vigencia_inicio": "",
+            "vigencia_fim": "",
+            "prazo_dias": "",
+            "valor_contrato": "",
+            "contratante_nome": "",
+            "contratante_cnpj": "",
+            "contratada_nome": "",
+            "contratada_cnpj": "",
+            "regional": "",
+            "diretoria": "",
+            "municipios_atendidos": "",
+            "status_contrato": "em_implantacao",
+            "reajuste_indice": "",
+            "prazo_pagamento_dias": "",
+            "possui_ordem_servico": "",
+            "observacoes": "",
+        }
+        payload = dict(defaults)
+        payload.update(dict(form_data or {}))
+        return render_template(
+            "contract_form.html",
+            title="Novo contrato",
+            form_data=payload,
+            error_message=str(error_message or ""),
+            status_options=["em_implantacao", "ativo", "suspenso", "encerrado"],
+        )
+
+    @app.get("/contratos")
+    def web_contracts_list():
+        contracts_service = _active_contract_service()
+        if contracts_service is None:
+            return (
+                render_template(
+                    "contracts_list.html",
+                    title="Contratos",
+                    contracts=[],
+                    error_message=(
+                        "O modulo de contratos ainda nao esta disponivel neste ambiente. "
+                        "Tente novamente depois que a conexao com banco estiver ativa."
+                    ),
+                ),
+                503,
+            )
+
+        try:
+            contracts = contracts_service.list_contracts(limit=200)
+            rows = [item.to_dict() for item in contracts]
+        except Exception as exc:
+            app.logger.warning("Falha ao listar contratos na interface web: %s", exc)
+            return (
+                render_template(
+                    "contracts_list.html",
+                    title="Contratos",
+                    contracts=[],
+                    error_message="Nao foi possivel carregar os contratos agora. Tente novamente em instantes.",
+                ),
+                500,
+            )
+
+        return render_template(
+            "contracts_list.html",
+            title="Contratos",
+            contracts=rows,
+            error_message="",
+        )
+
+    @app.get("/contratos/novo")
+    def web_contracts_new():
+        contracts_service = _active_contract_write_service()
+        if contracts_service is None:
+            return (
+                _render_contract_form(
+                    error_message=(
+                        "O modulo de contratos ainda nao esta disponivel neste ambiente. "
+                        "Ative a conexao com banco para criar novos contratos."
+                    )
+                ),
+                503,
+            )
+        return _render_contract_form()
+
+    @app.post("/contratos")
+    def web_contracts_create():
+        contracts_service = _active_contract_write_service()
+        if contracts_service is None:
+            return (
+                _render_contract_form(
+                    form_data={
+                        "nome_contrato": str(request.form.get("nome_contrato", "") or "").strip(),
+                        "numero_contrato": str(request.form.get("numero_contrato", "") or "").strip(),
+                        "objeto_contrato": str(request.form.get("objeto_contrato", "") or "").strip(),
+                        "data_assinatura": str(request.form.get("data_assinatura", "") or "").strip(),
+                        "vigencia_inicio": str(request.form.get("vigencia_inicio", "") or "").strip(),
+                        "vigencia_fim": str(request.form.get("vigencia_fim", "") or "").strip(),
+                        "prazo_dias": str(request.form.get("prazo_dias", "") or "").strip(),
+                        "valor_contrato": str(request.form.get("valor_contrato", "") or "").strip(),
+                        "contratante_nome": str(request.form.get("contratante_nome", "") or "").strip(),
+                        "contratante_cnpj": str(request.form.get("contratante_cnpj", "") or "").strip(),
+                        "contratada_nome": str(request.form.get("contratada_nome", "") or "").strip(),
+                        "contratada_cnpj": str(request.form.get("contratada_cnpj", "") or "").strip(),
+                        "regional": str(request.form.get("regional", "") or "").strip(),
+                        "diretoria": str(request.form.get("diretoria", "") or "").strip(),
+                        "municipios_atendidos": str(request.form.get("municipios_atendidos", "") or "").strip(),
+                        "status_contrato": str(request.form.get("status_contrato", "em_implantacao") or "em_implantacao").strip().lower(),
+                        "reajuste_indice": str(request.form.get("reajuste_indice", "") or "").strip(),
+                        "prazo_pagamento_dias": str(request.form.get("prazo_pagamento_dias", "") or "").strip(),
+                        "possui_ordem_servico": "1" if request.form.get("possui_ordem_servico") else "",
+                        "observacoes": str(request.form.get("observacoes", "") or "").strip(),
+                    },
+                    error_message=(
+                        "O modulo de contratos ainda nao esta disponivel neste ambiente. "
+                        "Ative a conexao com banco para criar novos contratos."
+                    ),
+                ),
+                503,
+            )
+
+        payload = {
+            "nome_contrato": str(request.form.get("nome_contrato", "") or "").strip(),
+            "numero_contrato": str(request.form.get("numero_contrato", "") or "").strip(),
+            "objeto_contrato": str(request.form.get("objeto_contrato", "") or "").strip(),
+            "data_assinatura": str(request.form.get("data_assinatura", "") or "").strip(),
+            "vigencia_inicio": str(request.form.get("vigencia_inicio", "") or "").strip(),
+            "vigencia_fim": str(request.form.get("vigencia_fim", "") or "").strip(),
+            "prazo_dias": str(request.form.get("prazo_dias", "") or "").strip(),
+            "valor_contrato": str(request.form.get("valor_contrato", "") or "").strip(),
+            "contratante_nome": str(request.form.get("contratante_nome", "") or "").strip(),
+            "contratante_cnpj": str(request.form.get("contratante_cnpj", "") or "").strip(),
+            "contratada_nome": str(request.form.get("contratada_nome", "") or "").strip(),
+            "contratada_cnpj": str(request.form.get("contratada_cnpj", "") or "").strip(),
+            "regional": str(request.form.get("regional", "") or "").strip(),
+            "diretoria": str(request.form.get("diretoria", "") or "").strip(),
+            "municipios_atendidos": str(request.form.get("municipios_atendidos", "") or "").strip(),
+            "status_contrato": str(request.form.get("status_contrato", "em_implantacao") or "em_implantacao").strip().lower(),
+            "reajuste_indice": str(request.form.get("reajuste_indice", "") or "").strip(),
+            "prazo_pagamento_dias": str(request.form.get("prazo_pagamento_dias", "") or "").strip(),
+            "possui_ordem_servico": "1" if request.form.get("possui_ordem_servico") else "",
+            "observacoes": str(request.form.get("observacoes", "") or "").strip(),
+        }
+
+        try:
+            created = contracts_service.create_contract(payload)
+        except ContractValidationError as exc:
+            return _render_contract_form(form_data=payload, error_message=str(exc)), 400
+        except ContractConflictError as exc:
+            return _render_contract_form(form_data=payload, error_message=str(exc)), 409
+        except Exception as exc:
+            app.logger.warning("Falha ao criar contrato via interface web: %s", exc)
+            return (
+                _render_contract_form(
+                    form_data=payload,
+                    error_message="Nao foi possivel salvar o contrato agora. Tente novamente em instantes.",
+                ),
+                500,
+            )
+
+        flash(f"Contrato {created.numero_contrato} criado com sucesso.", "success")
+        return redirect(url_for("web_contracts_list"))
+
     @app.get("/")
     def index():
-        return render_template(
-            "index.html",
-            form_data={
-                "data": "",
-                "nucleo": "",
-                "logradouro": "",
-                "municipio": "",
-                "equipe": "",
-                "contract_id": "",
-                "aplicar_todos": "",
-            },
-            mensagem="",
-            error_message="",
-            nucleo_reference=service.get_nucleo_reference_ui(),
-            autofill_info={"matched": False, "applied": {}, "profile": {}},
-        )
+        if _active_user_service() is not None:
+            return redirect(url_for("dashboard"))
+        return _render_entry_page()
 
     @app.get("/nucleos")
     def nucleos():
@@ -948,7 +1224,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
 
     @app.get("/nova-entrada")
     def nova_entrada_redirect():
-        return redirect(url_for("index"))
+        return _render_entry_page()
 
     register_auth_routes(app, user_service, settings.auth_jwt_secret, settings.auth_jwt_exp_minutes)
     register_contract_routes(app, contract_service, report_service)

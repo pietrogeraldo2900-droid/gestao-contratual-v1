@@ -96,10 +96,27 @@ def register_contract_routes(
 
         try:
             rows = list_reports_by_contract_service(service, contract_id)  # type: ignore[arg-type]
+            contract_context = None
+            get_context = getattr(service, "get_contract_context", None)
+            if callable(get_context):
+                contract_context = get_context(contract_id)
         except ReportValidationError as exc:
             return jsonify({"success": False, "data": None, "error": str(exc)}), 400
         except Exception as exc:
             app.logger.exception("Erro ao listar relatorios por contrato")
             return jsonify({"success": False, "data": None, "error": "Falha ao listar relatorios.", "detail": str(exc)}), 500
 
-        return jsonify({"success": True, "data": {"contract_id": contract_id, "count": len(rows), "items": rows}}), 200
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "data": {
+                        "contract_id": contract_id,
+                        "contract_context": contract_context,
+                        "count": len(rows),
+                        "items": rows,
+                    },
+                }
+            ),
+            200,
+        )

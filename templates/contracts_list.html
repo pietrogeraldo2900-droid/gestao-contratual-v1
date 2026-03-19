@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-hero compact">
+  <div class="page-hero-grid">
+    <div>
+      <div class="hero-eyebrow">Modulo de contratos</div>
+      <h2 class="hero-title">Contratos cadastrados</h2>
+      <p class="hero-subtitle">Lista simples para consulta rapida e alimentacao inicial do produto. Novos contratos criados aqui ja aparecem no dashboard.</p>
+    </div>
+    <div class="hero-stat-grid">
+      <div class="hero-stat">
+        <div class="hero-stat-label">Total exibido</div>
+        <div class="hero-stat-value">{{ contracts|length }}</div>
+        <div class="hero-stat-subtitle">Registros carregados da base</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">Fluxo</div>
+        <div class="hero-stat-value">MVP</div>
+        <div class="hero-stat-subtitle">Criacao e listagem web</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% if error_message %}
+  <div class="notice warning">{{ error_message }}</div>
+{% endif %}
+
+<div class="actions">
+  <a href="{{ url_for('web_contracts_new') }}"><button type="button">Novo contrato</button></a>
+  <a href="{{ url_for('dashboard') }}"><button type="button" class="secondary">Voltar ao dashboard</button></a>
+</div>
+
+<section class="section">
+  <h3>Lista de contratos</h3>
+  <div class="body">
+    {% if contracts %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Numero</th>
+              <th>Nome</th>
+              <th>Contratante</th>
+              <th>Contratada</th>
+              <th>Municipios</th>
+              <th>Status</th>
+              <th>Vigencia</th>
+              <th>Valor</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for contract in contracts %}
+              <tr>
+                <td>{{ contract.numero_contrato or contract.contract_code }}</td>
+                <td>{{ contract.nome_contrato or contract.title }}</td>
+                <td>{{ contract.contratante_nome or "-" }}</td>
+                <td>{{ contract.contratada_nome or "-" }}</td>
+                <td>{{ contract.municipios_atendidos or "-" }}</td>
+                <td><span class="badge info">{{ contract.status_contrato or contract.status or "em_implantacao" }}</span></td>
+                <td>
+                  {% if contract.vigencia_inicio or contract.vigencia_fim %}
+                    {{ contract.vigencia_inicio or "-" }} ate {{ contract.vigencia_fim or "-" }}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td>R$ {{ contract.valor_contrato or "0.00" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">Nenhum contrato cadastrado ainda. Use o botao "Novo contrato" para iniciar.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

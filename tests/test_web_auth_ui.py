@@ -101,16 +101,19 @@ class WebAuthUITests(unittest.TestCase):
                 "email": "usuario@empresa.com",
                 "password": "12345678",
                 "confirm_password": "12345678",
-                "next": "/",
             },
             follow_redirects=False,
         )
         self.assertEqual(register_response.status_code, 302)
-        self.assertEqual("/", str(register_response.headers.get("Location", "") or ""))
+        self.assertEqual("/dashboard", str(register_response.headers.get("Location", "") or ""))
 
-        home_response = self.client.get("/")
+        home_response = self.client.get("/dashboard")
         self.assertEqual(home_response.status_code, 200)
-        self.assertIn("Nova entrada operacional", home_response.data.decode("utf-8"))
+        self.assertIn("Dashboard operacional", home_response.data.decode("utf-8"))
+
+        root_response = self.client.get("/", follow_redirects=False)
+        self.assertEqual(root_response.status_code, 302)
+        self.assertEqual("/dashboard", str(root_response.headers.get("Location", "") or ""))
 
         logout_response = self.client.get("/logout", follow_redirects=False)
         self.assertEqual(logout_response.status_code, 302)
@@ -159,6 +162,17 @@ class WebAuthUITests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 302)
         self.assertEqual("/history", str(response.headers.get("Location", "") or ""))
+
+    def test_login_default_redirects_to_dashboard(self) -> None:
+        self.fake_user_service.register_user("admin@empresa.com", "12345678")
+
+        response = self.client.post(
+            "/login",
+            data={"email": "admin@empresa.com", "password": "12345678"},
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual("/dashboard", str(response.headers.get("Location", "") or ""))
 
 
 if __name__ == "__main__":

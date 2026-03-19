@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-hero">
+  <div class="page-hero-grid">
+    <div>
+      <div class="hero-eyebrow">Visao resumida</div>
+      <h2 class="hero-title">Dashboard operacional</h2>
+      <p class="hero-subtitle">Resumo rapido de contratos e relatorios para apoiar a navegacao diaria sem alterar o fluxo atual do sistema.</p>
+      <div class="hero-chip-row">
+        <span class="hero-chip">Contrato + Relatorio</span>
+        <span class="hero-chip">Acompanhamento rapido</span>
+        <span class="hero-chip">Acesso autenticado</span>
+      </div>
+    </div>
+    <div class="hero-stat-grid">
+      <div class="hero-stat">
+        <div class="hero-stat-label">Contratos</div>
+        <div class="hero-stat-value">{{ total_contracts }}</div>
+        <div class="hero-stat-subtitle">Total cadastrado no banco</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">Relatorios</div>
+        <div class="hero-stat-value">{{ total_reports }}</div>
+        <div class="hero-stat-subtitle">Total registrado no banco</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% if warning_message %}
+  <div class="notice warning">{{ warning_message }}</div>
+{% endif %}
+{% if empty_state_message %}
+  <div class="notice info">{{ empty_state_message }}</div>
+{% endif %}
+
+<div class="actions">
+  <a href="{{ url_for('web_contracts_new') }}"><button type="button">Novo contrato</button></a>
+  <a href="{{ url_for('web_contracts_list') }}"><button type="button" class="secondary">Ver contratos</button></a>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card executive">
+    <div class="kpi-title">Contratos</div>
+    <div class="kpi-value">{{ total_contracts }}</div>
+    <div class="kpi-subtitle">Quantidade total de contratos disponivel para operacao.</div>
+  </div>
+  <div class="kpi-card executive">
+    <div class="kpi-title">Relatorios totais</div>
+    <div class="kpi-value">{{ total_reports }}</div>
+    <div class="kpi-subtitle">Relatorios vinculados aos contratos no banco.</div>
+  </div>
+  <div class="kpi-card executive">
+    <div class="kpi-title">Relatorios recentes</div>
+    <div class="kpi-value">{{ recent_reports_count }}</div>
+    <div class="kpi-subtitle">Registros criados nos ultimos {{ recent_window_days }} dias.</div>
+  </div>
+</div>
+
+<section id="contracts" class="section">
+  <h3>Contratos</h3>
+  <div class="body">
+    {% if contracts %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Numero</th>
+              <th>Nome</th>
+              <th>Municipios</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for contract in contracts %}
+              <tr>
+                <td>{{ contract.numero_contrato or contract.contract_code }}</td>
+                <td>{{ contract.nome_contrato or contract.title }}</td>
+                <td>{{ contract.municipios_atendidos or "-" }}</td>
+                <td><span class="badge info">{{ contract.status_contrato or contract.status or "em_implantacao" }}</span></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">Nenhum contrato encontrado no banco de dados.</p>
+    {% endif %}
+  </div>
+</section>
+
+<section id="reports" class="section">
+  <h3>Relatorios recentes</h3>
+  <div class="body">
+    {% if recent_reports %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Gerado em</th>
+              <th>Arquivo</th>
+              <th>Contrato</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for report in recent_reports %}
+              <tr>
+                <td>{{ report.created_at or "-" }}</td>
+                <td>{{ report.file_name }}</td>
+                <td>
+                  {% if report.numero_contrato or report.contract_code %}
+                    {{ report.numero_contrato or report.contract_code }} - {{ report.nome_contrato or report.contract_title }}
+                  {% else %}
+                    Contrato #{{ report.contract_id }}
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">Nenhum relatorio recente encontrado.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
