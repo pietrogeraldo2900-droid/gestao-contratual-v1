@@ -1,10 +1,11 @@
 FROM python:3.11-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV WEB_HOST=0.0.0.0
-ENV WEB_PORT=5000
-ENV WEB_DEBUG=0
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    WEB_HOST=0.0.0.0 \
+    WEB_PORT=5000 \
+    PORT=5000 \
+    WEB_DEBUG=0
 
 WORKDIR /app
 
@@ -17,4 +18,4 @@ RUN mkdir -p /app/data/runtime /app/data/drafts/web /app/saidas /app/BASE_MESTRA
 
 EXPOSE 5000
 
-CMD ["python", "run_web.py", "--host", "0.0.0.0", "--port", "5000"]
+CMD ["python", "run_web.py"]

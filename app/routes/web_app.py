@@ -7,6 +7,13 @@ from typing import Dict
 from flask import Flask, make_response, redirect, render_template, request, url_for
 
 from config.settings import AppSettings, load_settings
+from app.database import build_database_manager, init_db
+from app.repositories import ContractRepository, ReportRepository, UserRepository
+from app.routes.auth_api import register_auth_routes
+from app.routes.contracts_api import register_contract_routes
+from app.services.contract_service import ContractService
+from app.services.report_service import ReportService, create_report_service
+from app.services.user_service import UserService
 from app.services.web_service import WebPipelineService
 
 
@@ -65,6 +72,7 @@ def _collect_form_fields(form) -> Dict[str, object]:
         "logradouro": str(form.get("logradouro", "") or "").strip(),
         "municipio": str(form.get("municipio", "") or "").strip(),
         "equipe": str(form.get("equipe", "") or "").strip(),
+        "contract_id": str(form.get("contract_id", "") or "").strip(),
         "aplicar_todos": "1" if apply_all else "",
         "nucleo_overrides": nucleo_overrides,
         "manual_service_corrections": manual_service_corrections,
@@ -173,11 +181,42 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     )
     app.config["PIPELINE_SERVICE"] = service
 
+    contract_service: ContractService | None = None
+    report_service: ReportService | None = None
+    user_service: UserService | None = None
+    app.config["CONTRACTS_DB_ENABLED"] = settings.db_enabled
+    db_manager = build_database_manager(settings)
+    if db_manager is not None:
+        user_repository = UserRepository(db_manager)
+        contract_repository = ContractRepository(db_manager)
+        report_repository = ReportRepository(db_manager)
+        user_service = UserService(user_repository)
+        contract_service = ContractService(contract_repository)
+        report_service = ReportService(report_repository, contract_repository)
+        if settings.contracts_auto_init_schema:
+            try:
+                init_db(db_manager)
+            except Exception as exc:
+                app.logger.warning("Falha ao inicializar schema de contratos: %s", exc)
+                if settings.db_strict_startup:
+                    raise
+    app.config["CONTRACTS_SERVICE"] = contract_service
+    app.config["REPORT_SERVICE"] = report_service
+    app.config["USER_SERVICE"] = user_service
+
     @app.get("/")
     def index():
         return render_template(
             "index.html",
-            form_data={"data": "", "nucleo": "", "logradouro": "", "municipio": "", "equipe": "", "aplicar_todos": ""},
+            form_data={
+                "data": "",
+                "nucleo": "",
+                "logradouro": "",
+                "municipio": "",
+                "equipe": "",
+                "contract_id": "",
+                "aplicar_todos": "",
+            },
             mensagem="",
             error_message="",
             nucleo_reference=service.get_nucleo_reference_ui(),
@@ -286,6 +325,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             nucleo_reference=preview_data["nucleo_reference"],
             autofill_info=autofill_info,
             apply_all=form_data.get("aplicar_todos") == "1",
+            contract_id=str(form_data.get("contract_id", "") or "").strip(),
             raw_message=preview_data["raw_message"],
             error_message="",
         )
@@ -371,6 +411,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                 nucleo_reference=service.get_nucleo_reference_ui(),
                 autofill_info=autofill_info,
                 apply_all=form_data.get("aplicar_todos") == "1",
+                contract_id=str(form_data.get("contract_id", "") or "").strip(),
                 raw_message=str(draft.get("raw_message", "") or ""),
                 error_message=f"Nao foi possivel gerar os arquivos agora. Revise os alertas abaixo e tente novamente. Detalhe: {exc}",
             )
@@ -385,6 +426,40 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         )
         result["output_dir_uri"] = service._to_file_uri(result.get("output_dir", ""))
         result["base_gerencial_uri"] = service._to_file_uri(result.get("base_gerencial_path", ""))
+
+        report_sync = {"success": True, "data": {"registered": 0, "items": []}}
+        contract_id_raw = str(form_data.get("contract_id", "") or "").strip()
+        if contract_id_raw:
+            if report_service is None:
+                report_sync = {
+                    "success": False,
+                    "data": None,
+                    "error": "Registro de relatorios desativado: banco indisponivel.",
+                }
+            else:
+                try:
+                    contract_id = int(contract_id_raw)
+                    registered = []
+                    files_map = dict(result.get("files", {}) or {})
+                    for file_path in files_map.values():
+                        filename = Path(str(file_path or "")).name
+                        if not filename:
+                            continue
+                        created = create_report_service(report_service, contract_id, filename)
+                        registered.append(created)
+                    report_sync = {
+                        "success": True,
+                        "data": {"registered": len(registered), "items": registered},
+                    }
+                except Exception as exc:
+                    app.logger.warning("Falha ao registrar relatorios no banco: %s", exc)
+                    report_sync = {
+                        "success": False,
+                        "data": None,
+                        "error": str(exc),
+                    }
+        result["report_sync"] = report_sync
+
         return render_template("result.html", result=result)
 
     @app.get("/history")
@@ -587,6 +662,9 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     @app.get("/nova-entrada")
     def nova_entrada_redirect():
         return redirect(url_for("index"))
+
+    register_auth_routes(app, user_service, settings.auth_jwt_secret, settings.auth_jwt_exp_minutes)
+    register_contract_routes(app, contract_service, report_service)
 
     return app
 

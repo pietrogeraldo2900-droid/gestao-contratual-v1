@@ -218,6 +218,7 @@
 
 <form method="post" action="{{ url_for('generate') }}">
   <input type="hidden" name="draft_id" value="{{ draft_id }}">
+  <input type="hidden" name="contract_id" value="{{ contract_id or '' }}">
 
   <div class="section" id="campos-principais">
     <h3>Campos principais (preenchem campos vazios; nao sobrescrevem multi-nucleo por padrao)</h3>
