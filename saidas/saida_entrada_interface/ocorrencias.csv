@@ -1,2 +1,0 @@
-﻿id_ocorrencia,id_frente,data_referencia,contrato,programa,nucleo,equipe,tipo_ocorrencia,descricao,impacto_producao,arquivo_origem
-O0001,F001,04/03/2026,Oeste 1,Água Legal,Mississipi,Carlos,ocorrencia_operacional,"Execução com interferências no trajeto (rede de esgoto, rede de água e presença de pedras/rochas), exigindo maior cautela na escavação.",parcial,entrada_interface.txt

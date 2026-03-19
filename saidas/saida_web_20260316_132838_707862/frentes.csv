@@ -1,6 +1,0 @@
-﻿id_frente,data_referencia,contrato,programa,nucleo,equipe,logradouro,municipio,status_frente,observacao_frente,arquivo_origem,data
-F001,12/03/2026,Oeste 1,Água Legal,Mississipi,Carlos / Xavier / Weslyn,Viela Seis / Viela Quatro / Viela 4 / Viela 1 / Viela B,Barueri,producao_parcial,⚠️ Obs: Serviço executado para evitar infiltração em imóveis próximos. Atividades interrompidas posteriormente devido à tempestade ⛈️.,mensagem_web_20260316_132823.txt,12/03/2026
-F002,12/03/2026,Oeste 1,Água Legal,Mississipi,Carlos / Xavier / Weslyn,Viela Seis / Viela Quatro / Viela 4 / Viela 1 / Viela B,Barueri,paralisada,⚠️ Obs: Não foi possível dar continuidade ao prolongamento da rede devido às chuvas intensas.,mensagem_web_20260316_132823.txt,12/03/2026
-F003,12/03/2026,Oeste 1,Água Legal,Mississipi,Carlos / Xavier / Weslyn,Viela Seis / Viela Quatro / Viela 4 / Viela 1 / Viela B,Barueri,com_producao,,mensagem_web_20260316_132823.txt,12/03/2026
-F004,12/03/2026,Oeste 1,Água Legal,Cerejas,Reggis / Sidney,Rua Dezesseis,Jandira,producao_parcial,⚠️ Obs: Produção impactada devido à chuva.,mensagem_web_20260316_132823.txt,12/03/2026
-F005,12/03/2026,Oeste 1,Água Legal,Cerejas,Reggis / Sidney,Rua Dezesseis,Jandira,paralisada,⚠️ Obs: Equipe atuando na resolução de pendências no núcleo. Produção afetada pela chuva.,mensagem_web_20260316_132823.txt,12/03/2026

@@ -1,5 +1,0 @@
-﻿id_ocorrencia,id_frente,data_referencia,contrato,programa,nucleo,equipe,tipo_ocorrencia,descricao,impacto_producao,arquivo_origem,data,logradouro,municipio
-O0001,F001,09/03/2026,Oeste 1,Água Legal,Santa Terezinha,Sidney,clima,Atividades paralisadas no período da manhã devido à chuva. Serviço executado após fechamento da rede.,sim,mensagem_web_20260311_191839.txt,09/03/2026,Av. Deputado Emílio Carlos,Carapicuíba
-O0002,F002,09/03/2026,Oeste 1,Água Legal,Santa Terezinha,Sidney,sem_producao,Sem produção,sim,mensagem_web_20260311_191839.txt,09/03/2026,Av. Deputado Emílio Carlos,Carapicuíba
-O0003,F002,09/03/2026,Oeste 1,Água Legal,Santa Terezinha,Sidney,clima,"Atividades interrompidas devido à tempestade, impossibilitando abertura de valas e execução dos serviços.",sim,mensagem_web_20260311_191839.txt,09/03/2026,Av. Deputado Emílio Carlos,Carapicuíba
-O0004,F003,09/03/2026,Oeste 1,Água Legal,Santa Terezinha,Sidney,clima,"Devido à chuva contínua durante todo o dia, não foi possível executar a escavação da vala.",sim,mensagem_web_20260311_191839.txt,09/03/2026,Av. Deputado Emílio Carlos,Carapicuíba

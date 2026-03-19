@@ -1,8 +1,0 @@
-﻿id_frente,data_referencia,contrato,programa,nucleo,equipe,logradouro,status_frente,observacao_frente,arquivo_origem
-F001,04/03/2026,Oeste 1,Água Legal,Mississipi,Carlos,Viela Seis,producao_parcial,"Execução com interferências no trajeto (rede de esgoto, rede de água e presença de pedras/rochas), exigindo maior cautela na escavação.",entrada_interface.txt
-F002,04/03/2026,Oeste 1,Água Legal,Mississipi,Xavier,Viela 2,com_producao,,entrada_interface.txt
-F003,04/03/2026,Oeste 1,Água Legal,Mississipi,Weslyn,Viela Orinoco,com_producao,,entrada_interface.txt
-F004,04/03/2026,Oeste 1,Água Legal,Cerejas,Reggis,Tv. das Cerejas,com_producao,,entrada_interface.txt
-F005,04/03/2026,Oeste 1,Água Legal,Cerejas,Sidney,Tv. das Cerejas / Tv. Haitiana,com_producao,,entrada_interface.txt
-F006,04/03/2026,Oeste 1,Água Legal,Cerejas,Amadeu,Travessa da Bete / Rua Dezesseis,com_producao,,entrada_interface.txt
-F007,04/03/2026,Oeste 1,Água Legal,Vila Dirce,Ezequiel,Recomposição Asfáltica,com_producao,,entrada_interface.txt
