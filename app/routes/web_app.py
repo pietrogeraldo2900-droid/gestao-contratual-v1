@@ -3,18 +3,26 @@
 from datetime import datetime
 from pathlib import Path
 from typing import Dict
+from urllib.parse import urlparse
 
-from flask import Flask, make_response, redirect, render_template, request, url_for
+from flask import Flask, flash, g, make_response, redirect, render_template, request, session, url_for
 
 from config.settings import AppSettings, load_settings
 from app.database import build_database_manager, init_db
 from app.repositories import ContractRepository, ReportRepository, UserRepository
+from app.repositories.user_repository import UserAlreadyExistsError
 from app.routes.auth_api import register_auth_routes
 from app.routes.contracts_api import register_contract_routes
 from app.services.contract_service import ContractService
 from app.services.report_service import ReportService, create_report_service
-from app.services.user_service import UserService
+from app.services.user_service import UserAuthError, UserService, UserValidationError
+from app.utils.jwt_utils import generate_jwt_token
 from app.services.web_service import WebPipelineService
+
+
+SESSION_USER_ID_KEY = "web_user_id"
+SESSION_USER_EMAIL_KEY = "web_user_email"
+SESSION_AUTH_TOKEN_KEY = "web_auth_token"
 
 
 def _collect_form_fields(form) -> Dict[str, object]:
@@ -154,6 +162,16 @@ def _collect_management_filters(args) -> Dict[str, object]:
     }
 
 
+def _is_safe_internal_next(next_url: str) -> bool:
+    text = str(next_url or "").strip()
+    if not text:
+        return False
+    if not text.startswith("/"):
+        return False
+    parsed = urlparse(text)
+    return not parsed.scheme and not parsed.netloc
+
+
 def create_app(test_config: dict | None = None, settings: AppSettings | None = None) -> Flask:
     settings = settings or load_settings(Path(__file__).resolve().parents[2])
     base_dir = settings.base_dir
@@ -203,6 +221,275 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     app.config["CONTRACTS_SERVICE"] = contract_service
     app.config["REPORT_SERVICE"] = report_service
     app.config["USER_SERVICE"] = user_service
+
+    protected_web_endpoints = {
+        "index",
+        "nucleos",
+        "nucleos_save",
+        "preview",
+        "generate",
+        "history",
+        "gerencial",
+        "institucional",
+        "institucional_export",
+        "nova_entrada_redirect",
+    }
+    public_web_endpoints = {"web_login", "web_register", "web_logout", "web_register_redirect"}
+
+    def _active_user_service() -> UserService | None:
+        candidate = app.config.get("USER_SERVICE")
+        required = ("authenticate_user", "register_user", "get_user_by_id")
+        if candidate is not None and all(callable(getattr(candidate, name, None)) for name in required):
+            return candidate  # type: ignore[return-value]
+        return None
+
+    def _clear_web_auth_session() -> None:
+        session.pop(SESSION_USER_ID_KEY, None)
+        session.pop(SESSION_USER_EMAIL_KEY, None)
+        session.pop(SESSION_AUTH_TOKEN_KEY, None)
+
+    def _set_web_auth_session(user: Dict[str, object]) -> None:
+        session[SESSION_USER_ID_KEY] = int(user.get("id", 0) or 0)
+        session[SESSION_USER_EMAIL_KEY] = str(user.get("email", "") or "").strip().lower()
+        try:
+            session[SESSION_AUTH_TOKEN_KEY] = generate_jwt_token(
+                user_id=int(user.get("id", 0) or 0),
+                email=str(user.get("email", "") or ""),
+                secret=settings.auth_jwt_secret,
+                expires_minutes=settings.auth_jwt_exp_minutes,
+            )
+        except Exception:
+            session.pop(SESSION_AUTH_TOKEN_KEY, None)
+
+    def _resolve_next(default_endpoint: str = "index") -> str:
+        raw_next = str(request.values.get("next", "") or "").strip()
+        if _is_safe_internal_next(raw_next):
+            return raw_next
+        return url_for(default_endpoint)
+
+    @app.context_processor
+    def _inject_web_auth_context():
+        user_email = str(session.get(SESSION_USER_EMAIL_KEY, "") or "").strip()
+        return {
+            "web_user_authenticated": bool(session.get(SESSION_USER_ID_KEY)),
+            "web_user_email": user_email,
+        }
+
+    @app.before_request
+    def _enforce_web_auth():
+        endpoint = request.endpoint or ""
+        if not endpoint or endpoint == "static":
+            return None
+
+        auth_service = _active_user_service()
+        if auth_service is None:
+            g.current_web_user = None
+            return None
+
+        current_user = None
+        raw_user_id = session.get(SESSION_USER_ID_KEY)
+        if raw_user_id is not None:
+            try:
+                current_user = auth_service.get_user_by_id(int(raw_user_id))
+            except Exception:
+                current_user = None
+        if current_user:
+            g.current_web_user = current_user
+            return None
+        if raw_user_id is not None:
+            _clear_web_auth_session()
+        g.current_web_user = None
+
+        if endpoint in public_web_endpoints:
+            return None
+        if endpoint not in protected_web_endpoints:
+            return None
+
+        next_value = request.path
+        if request.query_string:
+            next_value = request.full_path.rstrip("?")
+        return redirect(url_for("web_login", next=next_value))
+
+    @app.route("/login", methods=["GET", "POST"])
+    def web_login():
+        auth_service = _active_user_service()
+        next_url = _resolve_next()
+
+        if auth_service is None:
+            return (
+                render_template(
+                    "login.html",
+                    title="Login",
+                    next_url=next_url,
+                    form_data={"email": ""},
+                    error_message="Autenticacao indisponivel no momento. Verifique a configuracao do banco.",
+                ),
+                503,
+            )
+
+        if request.method == "GET":
+            if getattr(g, "current_web_user", None):
+                return redirect(next_url)
+            return render_template(
+                "login.html",
+                title="Login",
+                next_url=next_url,
+                form_data={"email": ""},
+                error_message="",
+            )
+
+        email = str(request.form.get("email", "") or "").strip()
+        password = str(request.form.get("password", "") or "")
+        if not email or not password:
+            return (
+                render_template(
+                    "login.html",
+                    title="Login",
+                    next_url=next_url,
+                    form_data={"email": email},
+                    error_message="Preencha email e senha para continuar.",
+                ),
+                400,
+            )
+
+        try:
+            user = auth_service.authenticate_user(email=email, password=password)
+        except (UserValidationError, UserAuthError):
+            return (
+                render_template(
+                    "login.html",
+                    title="Login",
+                    next_url=next_url,
+                    form_data={"email": email},
+                    error_message="Login invalido. Confira email e senha.",
+                ),
+                401,
+            )
+        except Exception as exc:
+            app.logger.exception("Falha no login web")
+            return (
+                render_template(
+                    "login.html",
+                    title="Login",
+                    next_url=next_url,
+                    form_data={"email": email},
+                    error_message=f"Nao foi possivel autenticar agora. Tente novamente. Detalhe: {exc}",
+                ),
+                500,
+            )
+
+        _set_web_auth_session(user)
+        flash("Login realizado com sucesso.", "success")
+        return redirect(next_url)
+
+    @app.route("/cadastro", methods=["GET", "POST"])
+    def web_register():
+        auth_service = _active_user_service()
+        next_url = _resolve_next()
+
+        if auth_service is None:
+            return (
+                render_template(
+                    "register.html",
+                    title="Cadastro",
+                    next_url=next_url,
+                    form_data={"email": ""},
+                    error_message="Cadastro indisponivel no momento. Verifique a configuracao do banco.",
+                ),
+                503,
+            )
+
+        if request.method == "GET":
+            if getattr(g, "current_web_user", None):
+                return redirect(next_url)
+            return render_template(
+                "register.html",
+                title="Cadastro",
+                next_url=next_url,
+                form_data={"email": ""},
+                error_message="",
+            )
+
+        email = str(request.form.get("email", "") or "").strip()
+        password = str(request.form.get("password", "") or "")
+        confirm_password = str(request.form.get("confirm_password", "") or "")
+
+        if not email or not password or not confirm_password:
+            return (
+                render_template(
+                    "register.html",
+                    title="Cadastro",
+                    next_url=next_url,
+                    form_data={"email": email},
+                    error_message="Preencha todos os campos obrigatorios.",
+                ),
+                400,
+            )
+        if password != confirm_password:
+            return (
+                render_template(
+                    "register.html",
+                    title="Cadastro",
+                    next_url=next_url,
+                    form_data={"email": email},
+                    error_message="As senhas informadas nao conferem.",
+                ),
+                400,
+            )
+
+        try:
+            user = auth_service.register_user(email=email, password=password)
+        except UserAlreadyExistsError:
+            return (
+                render_template(
+                    "register.html",
+                    title="Cadastro",
+                    next_url=next_url,
+                    form_data={"email": email},
+                    error_message="Usuario ja existe para este email.",
+                ),
+                409,
+            )
+        except UserValidationError as exc:
+            return (
+                render_template(
+                    "register.html",
+                    title="Cadastro",
+                    next_url=next_url,
+                    form_data={"email": email},
+                    error_message=str(exc),
+                ),
+                400,
+            )
+        except Exception as exc:
+            app.logger.exception("Falha no cadastro web")
+            return (
+                render_template(
+                    "register.html",
+                    title="Cadastro",
+                    next_url=next_url,
+                    form_data={"email": email},
+                    error_message=f"Nao foi possivel concluir o cadastro agora. Detalhe: {exc}",
+                ),
+                500,
+            )
+
+        _set_web_auth_session(user)
+        flash("Cadastro realizado com sucesso.", "success")
+        return redirect(next_url)
+
+    @app.get("/register")
+    def web_register_redirect():
+        next_url = str(request.args.get("next", "") or "").strip()
+        if _is_safe_internal_next(next_url):
+            return redirect(url_for("web_register", next=next_url))
+        return redirect(url_for("web_register"))
+
+    @app.route("/logout", methods=["GET", "POST"])
+    def web_logout():
+        _clear_web_auth_session()
+        flash("Sessao encerrada.", "info")
+        return redirect(url_for("web_login"))
 
     @app.get("/")
     def index():
