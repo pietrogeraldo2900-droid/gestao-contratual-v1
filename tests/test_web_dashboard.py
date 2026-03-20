@@ -201,6 +201,26 @@ class WebDashboardTests(unittest.TestCase):
         self.assertIn('href="/dashboard#reports"', html)
         self.assertIn('href="/logout"', html)
 
+    def test_profile_requires_login(self) -> None:
+        response = self.client.get("/perfil", follow_redirects=False)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login?next=/perfil", str(response.headers.get("Location", "") or ""))
+
+    def test_profile_and_settings_render_for_authenticated_user(self) -> None:
+        self._authenticate()
+
+        profile_response = self.client.get("/perfil")
+        self.assertEqual(profile_response.status_code, 200)
+        profile_html = profile_response.data.decode("utf-8")
+        self.assertIn("Perfil", profile_html)
+        self.assertIn("painel@empresa.com", profile_html)
+
+        settings_response = self.client.get("/configuracoes")
+        self.assertEqual(settings_response.status_code, 200)
+        settings_html = settings_response.data.decode("utf-8")
+        self.assertIn("Configuracoes", settings_html)
+        self.assertIn("Dark", settings_html)
+
 
 if __name__ == "__main__":
     unittest.main()

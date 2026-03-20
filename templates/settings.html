@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block content %}
+{% set user_email = user.email or web_user_email or 'usuario@plataforma.local' %}
+
+<section class="account-view">
+  <header class="account-view-header">
+    <div>
+      <p class="account-view-eyebrow">Preferencias</p>
+      <h1 class="account-view-title">Configuracoes</h1>
+      <p class="account-view-subtitle">
+        Ajustes de experiencia, conta e seguranca no mesmo padrao visual do painel.
+      </p>
+    </div>
+
+    <div class="account-view-actions">
+      <a href="{{ url_for('dashboard') }}" class="account-view-button">Dashboard</a>
+      <a href="{{ url_for('web_profile') }}" class="account-view-button primary">Perfil</a>
+    </div>
+  </header>
+
+  <section class="account-panel">
+    <div class="account-panel-body">
+      <div class="account-panel-header">
+        <div>
+          <h2 class="account-panel-title">Preferencias rapidas</h2>
+          <p class="account-panel-subtitle">Leitura clara do que esta ativo hoje no produto.</p>
+        </div>
+      </div>
+
+      <div class="account-metric-grid">
+        <article class="account-metric-card">
+          <span class="account-metric-label">Aparencia</span>
+          <strong class="account-metric-value">Dark</strong>
+          <span class="account-metric-note">Tema premium aplicado na area autenticada</span>
+        </article>
+
+        <article class="account-metric-card">
+          <span class="account-metric-label">Conta</span>
+          <strong class="account-metric-value">{% if token_active %}Ativa{% else %}Basica{% endif %}</strong>
+          <span class="account-metric-note">Sessao protegida por autenticacao web</span>
+        </article>
+
+        <article class="account-metric-card">
+          <span class="account-metric-label">Dados</span>
+          <strong class="account-metric-value">{% if database_enabled %}Online{% else %}Local{% endif %}</strong>
+          <span class="account-metric-note">Base integrada ao ambiente atual</span>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="account-view-grid">
+    <article class="account-panel">
+      <div class="account-panel-body">
+        <div class="account-panel-header">
+          <div>
+            <h2 class="account-panel-title">Aparencia</h2>
+            <p class="account-panel-subtitle">Preferencias visuais consolidadas no padrao aprovado.</p>
+          </div>
+        </div>
+
+        <div class="account-status-grid">
+          <div class="account-status-card">
+            <span class="account-status-label">Tema</span>
+            <strong class="account-status-title">Dark corporativo</strong>
+            <span class="account-status-text">Paleta escura, neutra e consistente com a sidebar atual.</span>
+          </div>
+          <div class="account-status-card">
+            <span class="account-status-label">Tipografia</span>
+            <strong class="account-status-title">Inter aplicada</strong>
+            <span class="account-status-text">A hierarquia visual prioriza leitura curta e interface limpa.</span>
+          </div>
+          <div class="account-status-card">
+            <span class="account-status-label">Navegacao</span>
+            <strong class="account-status-title">Sidebar persistente</strong>
+            <span class="account-status-text">A estrutura lateral segue como eixo principal do produto.</span>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="account-panel">
+      <div class="account-panel-body">
+        <div class="account-panel-header">
+          <div>
+            <h2 class="account-panel-title">Conta e seguranca</h2>
+            <p class="account-panel-subtitle">Resumo do ambiente autenticado sem criar configuracao nova de backend.</p>
+          </div>
+        </div>
+
+        <ul class="account-list">
+          <li class="account-list-item">
+            <div>
+              <p class="account-list-title">Usuario atual</p>
+              <p class="account-list-subtitle">{{ user_email }}</p>
+            </div>
+            <span class="account-list-meta">Conta</span>
+          </li>
+          <li class="account-list-item">
+            <div>
+              <p class="account-list-title">Sessao autenticada</p>
+              <p class="account-list-subtitle">A navegacao protegida continua ativa neste ambiente.</p>
+            </div>
+            <span class="account-list-meta">{% if token_active %}Protegida{% else %}Web{% endif %}</span>
+          </li>
+          <li class="account-list-item">
+            <div>
+              <p class="account-list-title">Banco integrado</p>
+              <p class="account-list-subtitle">Postgres continua conectado sem alterar a arquitetura atual.</p>
+            </div>
+            <span class="account-list-meta">{% if database_enabled %}Ativo{% else %}Indisponivel{% endif %}</span>
+          </li>
+        </ul>
+      </div>
+    </article>
+  </section>
+
+  <section class="account-panel">
+    <div class="account-panel-body">
+      <div class="account-panel-header">
+        <div>
+          <h2 class="account-panel-title">Contexto operacional</h2>
+          <p class="account-panel-subtitle">Indicadores rapidos do ambiente atual, sem criar integracao nova.</p>
+        </div>
+      </div>
+
+      <ul class="account-list">
+        <li class="account-list-item">
+          <div>
+            <p class="account-list-title">Contratos cadastrados</p>
+            <p class="account-list-subtitle">A base mestre segue alimentando o dashboard e o fluxo operacional.</p>
+          </div>
+          <span class="account-list-meta">{{ total_contracts }}</span>
+        </li>
+        <li class="account-list-item">
+          <div>
+            <p class="account-list-title">Relatorios registrados</p>
+            <p class="account-list-subtitle">Os arquivos continuam disponiveis na area de resultados.</p>
+          </div>
+          <span class="account-list-meta">{{ total_reports }}</span>
+        </li>
+        <li class="account-list-item">
+          <div>
+            <p class="account-list-title">Movimentacao recente</p>
+            <p class="account-list-subtitle">Leitura resumida para acompanhar a atividade dos ultimos dias.</p>
+          </div>
+          <span class="account-list-meta">{{ recent_reports_count }}</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</section>
+{% endblock %}

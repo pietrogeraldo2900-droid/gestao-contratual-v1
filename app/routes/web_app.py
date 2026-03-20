@@ -225,6 +225,8 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
 
     protected_web_endpoints = {
         "dashboard",
+        "web_profile",
+        "web_settings",
         "results_list",
         "result_detail",
         "result_file",
@@ -346,6 +348,32 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             nucleo_reference=service.get_nucleo_reference_ui(),
             autofill_info=autofill_info or {"matched": False, "applied": {}, "profile": {}},
         )
+
+    def _read_workspace_snapshot(report_limit: int = 5) -> Dict[str, object]:
+        snapshot: Dict[str, object] = {
+            "total_contracts": 0,
+            "total_reports": 0,
+            "recent_reports_count": 0,
+            "recent_reports": [],
+        }
+
+        contract_service = _active_contract_service()
+        if contract_service is not None:
+            try:
+                snapshot["total_contracts"] = max(0, int(contract_service.count_contracts()))
+            except Exception as exc:
+                app.logger.warning("Falha ao contar contratos na camada web: %s", exc)
+
+        report_service = _active_report_service()
+        if report_service is not None:
+            try:
+                snapshot["total_reports"] = max(0, int(report_service.count_reports()))
+                snapshot["recent_reports_count"] = max(0, int(report_service.count_recent_reports(days=7)))
+                snapshot["recent_reports"] = list(report_service.list_recent_reports(limit=max(1, int(report_limit))))
+            except Exception as exc:
+                app.logger.warning("Falha ao carregar snapshot de relatorios: %s", exc)
+
+        return snapshot
 
     @app.context_processor
     def _inject_web_auth_context():
@@ -638,6 +666,41 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             recent_window_days=recent_window_days,
             contracts=contracts_data,
             recent_reports=recent_reports,
+        )
+
+    @app.get("/perfil")
+    def web_profile():
+        user = dict(getattr(g, "current_web_user", None) or {})
+        snapshot = _read_workspace_snapshot(report_limit=3)
+        created_at = str(user.get("created_at", "") or "").strip()
+        account_status = "Sessao web ativa" if session.get(SESSION_USER_ID_KEY) else "Sessao indisponivel"
+        return render_template(
+            "profile.html",
+            title="Perfil",
+            user=user,
+            created_at=created_at,
+            account_status=account_status,
+            token_active=bool(session.get(SESSION_AUTH_TOKEN_KEY)),
+            database_enabled=bool(app.config.get("CONTRACTS_DB_ENABLED")),
+            total_contracts=int(snapshot.get("total_contracts", 0) or 0),
+            total_reports=int(snapshot.get("total_reports", 0) or 0),
+            recent_reports_count=int(snapshot.get("recent_reports_count", 0) or 0),
+            recent_reports=list(snapshot.get("recent_reports", []) or []),
+        )
+
+    @app.get("/configuracoes")
+    def web_settings():
+        user = dict(getattr(g, "current_web_user", None) or {})
+        snapshot = _read_workspace_snapshot(report_limit=3)
+        return render_template(
+            "settings.html",
+            title="Configuracoes",
+            user=user,
+            token_active=bool(session.get(SESSION_AUTH_TOKEN_KEY)),
+            database_enabled=bool(app.config.get("CONTRACTS_DB_ENABLED")),
+            total_contracts=int(snapshot.get("total_contracts", 0) or 0),
+            total_reports=int(snapshot.get("total_reports", 0) or 0),
+            recent_reports_count=int(snapshot.get("recent_reports_count", 0) or 0),
         )
 
     @app.get("/resultados")

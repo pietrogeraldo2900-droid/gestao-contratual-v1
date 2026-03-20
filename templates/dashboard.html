@@ -4,25 +4,35 @@
 {% set total_relatorios = total_reports %}
 {% set total_recentes = recent_reports_count %}
 {% set relatorios_recentes = recent_reports %}
-{% set ns = namespace(contratos_ativos=[]) %}
+{% set ns = namespace(contratos_ativos=[], contratos_recentes=contracts[:5]) %}
 {% for c in contracts %}
   {% if (c.status_contrato or c.status or '') == 'ativo' %}
     {% set ns.contratos_ativos = ns.contratos_ativos + [c] %}
   {% endif %}
 {% endfor %}
-{% set contratos_preview = ns.contratos_ativos if ns.contratos_ativos else contracts %}
+{% set contratos_preview = ns.contratos_recentes if ns.contratos_recentes else ns.contratos_ativos %}
+{% set total_ativos = ns.contratos_ativos|length %}
+{% set total_nao_ativos = total_contratos - total_ativos if total_contratos >= total_ativos else 0 %}
 {% set ultimo_processamento = '-' %}
 {% if relatorios_recentes %}
   {% set ultimo_processamento = relatorios_recentes[0].created_at or '-' %}
 {% endif %}
 
-<div class="dashboard">
-  <div class="page-header">
+<section class="dashboard-premium">
+  <header class="dashboard-premium-header">
     <div>
-      <h1>Dashboard</h1>
-      <p>Dashboard operacional com leitura rapida do sistema.</p>
+      <p class="dashboard-premium-eyebrow">Painel executivo</p>
+      <h1 class="dashboard-premium-title">Dashboard</h1>
+      <p class="dashboard-premium-subtitle">
+        Dashboard operacional com leitura rapida dos contratos, relatorios e movimentacoes recentes.
+      </p>
     </div>
-  </div>
+
+    <div class="dashboard-premium-header-actions">
+      <a href="{{ url_for('web_contracts_new') }}" class="dashboard-premium-button primary">Novo contrato</a>
+      <a href="{{ url_for('results_list') }}" class="dashboard-premium-button">Resultados</a>
+    </div>
+  </header>
 
   {% if warning_message %}
     <div class="notice warning">{{ warning_message }}</div>
@@ -31,83 +41,260 @@
     <div class="notice info">{{ empty_state_message }}</div>
   {% endif %}
 
-  <div class="kpi-row">
-    <div class="kpi-card">
-      <span>Contratos</span>
-      <h2>{{ total_contratos }}</h2>
-    </div>
-
-    <div class="kpi-card">
-      <span>Relatorios</span>
-      <h2>{{ total_relatorios }}</h2>
-    </div>
-
-    <div class="kpi-card">
-      <span>Processamentos (7 dias)</span>
-      <h2>{{ total_recentes }}</h2>
-    </div>
-  </div>
-
-  <div class="card summary-card">
-    <h3>Visao do sistema</h3>
-    <p class="summary-copy">
-      O sistema acompanha {{ total_contratos }} contrato(s) e {{ total_relatorios }} relatorio(s).
-      Nos ultimos 7 dias, {{ total_recentes }} registro(s) foram processados.
-      Ultimo processamento: {{ ultimo_processamento }}.
-    </p>
-  </div>
-
-  <div class="card actions-card">
-    <div class="section-header">
-      <h3>Acoes rapidas</h3>
-    </div>
-    <div class="actions-row">
-      <a href="{{ url_for('web_contracts_new') }}" class="btn primary">Novo contrato</a>
-      <a href="{{ url_for('dashboard', _anchor='reports') }}" class="btn">Ver relatorios</a>
-      <a href="{{ url_for('results_list') }}" class="btn">Resultados</a>
-    </div>
-  </div>
-
-  <div class="dashboard-grid">
-    <div class="card" id="reports">
-      <div class="section-header">
-        <h3>Relatorios recentes</h3>
-        <a href="{{ url_for('dashboard', _anchor='reports') }}" class="link-inline">Ver todos</a>
+  <section class="dashboard-premium-kpis" aria-label="Indicadores principais">
+    <details class="dashboard-premium-kpi-card">
+      <summary class="dashboard-premium-kpi-summary">
+        <span class="dashboard-premium-kpi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5z"></path>
+            <path d="M9 5V3.8A1.8 1.8 0 0 1 10.8 2h2.4A1.8 1.8 0 0 1 15 3.8V5"></path>
+          </svg>
+        </span>
+        <span class="dashboard-premium-kpi-label">Contratos</span>
+        <strong class="dashboard-premium-kpi-value">{{ total_contratos }}</strong>
+        <span class="dashboard-premium-kpi-subtitle">Base mestre cadastrada</span>
+      </summary>
+      <div class="dashboard-premium-kpi-detail">
+        <p class="dashboard-premium-kpi-detail-title">Composicao do indicador</p>
+        <ul class="dashboard-premium-kpi-detail-list">
+          <li>{{ total_ativos }} contrato(s) ativo(s) com uso operacional.</li>
+          <li>{{ total_nao_ativos }} contrato(s) fora do status ativo neste momento.</li>
+          <li>Os contratos alimentam o contexto dos relatorios e do dashboard.</li>
+        </ul>
       </div>
+    </details>
 
-      <ul class="clean-list">
-        {% for r in relatorios_recentes[:3] %}
-          <li class="clean-list-item">
-            <div>
-              <strong>{{ r.nome or r.title or r.file_name or 'Relatorio' }}</strong>
-              <span>{{ r.data or r.created_at or '' }}</span>
-            </div>
-          </li>
-        {% else %}
-          <li class="empty-state">Nenhum relatorio recente encontrado.</li>
-        {% endfor %}
-      </ul>
-    </div>
-
-    <div class="card">
-      <div class="section-header">
-        <h3>Contratos ativos</h3>
-        <a href="{{ url_for('web_contracts_list') }}" class="link-inline">Gerenciar contratos</a>
+    <details class="dashboard-premium-kpi-card">
+      <summary class="dashboard-premium-kpi-summary">
+        <span class="dashboard-premium-kpi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="8"></circle>
+            <path d="M12 7v5l3 2"></path>
+          </svg>
+        </span>
+        <span class="dashboard-premium-kpi-label">Ativos</span>
+        <strong class="dashboard-premium-kpi-value">{{ total_ativos }}</strong>
+        <span class="dashboard-premium-kpi-subtitle">Contratos em operacao</span>
+      </summary>
+      <div class="dashboard-premium-kpi-detail">
+        <p class="dashboard-premium-kpi-detail-title">Leitura rapida</p>
+        <ul class="dashboard-premium-kpi-detail-list">
+          <li>Indicador focado no que ja esta sustentando a operacao atual.</li>
+          <li>{{ total_nao_ativos }} contrato(s) ainda nao entraram no grupo ativo.</li>
+          <li>Use a tela de contratos para acompanhar a base completa.</li>
+        </ul>
       </div>
+    </details>
 
-      <ul class="clean-list">
-        {% for c in contratos_preview[:3] %}
-          <li class="clean-list-item">
-            <div>
-              <strong>{{ c.nome or c.nome_contrato or c.title or 'Contrato' }}</strong>
-              <span>{{ c.numero or c.numero_contrato or c.contract_code or '' }}</span>
-            </div>
+    <details class="dashboard-premium-kpi-card">
+      <summary class="dashboard-premium-kpi-summary">
+        <span class="dashboard-premium-kpi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 3.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5z"></path>
+            <path d="M14 3.5V8h4"></path>
+            <path d="M9 12h6"></path>
+            <path d="M9 16h6"></path>
+          </svg>
+        </span>
+        <span class="dashboard-premium-kpi-label">Relatorios</span>
+        <strong class="dashboard-premium-kpi-value">{{ total_relatorios }}</strong>
+        <span class="dashboard-premium-kpi-subtitle">Arquivos registrados</span>
+      </summary>
+      <div class="dashboard-premium-kpi-detail">
+        <p class="dashboard-premium-kpi-detail-title">Resumo do acervo</p>
+        <ul class="dashboard-premium-kpi-detail-list">
+          <li>{{ total_recentes }} relatorio(s) surgiram na janela recente.</li>
+          <li>Ultimo processamento registrado: {{ ultimo_processamento }}.</li>
+          <li>A listagem completa permanece disponivel em Resultados.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="dashboard-premium-kpi-card">
+      <summary class="dashboard-premium-kpi-summary">
+        <span class="dashboard-premium-kpi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12h4l2.2-5 3.6 10 2.2-5H20"></path>
+          </svg>
+        </span>
+        <span class="dashboard-premium-kpi-label">Recentes</span>
+        <strong class="dashboard-premium-kpi-value">{{ total_recentes }}</strong>
+        <span class="dashboard-premium-kpi-subtitle">Ultimos {{ recent_window_days }} dias</span>
+      </summary>
+      <div class="dashboard-premium-kpi-detail">
+        <p class="dashboard-premium-kpi-detail-title">Janela operacional</p>
+        <ul class="dashboard-premium-kpi-detail-list">
+          <li>Indicador orientado ao ritmo mais recente do sistema.</li>
+          <li>Serve como leitura curta de movimentacao sem abrir o historico.</li>
+          <li>Ultima referencia visivel: {{ ultimo_processamento }}.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <section class="dashboard-premium-grid">
+    <article class="dashboard-premium-panel">
+      <div class="dashboard-premium-panel-body">
+        <div class="dashboard-premium-panel-header">
+          <div>
+            <h2 class="dashboard-premium-panel-title">Visao rapida do sistema</h2>
+            <p class="dashboard-premium-panel-subtitle">Resumo enxuto para decisao rapida, sem leitura tecnica excessiva.</p>
+          </div>
+        </div>
+
+        <ul class="dashboard-premium-summary-list">
+          <li class="dashboard-premium-summary-item">
+            <strong>{{ total_recentes }} relatorios recentes processados</strong>
+            <span>Volume registrado dentro da janela operacional dos ultimos {{ recent_window_days }} dias.</span>
           </li>
-        {% else %}
-          <li class="empty-state">Nenhum contrato cadastrado.</li>
-        {% endfor %}
-      </ul>
-    </div>
+          <li class="dashboard-premium-summary-item">
+            <strong>{{ total_ativos }} contrato(s) ativo(s) na base</strong>
+            <span>Os contratos alimentam o fluxo operacional e o contexto dos relatorios.</span>
+          </li>
+          <li class="dashboard-premium-summary-item">
+            <strong>Ultimo processamento: {{ ultimo_processamento }}</strong>
+            <span>Quando houver novas geracoes, o dashboard continua refletindo os dados reais do sistema.</span>
+          </li>
+        </ul>
+      </div>
+    </article>
+
+    <article class="dashboard-premium-panel">
+      <div class="dashboard-premium-panel-body">
+        <div class="dashboard-premium-panel-header">
+          <div>
+            <h2 class="dashboard-premium-panel-title">Acoes rapidas</h2>
+            <p class="dashboard-premium-panel-subtitle">Atalhos principais para continuar a jornada do usuario.</p>
+          </div>
+        </div>
+
+        <div class="dashboard-premium-actions">
+          <a href="{{ url_for('web_contracts_new') }}" class="dashboard-premium-action">
+            <span class="dashboard-premium-action-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 5v14"></path>
+                <path d="M5 12h14"></path>
+              </svg>
+            </span>
+            <span class="dashboard-premium-action-label">Cadastrar contrato</span>
+            <span class="dashboard-premium-action-text">Abre o formulario oficial do cadastro mestre.</span>
+          </a>
+          <a href="{{ url_for('web_contracts_list') }}" class="dashboard-premium-action">
+            <span class="dashboard-premium-action-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5z"></path>
+                <path d="M9 5V3.8A1.8 1.8 0 0 1 10.8 2h2.4A1.8 1.8 0 0 1 15 3.8V5"></path>
+              </svg>
+            </span>
+            <span class="dashboard-premium-action-label">Gerenciar contratos</span>
+            <span class="dashboard-premium-action-text">Consulta a base atual de contratos cadastrados.</span>
+          </a>
+          <a href="{{ url_for('results_list') }}" class="dashboard-premium-action">
+            <span class="dashboard-premium-action-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M7 3.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5z"></path>
+                <path d="M14 3.5V8h4"></path>
+              </svg>
+            </span>
+            <span class="dashboard-premium-action-label">Abrir resultados</span>
+            <span class="dashboard-premium-action-text">Acessa as saidas ja geradas pelo processamento.</span>
+          </a>
+          <a href="{{ url_for('dashboard', _anchor='reports') }}" class="dashboard-premium-action">
+            <span class="dashboard-premium-action-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 12h4l2.2-5 3.6 10 2.2-5H20"></path>
+              </svg>
+            </span>
+            <span class="dashboard-premium-action-label">Ir para relatorios</span>
+            <span class="dashboard-premium-action-text">Move direto para a leitura resumida dos arquivos recentes.</span>
+          </a>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <div class="dashboard-premium-stack">
+    <article class="dashboard-premium-panel" id="reports">
+      <div class="dashboard-premium-panel-body">
+        <div class="dashboard-premium-panel-header">
+          <div>
+            <h2 class="dashboard-premium-panel-title">Relatorios recentes</h2>
+            <p class="dashboard-premium-panel-subtitle">Ultimos arquivos adicionados ao ambiente operacional.</p>
+          </div>
+          <a href="{{ url_for('results_list') }}" class="dashboard-premium-inline-link">Ver todos</a>
+        </div>
+
+        <ul class="dashboard-premium-feed">
+          {% for report in relatorios_recentes[:5] %}
+            <li class="dashboard-premium-feed-item">
+              <div class="dashboard-premium-feed-marker" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M7 3.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5z"></path>
+                  <path d="M14 3.5V8h4"></path>
+                </svg>
+              </div>
+              <div class="dashboard-premium-feed-copy">
+                <p class="dashboard-premium-feed-title">{{ report.nome or report.title or report.file_name or 'Relatorio' }}</p>
+                <p class="dashboard-premium-feed-subtitle">
+                  {% if report.numero_contrato or report.contract_code %}
+                    {{ report.numero_contrato or report.contract_code }}
+                    {% if report.nome_contrato or report.contract_title %}
+                      - {{ report.nome_contrato or report.contract_title }}
+                    {% endif %}
+                  {% elif report.contract_id %}
+                    Contrato #{{ report.contract_id }}
+                  {% else %}
+                    Registro operacional sem contrato identificado
+                  {% endif %}
+                </p>
+              </div>
+              <span class="dashboard-premium-feed-meta">{{ (report.data or report.created_at or '-')|replace('T', ' ')|replace('+00:00', '') }}</span>
+            </li>
+          {% else %}
+            <li class="dashboard-premium-empty">Nenhum relatorio recente encontrado.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </article>
+
+    <article class="dashboard-premium-panel" id="contracts">
+      <div class="dashboard-premium-panel-body">
+        <div class="dashboard-premium-panel-header">
+          <div>
+            <h2 class="dashboard-premium-panel-title">Contratos recentes</h2>
+            <p class="dashboard-premium-panel-subtitle">Cadastros principais do sistema em formato leve e executivo.</p>
+          </div>
+          <a href="{{ url_for('web_contracts_list') }}" class="dashboard-premium-inline-link">Gerenciar contratos</a>
+        </div>
+
+        <ul class="dashboard-premium-feed">
+          {% for contract in contratos_preview[:5] %}
+            <li class="dashboard-premium-feed-item">
+              <div class="dashboard-premium-feed-marker" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5z"></path>
+                  <path d="M9 5V3.8A1.8 1.8 0 0 1 10.8 2h2.4A1.8 1.8 0 0 1 15 3.8V5"></path>
+                </svg>
+              </div>
+              <div class="dashboard-premium-feed-copy">
+                <p class="dashboard-premium-feed-title">
+                  {{ contract.numero or contract.numero_contrato or contract.contract_code or 'Contrato' }}
+                  {% if contract.nome or contract.nome_contrato or contract.title %}
+                    - {{ contract.nome or contract.nome_contrato or contract.title }}
+                  {% endif %}
+                </p>
+                <p class="dashboard-premium-feed-subtitle">
+                  {{ contract.municipios_atendidos or contract.description or 'Sem municipios informados' }}
+                </p>
+              </div>
+              <span class="dashboard-premium-feed-meta">{{ contract.status_contrato or contract.status or 'em_implantacao' }}</span>
+            </li>
+          {% else %}
+            <li class="dashboard-premium-empty">Nenhum contrato cadastrado.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </article>
   </div>
-</div>
+</section>
 {% endblock %}
