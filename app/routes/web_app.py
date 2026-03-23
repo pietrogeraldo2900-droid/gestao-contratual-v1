@@ -177,7 +177,12 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     settings = settings or load_settings(Path(__file__).resolve().parents[2])
     base_dir = settings.base_dir
 
-    app = Flask(__name__, template_folder=str(base_dir / "templates"))
+    app = Flask(
+        __name__,
+        template_folder=str(base_dir / "templates"),
+        static_folder=str(base_dir / "static"),
+        static_url_path="/static",
+    )
     app.config.from_mapping(
         SECRET_KEY=settings.secret_key,
         OUTPUTS_ROOT=str(settings.outputs_root),

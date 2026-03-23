@@ -1,164 +1,98 @@
 {% extends "base.html" %}
+
 {% block content %}
 {% set user_email = user.email or web_user_email or 'usuario@plataforma.local' %}
 {% set user_initials = (user_email[:2] if user_email else 'US')|upper %}
-{% set member_since = created_at or 'Conta criada nesta operacao web.' %}
 
-<section class="account-view">
-  <header class="account-view-header">
+<div class="mk-page-shell">
+  <header class="mk-hero">
     <div>
-      <p class="account-view-eyebrow">Conta</p>
-      <h1 class="account-view-title">Perfil</h1>
-      <p class="account-view-subtitle">
-        Identidade da conta, seguranca basica e contexto de uso dentro da plataforma.
-      </p>
+      <p class="mk-kicker">Conta</p>
+      <h1 class="mk-page-title">Perfil</h1>
     </div>
-
-    <div class="account-view-actions">
-      <a href="{{ url_for('dashboard') }}" class="account-view-button">Dashboard</a>
-      <a href="{{ url_for('web_logout') }}" class="account-view-button primary">Sair</a>
+    <div class="mk-hero-actions">
+      <a href="{{ url_for('dashboard') }}" class="mk-btn mk-btn-ghost">Dashboard</a>
+      <a href="{{ url_for('web_logout') }}" class="mk-btn mk-btn-primary">Sair</a>
     </div>
   </header>
 
-  <section class="account-hero-panel">
-    <div class="account-avatar">{{ user_initials }}</div>
-    <div>
-      <h2 class="account-hero-title">{{ user_email }}</h2>
-      <p class="account-hero-subtitle">{{ member_since }}</p>
-    </div>
-    <div class="account-hero-meta">
-      <span class="account-pill">{{ account_status }}</span>
-      <span class="account-pill">{% if token_active %}Token ativo{% else %}Token indisponivel{% endif %}</span>
-    </div>
-  </section>
-
-  <section class="account-panel">
-    <div class="account-panel-body">
-      <div class="account-panel-header">
+  <section class="mk-profile-grid">
+    <section class="mk-panel">
+      <div class="mk-profile-identity">
+        <div class="mk-avatar">{{ user_initials }}</div>
         <div>
-          <h2 class="account-panel-title">Visao da conta</h2>
-          <p class="account-panel-subtitle">Indicadores principais ligados ao uso atual da plataforma.</p>
+          <h2 class="mk-panel-title">Perfil</h2>
+          <p class="mk-profile-name">{{ user_email }}</p>
+          <p class="mk-row-subtitle">{{ created_at or 'Conta criada nesta operacao web.' }}</p>
+          <div class="mk-chip-row">
+            <span class="mk-pill is-success">{{ account_status }}</span>
+            <span class="mk-pill">{% if token_active %}Token ativo{% else %}Token indisponivel{% endif %}</span>
+          </div>
         </div>
       </div>
+    </section>
 
-      <div class="account-metric-grid">
-        <article class="account-metric-card">
-          <span class="account-metric-label">Contratos</span>
-          <strong class="account-metric-value">{{ total_contracts }}</strong>
-          <span class="account-metric-note">Cadastros visiveis na base</span>
-        </article>
-
-        <article class="account-metric-card">
-          <span class="account-metric-label">Relatorios</span>
-          <strong class="account-metric-value">{{ total_reports }}</strong>
-          <span class="account-metric-note">Arquivos associados ao fluxo atual</span>
-        </article>
-
-        <article class="account-metric-card">
-          <span class="account-metric-label">Recentes</span>
-          <strong class="account-metric-value">{{ recent_reports_count }}</strong>
-          <span class="account-metric-note">Movimentacoes recentes do sistema</span>
-        </article>
-      </div>
-    </div>
+    <section class="mk-mini-cards">
+      <article class="mk-mini-card">
+        <p class="mk-mini-label">Perfil</p>
+        <p class="mk-mini-value">Administrador</p>
+      </article>
+      <article class="mk-mini-card">
+        <p class="mk-mini-label">E-mail</p>
+        <p class="mk-mini-value">{{ user_email }}</p>
+      </article>
+      <article class="mk-mini-card">
+        <p class="mk-mini-label">Conta</p>
+        <p class="mk-mini-value">{% if database_enabled %}Online{% else %}Local{% endif %}</p>
+      </article>
+    </section>
   </section>
 
-  <section class="account-view-grid">
-    <article class="account-panel">
-      <div class="account-panel-body">
-        <div class="account-panel-header">
-          <div>
-            <h2 class="account-panel-title">Dados principais</h2>
-            <p class="account-panel-subtitle">Informacoes essenciais da conta dentro da interface web.</p>
-          </div>
-        </div>
-
-        <ul class="account-list">
-          <li class="account-list-item">
-            <div>
-              <p class="account-list-title">Email principal</p>
-              <p class="account-list-subtitle">{{ user_email }}</p>
-            </div>
-            <span class="account-list-meta">Ativo</span>
-          </li>
-          <li class="account-list-item">
-            <div>
-              <p class="account-list-title">Sessao web</p>
-              <p class="account-list-subtitle">{{ account_status }}</p>
-            </div>
-            <span class="account-list-meta">{% if token_active %}Autenticada{% else %}Basica{% endif %}</span>
-          </li>
-          <li class="account-list-item">
-            <div>
-              <p class="account-list-title">Banco integrado</p>
-              <p class="account-list-subtitle">A plataforma continua usando a base ja conectada ao projeto.</p>
-            </div>
-            <span class="account-list-meta">{% if database_enabled %}Ativo{% else %}Indisponivel{% endif %}</span>
-          </li>
-        </ul>
+  <section class="mk-two-col">
+    <section class="mk-panel">
+      <div class="mk-panel-head">
+        <h2 class="mk-panel-title">Dados principais</h2>
       </div>
-    </article>
-
-    <article class="account-panel">
-      <div class="account-panel-body">
-        <div class="account-panel-header">
-          <div>
-            <h2 class="account-panel-title">Seguranca</h2>
-            <p class="account-panel-subtitle">Camadas ativas dentro do modelo atual da aplicacao.</p>
-          </div>
+      <div class="mk-data-grid">
+        <div class="mk-data-card">
+          <p class="mk-data-label">Nome exibido</p>
+          <p class="mk-data-value">{{ user_email.split('@')[0] }}</p>
         </div>
-
-        <div class="account-status-grid">
-          <div class="account-status-card">
-            <span class="account-status-label">Autenticacao</span>
-            <strong class="account-status-title">Login protegido por conta web</strong>
-            <span class="account-status-text">A navegacao continua protegida pela sessao autenticada do usuario.</span>
-          </div>
-          <div class="account-status-card">
-            <span class="account-status-label">Token</span>
-            <strong class="account-status-title">{% if token_active %}Token de sessao presente{% else %}Token nao disponivel{% endif %}</strong>
-            <span class="account-status-text">A camada JWT segue pronta para uso futuro sem alterar a experiencia atual.</span>
-          </div>
-          <div class="account-status-card">
-            <span class="account-status-label">Conta</span>
-            <strong class="account-status-title">Controle centralizado por email</strong>
-            <span class="account-status-text">O email permanece como identidade principal do usuario dentro da plataforma.</span>
-          </div>
+        <div class="mk-data-card">
+          <p class="mk-data-label">Email</p>
+          <p class="mk-data-value">{{ user_email }}</p>
+        </div>
+        <div class="mk-data-card">
+          <p class="mk-data-label">Status da sessao</p>
+          <p class="mk-data-value">{{ account_status }}</p>
+        </div>
+        <div class="mk-data-card">
+          <p class="mk-data-label">Base de dados</p>
+          <p class="mk-data-value">{% if database_enabled %}Ativa{% else %}Indisponivel{% endif %}</p>
         </div>
       </div>
-    </article>
+    </section>
+
+    <section class="mk-panel">
+      <div class="mk-panel-head">
+        <h2 class="mk-panel-title">Seguranca</h2>
+      </div>
+      <div class="mk-security-list">
+        <article class="mk-security-item">
+          <h3>Senha</h3>
+          <p>Atualizacao segura da credencial de acesso.</p>
+        </article>
+        <article class="mk-security-item">
+          <h3>Permissoes</h3>
+          <p>Escopo administrativo para modulos operacionais e cadastrais.</p>
+        </article>
+        <article class="mk-security-item">
+          <h3>Alertas</h3>
+          <p>Preferencias de notificacoes importantes do sistema.</p>
+        </article>
+      </div>
+    </section>
   </section>
-
-  <section class="account-panel">
-    <div class="account-panel-body">
-      <div class="account-panel-header">
-        <div>
-          <h2 class="account-panel-title">Atividade recente</h2>
-          <p class="account-panel-subtitle">Resumo curto dos ultimos registros ligados ao sistema.</p>
-        </div>
-        <a href="{{ url_for('results_list') }}" class="account-inline-link">Abrir resultados</a>
-      </div>
-
-      <ul class="account-list">
-        {% for report in recent_reports[:3] %}
-          <li class="account-list-item">
-            <div>
-              <p class="account-list-title">{{ report.file_name or report.title or 'Relatorio recente' }}</p>
-              <p class="account-list-subtitle">
-                {% if report.numero_contrato or report.contract_code %}
-                  {{ report.numero_contrato or report.contract_code }}
-                {% else %}
-                  Vinculo operacional disponivel no dashboard
-                {% endif %}
-              </p>
-            </div>
-            <span class="account-list-meta">{{ report.created_at or '-' }}</span>
-          </li>
-        {% else %}
-          <li class="account-empty">Nenhuma atividade recente encontrada.</li>
-        {% endfor %}
-      </ul>
-    </div>
-  </section>
-</section>
+</div>
 {% endblock %}
+
