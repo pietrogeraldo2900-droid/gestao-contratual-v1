@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import quote_plus
 
+DEFAULT_LOCAL_SECRET = "sisg-local-dev-secret-key-2026-32-bytes"
+
 
 def _env_bool(name: str, default: bool = False) -> bool:
     raw = str(os.environ.get(name, "") or "").strip().lower()
@@ -96,7 +98,7 @@ def load_settings(base_dir: Path | None = None) -> AppSettings:
 
     return AppSettings(
         base_dir=base,
-        secret_key=str(os.environ.get("WEB_APP_SECRET", "sabesp-relatorios-local") or "sabesp-relatorios-local"),
+        secret_key=str(os.environ.get("WEB_APP_SECRET", DEFAULT_LOCAL_SECRET) or DEFAULT_LOCAL_SECRET),
         config_dir=config_dir,
         data_dir=data_dir,
         outputs_root=outputs_root,
@@ -116,8 +118,8 @@ def load_settings(base_dir: Path | None = None) -> AppSettings:
         db_strict_startup=_env_bool("DATABASE_STRICT_STARTUP", default=False),
         contracts_auto_init_schema=_env_bool("CONTRACTS_AUTO_INIT_SCHEMA", default=True),
         auth_jwt_secret=str(
-            os.environ.get("AUTH_JWT_SECRET", os.environ.get("WEB_APP_SECRET", "sabesp-relatorios-local"))
-            or "sabesp-relatorios-local"
+            os.environ.get("AUTH_JWT_SECRET", os.environ.get("WEB_APP_SECRET", DEFAULT_LOCAL_SECRET))
+            or DEFAULT_LOCAL_SECRET
         ),
         auth_jwt_exp_minutes=_env_int("AUTH_JWT_EXP_MINUTES", 60, min_value=5, max_value=1440),
     )
