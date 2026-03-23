@@ -226,6 +226,14 @@ body.auth-shell-mode .app-context {
   justify-content: space-between;
 }
 
+body.auth-shell-mode .mk-hero {
+  position: relative;
+  top: auto;
+  z-index: 1;
+  border-bottom: 0;
+  backdrop-filter: none;
+}
+
 .mk-kicker {
   margin: 0;
   color: rgba(191, 219, 254, 0.92);
