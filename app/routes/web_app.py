@@ -224,6 +224,11 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                 app.logger.warning("Falha ao inicializar schema de contratos: %s", exc)
                 if settings.db_strict_startup:
                     raise
+    else:
+        app.logger.info(
+            "Banco/auth web local desabilitados (DB_ENABLED=0). "
+            "As telas autenticadas exibirao modo publico ate habilitar DB_ENABLED=1."
+        )
     app.config["CONTRACTS_SERVICE"] = contract_service
     app.config["REPORT_SERVICE"] = report_service
     app.config["USER_SERVICE"] = user_service
@@ -327,6 +332,14 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         if _is_safe_internal_next(raw_next):
             return raw_next
         return url_for(default_endpoint)
+
+    def _auth_unavailable_message(area: str = "Autenticacao") -> str:
+        if not settings.db_enabled:
+            return (
+                f"{area} indisponivel no momento. Ambiente local sem banco/auth habilitados (DB_ENABLED=0). "
+                "Para usar login/cadastro local, habilite DB_ENABLED=1 e configure DB_HOST, DB_PORT, DB_NAME, DB_USER e DB_PASSWORD."
+            )
+        return f"{area} indisponivel no momento. Verifique a configuracao do banco."
 
     def _render_entry_page(
         form_data: Dict[str, object] | None = None,
@@ -435,7 +448,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                     title="Login",
                     next_url=next_url,
                     form_data={"email": ""},
-                    error_message="Autenticacao indisponivel no momento. Verifique a configuracao do banco.",
+                    error_message=_auth_unavailable_message("Autenticacao"),
                 ),
                 503,
             )
@@ -507,7 +520,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                     title="Cadastro",
                     next_url=next_url,
                     form_data={"email": ""},
-                    error_message="Cadastro indisponivel no momento. Verifique a configuracao do banco.",
+                    error_message=_auth_unavailable_message("Cadastro"),
                 ),
                 503,
             )
