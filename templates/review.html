@@ -15,19 +15,13 @@
 <p class="muted">Etapa 2 de 3: confira os dados, ajuste o que for necessario e confirme a geracao.</p>
 <p class="muted">Parser identificado: <strong>{{ parser_mode }}</strong></p>
 
-<div class="quick-links">
+<div class="quick-links compact">
   <a href="#alertas-operacionais">Pendencias</a>
-  <a href="#origem-dados">Origem dos dados</a>
-  <a href="#conferencia-rapida">Conferencia rapida</a>
   <a href="#campos-principais">Campos principais</a>
   <a href="#confirmacao-final">Confirmacao</a>
   <a href="#itens-nao-mapeados">Nao mapeados</a>
   <a href="#linhas-incompletas">Incompletas</a>
-  <a href="#execucao">Execucao</a>
-  <a href="#frentes">Frentes</a>
-  <a href="#ocorrencias">Ocorrencias</a>
-  <a href="#observacoes">Observacoes</a>
-  <a href="#mensagem-original">Mensagem</a>
+  <a href="#execucao">Detalhes tecnicos</a>
 </div>
 
 {% if error_message %}
@@ -744,12 +738,6 @@
   </div>
 </div>
 
-<div class="sticky-actions">
-  <div class="actions" style="margin-top:0;">
-    <button type="submit" name="action" value="back" class="secondary">Voltar</button>
-    <button type="submit" name="action" value="generate">Confirmar e gerar arquivos</button>
-  </div>
-</div>
 </form>
 
 <script>

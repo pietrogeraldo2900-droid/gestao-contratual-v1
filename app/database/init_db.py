@@ -68,6 +68,72 @@ def init_db(db: DatabaseManager) -> None:
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
         """,
+        """
+        CREATE TABLE IF NOT EXISTS management_execucao (
+            id BIGSERIAL PRIMARY KEY,
+            source_uid VARCHAR(180) NOT NULL UNIQUE,
+            id_item VARCHAR(80),
+            id_frente VARCHAR(80),
+            data_referencia DATE,
+            contrato VARCHAR(160),
+            programa VARCHAR(160),
+            nucleo VARCHAR(180),
+            logradouro TEXT,
+            municipio VARCHAR(180),
+            equipe VARCHAR(180),
+            servico_oficial VARCHAR(255),
+            categoria VARCHAR(180),
+            categoria_item VARCHAR(180),
+            quantidade NUMERIC(18,3) NOT NULL DEFAULT 0,
+            unidade VARCHAR(80),
+            arquivo_origem VARCHAR(255),
+            nucleo_oficial VARCHAR(180),
+            municipio_oficial VARCHAR(180),
+            nucleo_status_cadastro VARCHAR(80)
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS management_frentes (
+            id BIGSERIAL PRIMARY KEY,
+            source_uid VARCHAR(180) NOT NULL UNIQUE,
+            id_frente VARCHAR(80),
+            data_referencia DATE,
+            contrato VARCHAR(160),
+            programa VARCHAR(160),
+            nucleo VARCHAR(180),
+            equipe VARCHAR(180),
+            logradouro TEXT,
+            municipio VARCHAR(180),
+            status_frente VARCHAR(120),
+            frente VARCHAR(180),
+            arquivo_origem VARCHAR(255),
+            nucleo_oficial VARCHAR(180),
+            municipio_oficial VARCHAR(180),
+            nucleo_status_cadastro VARCHAR(80)
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS management_ocorrencias (
+            id BIGSERIAL PRIMARY KEY,
+            source_uid VARCHAR(180) NOT NULL UNIQUE,
+            id_ocorrencia VARCHAR(80),
+            id_frente VARCHAR(80),
+            data_referencia DATE,
+            contrato VARCHAR(160),
+            programa VARCHAR(160),
+            nucleo VARCHAR(180),
+            equipe VARCHAR(180),
+            logradouro TEXT,
+            municipio VARCHAR(180),
+            tipo_ocorrencia VARCHAR(180),
+            descricao TEXT,
+            impacto_producao VARCHAR(120),
+            arquivo_origem VARCHAR(255),
+            nucleo_oficial VARCHAR(180),
+            municipio_oficial VARCHAR(180),
+            nucleo_status_cadastro VARCHAR(80)
+        )
+        """,
         "CREATE INDEX IF NOT EXISTS idx_contracts_status ON contracts(status)",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_contracts_numero_contrato ON contracts(numero_contrato)",
         "CREATE INDEX IF NOT EXISTS idx_contracts_status_contrato ON contracts(status_contrato)",
@@ -75,6 +141,16 @@ def init_db(db: DatabaseManager) -> None:
         "CREATE INDEX IF NOT EXISTS idx_reports_contract_id ON reports(contract_id)",
         "CREATE INDEX IF NOT EXISTS idx_reports_created_at ON reports(created_at DESC)",
         "CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_mgmt_exec_data ON management_execucao(data_referencia DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_mgmt_exec_nucleo ON management_execucao(nucleo_oficial, nucleo)",
+        "CREATE INDEX IF NOT EXISTS idx_mgmt_exec_equipe ON management_execucao(equipe)",
+        "CREATE INDEX IF NOT EXISTS idx_mgmt_exec_categoria ON management_execucao(categoria, categoria_item)",
+        "CREATE INDEX IF NOT EXISTS idx_mgmt_frentes_data ON management_frentes(data_referencia DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_mgmt_frentes_nucleo ON management_frentes(nucleo_oficial, nucleo)",
+        "CREATE INDEX IF NOT EXISTS idx_mgmt_frentes_equipe ON management_frentes(equipe)",
+        "CREATE INDEX IF NOT EXISTS idx_mgmt_ocorr_data ON management_ocorrencias(data_referencia DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_mgmt_ocorr_nucleo ON management_ocorrencias(nucleo_oficial, nucleo)",
+        "CREATE INDEX IF NOT EXISTS idx_mgmt_ocorr_equipe ON management_ocorrencias(equipe)",
     ]
 
     with db.connection() as conn:

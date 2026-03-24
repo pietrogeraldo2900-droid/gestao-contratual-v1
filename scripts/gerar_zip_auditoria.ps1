@@ -129,8 +129,8 @@ try {
             continue
         }
 
-        # Exclui runtime de rascunhos (data/drafts/**), mantendo apenas arquivos .gitkeep.
-        if (($normalizedRelativePath -eq "data\drafts" -or $normalizedRelativePath.StartsWith("data\drafts\")) -and $file.Name -ne ".gitkeep") {
+        # Exclui explicitamente data/drafts/* e data/drafts/web/*, mantendo apenas .gitkeep.
+        if (($normalizedRelativePath -match '(?i)^data\\drafts(\\|$)') -and ($file.Name -ine ".gitkeep")) {
             $skippedFiles++
             continue
         }

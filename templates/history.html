@@ -47,70 +47,80 @@
 </div>
 
 <form method="get" action="{{ url_for('history') }}" class="section">
-  <h3>Filtros</h3>
-  <div class="body grid-2">
-    <div class="field">
-      <label>Busca livre</label>
-      <input name="q" value="{{ q }}" placeholder="Nucleo, equipe, municipio, logradouro, status...">
-    </div>
-    <div class="field">
-      <label>Status</label>
-      <select name="status">
-        <option value="" {% if not status_filter %}selected{% endif %}>Todos</option>
-        <option value="sucesso" {% if status_filter == 'sucesso' %}selected{% endif %}>Sucesso</option>
-        <option value="erro" {% if status_filter == 'erro' %}selected{% endif %}>Erro</option>
-      </select>
-    </div>
-
-    <div class="field">
-      <label>Data da obra</label>
-      <input name="obra_data" value="{{ obra_data_filter }}" placeholder="dd/mm/aaaa">
-    </div>
-    <div class="field">
-      <label>Nucleo</label>
-      <input name="nucleo" value="{{ nucleo_filter }}" placeholder="Ex.: Mississipi">
-    </div>
-
-    <div class="field">
-      <label>Municipio</label>
-      <input name="municipio" value="{{ municipio_filter }}" placeholder="Ex.: Carapicuiba">
-    </div>
-    <div class="field">
-      <label>Equipe</label>
-      <input name="equipe" value="{{ equipe_filter }}" placeholder="Ex.: Weslyn">
+  <h3>Filtros operacionais</h3>
+  <div class="body">
+    <div class="filter-essential-grid">
+      <div class="field">
+        <label>Busca livre</label>
+        <input name="q" value="{{ q }}" placeholder="Nucleo, equipe, municipio, logradouro, status...">
+      </div>
+      <div class="field">
+        <label>Status</label>
+        <select name="status">
+          <option value="" {% if not status_filter %}selected{% endif %}>Todos</option>
+          <option value="sucesso" {% if status_filter == 'sucesso' %}selected{% endif %}>Sucesso</option>
+          <option value="erro" {% if status_filter == 'erro' %}selected{% endif %}>Erro</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Nucleo</label>
+        <input name="nucleo" value="{{ nucleo_filter }}" placeholder="Ex.: Mississipi">
+      </div>
+      <div class="field">
+        <label>Alertas</label>
+        <select name="alertas">
+          <option value="" {% if not alertas_filter %}selected{% endif %}>Todos</option>
+          <option value="com_alerta" {% if alertas_filter == 'com_alerta' %}selected{% endif %}>Com alerta</option>
+          <option value="sem_alerta" {% if alertas_filter == 'sem_alerta' %}selected{% endif %}>Sem alerta</option>
+        </select>
+      </div>
     </div>
 
-    <div class="field">
-      <label>Alertas</label>
-      <select name="alertas">
-        <option value="" {% if not alertas_filter %}selected{% endif %}>Todos</option>
-        <option value="com_alerta" {% if alertas_filter == 'com_alerta' %}selected{% endif %}>Com alerta</option>
-        <option value="sem_alerta" {% if alertas_filter == 'sem_alerta' %}selected{% endif %}>Sem alerta</option>
-      </select>
-    </div>
-    <div class="field">
-      <label>Processado de</label>
-      <input type="date" name="processed_from" value="{{ processed_from }}">
+    <div class="flow-toolbar compact">
+      <a href="{{ url_for('history', status='erro') }}">Somente erro</a>
+      <a href="{{ url_for('history', alertas='com_alerta') }}">Somente com alerta</a>
+      <a href="{{ url_for('history', nm_days=7, nm_runs=120) }}">Janela 7 dias (nao mapeados)</a>
+      <a href="{{ url_for('history') }}">Limpar filtros</a>
     </div>
 
-    <div class="field">
-      <label>Processado ate</label>
-      <input type="date" name="processed_to" value="{{ processed_to }}">
-    </div>
-    <div class="field">
-      <label>Janela nao mapeados (dias)</label>
-      <input type="number" min="1" max="3650" name="nm_days" value="{{ nm_days }}">
-    </div>
-
-    <div class="field">
-      <label>Ultimos processamentos para analise</label>
-      <input type="number" min="1" max="5000" name="nm_runs" value="{{ nm_runs }}">
-    </div>
+    <details class="advanced-filters">
+      <summary>Filtros avancados</summary>
+      <div class="filter-advanced-grid">
+        <div class="field">
+          <label>Data da obra</label>
+          <input name="obra_data" value="{{ obra_data_filter }}" placeholder="dd/mm/aaaa">
+        </div>
+        <div class="field">
+          <label>Municipio</label>
+          <input name="municipio" value="{{ municipio_filter }}" placeholder="Ex.: Carapicuiba">
+        </div>
+        <div class="field">
+          <label>Equipe</label>
+          <input name="equipe" value="{{ equipe_filter }}" placeholder="Ex.: Weslyn">
+        </div>
+        <div class="field">
+          <label>Processado de</label>
+          <input type="date" name="processed_from" value="{{ processed_from }}">
+        </div>
+        <div class="field">
+          <label>Processado ate</label>
+          <input type="date" name="processed_to" value="{{ processed_to }}">
+        </div>
+        <div class="field">
+          <label>Janela nao mapeados (dias)</label>
+          <input type="number" min="1" max="3650" name="nm_days" value="{{ nm_days }}">
+        </div>
+        <div class="field">
+          <label>Ultimos processamentos para analise</label>
+          <input type="number" min="1" max="5000" name="nm_runs" value="{{ nm_runs }}">
+        </div>
+      </div>
+    </details>
   </div>
   <div class="body" style="padding-top:0;">
     <div class="actions" style="margin-top:0;">
       <button type="submit">Aplicar filtros</button>
-      <a href="{{ url_for('history') }}"><button type="button" class="secondary">Limpar</button></a>
+      <button type="button" class="secondary" onclick="window.location.href='{{ url_for('history') }}'">Limpar</button>
     </div>
   </div>
 </form>

@@ -1,588 +1,317 @@
 ﻿{% extends "base.html" %}
+{% block title %}Painel Gerencial{% endblock %}
+
 {% block content %}
-<section class="page-hero">
-  <div class="page-hero-grid">
+{% set kpi = dashboard.get('kpis_principais', {}) %}
+{% set consolidado = dashboard.get('consolidado_periodo', {}) %}
+{% set graficos = dashboard.get('graficos_executivos', {}) %}
+{% set nucleos_items = graficos.get('nucleos', {}).get('items', []) %}
+{% set categorias_items = graficos.get('categorias', {}).get('items', []) %}
+{% set equipes_items = graficos.get('equipes', {}).get('items', []) %}
+{% set servicos_items = graficos.get('servicos', {}).get('items', []) %}
+{% set categorias_total = categorias_items | map(attribute='value') | sum %}
+{% set nucleos_total = nucleos_items | map(attribute='value') | sum %}
+{% set max_nucleo_val = (nucleos_items[0].get('value', 0)|float if nucleos_items else 0.0) %}
+{% if max_nucleo_val <= 0 %}{% set max_nucleo_val = 1.0 %}{% endif %}
+{% set cat_colors = ['#49b6ff', '#33d6dd', '#4ade80', '#a3e635', '#facc15', '#fb7185', '#a78bfa', '#60a5fa'] %}
+{% set user_initials = (session.get('user_email', 'OP')[:2] or 'OP')|upper %}
+
+<div class="gerencial-page-v3" data-gerencial-v3>
+  <header class="pgm3-hero">
     <div>
-      <div class="hero-eyebrow">Leitura executiva</div>
-      <h2 class="hero-title">Painel gerencial</h2>
-      <p class="hero-subtitle">Uma visão gerencial mais clara do período: volume, recorrências, alertas, concentração operacional e qualidade de mapeamento em um dashboard pronto para acompanhamento de coordenação.</p>
-      <div class="hero-chip-row">
-        <span class="hero-chip">KPIs executivos</span>
-        <span class="hero-chip">Rankings por volume</span>
-        <span class="hero-chip">Filtros por contexto</span>
+      <h1>Painel Gerencial de Evolucao de Obra</h1>
+      <p>Base executiva interativa inspirada no legado, com visual moderno</p>
+    </div>
+    <div class="pgm3-hero-actions" aria-hidden="true">
+      <span class="pgm3-icon-btn">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6"></circle><path d="M20 20l-3.3-3.3"></path></svg>
+      </span>
+      <span class="pgm3-icon-btn">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 4a4 4 0 0 0-4 4v2.2l-1.6 2.7a1 1 0 0 0 .9 1.5h9.4a1 1 0 0 0 .9-1.5L16 10.2V8a4 4 0 0 0-4-4Z"></path><path d="M10 18a2 2 0 0 0 4 0"></path></svg>
+      </span>
+      <span class="pgm3-user-badge">{{ user_initials }}</span>
+    </div>
+  </header>
+
+  <section class="pgm3-filters-shell">
+    <div class="pgm3-filters-header">
+      <div>
+        <h2>Filtros gerenciais</h2>
+        <p>Use filtros para refinar os indicadores da visao executiva.</p>
       </div>
+      <button type="button" class="pgm3-filter-toggle" data-pgm3-toggle>
+        Mostrar filtros
+        <svg viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6"></path></svg>
+      </button>
     </div>
-    <div class="hero-stat-grid">
-      <div class="hero-stat">
-        <div class="hero-stat-label">Processamentos</div>
-        <div class="hero-stat-value">{{ dashboard.kpis_principais.total_processamentos }}</div>
-        <div class="hero-stat-subtitle">Mensagens consideradas no recorte</div>
+
+    <form method="get" action="{{ url_for('gerencial') }}" class="pgm3-filter-form" data-pgm3-form hidden>
+      <div class="pgm3-filter-grid">
+        <label>
+          Periodo da obra (de)
+          <input type="date" name="obra_from" value="{{ obra_from }}">
+        </label>
+        <label>
+          Periodo da obra (ate)
+          <input type="date" name="obra_to" value="{{ obra_to }}">
+        </label>
+        <label>
+          Processado em (de)
+          <input type="date" name="processed_from" value="{{ processed_from }}">
+        </label>
+        <label>
+          Processado em (ate)
+          <input type="date" name="processed_to" value="{{ processed_to }}">
+        </label>
+        <label>
+          Nucleo
+          <input name="nucleo" value="{{ nucleo }}" placeholder="Ex.: Mississipi">
+        </label>
+        <label>
+          Municipio
+          <input name="municipio" value="{{ municipio }}" placeholder="Ex.: Carapicuiba">
+        </label>
+        <label>
+          Equipe
+          <input name="equipe" value="{{ equipe }}" placeholder="Ex.: Xavier">
+        </label>
+        <label>
+          Status
+          <select name="status">
+            <option value="" {% if not status_filter %}selected{% endif %}>Todos</option>
+            <option value="sucesso" {% if status_filter == 'sucesso' %}selected{% endif %}>Sucesso</option>
+            <option value="erro" {% if status_filter == 'erro' %}selected{% endif %}>Erro</option>
+          </select>
+        </label>
+        <label>
+          Alertas
+          <select name="alertas">
+            <option value="" {% if not alertas_filter %}selected{% endif %}>Todos</option>
+            <option value="com_alerta" {% if alertas_filter == 'com_alerta' %}selected{% endif %}>Com alerta</option>
+            <option value="sem_alerta" {% if alertas_filter == 'sem_alerta' %}selected{% endif %}>Sem alerta</option>
+          </select>
+        </label>
+        <label>
+          Top N
+          <input type="number" min="3" max="50" name="top_n" value="{{ top_n }}">
+        </label>
       </div>
-      <div class="hero-stat">
-        <div class="hero-stat-label">Mapeado</div>
-        <div class="hero-stat-value">{{ dashboard.kpis_principais.percentual_mapeado_fmt }}%</div>
-        <div class="hero-stat-subtitle">Itens classificados com sucesso</div>
+      <div class="pgm3-filter-actions">
+        <button type="submit" class="pgm3-btn-primary">Aplicar filtros</button>
+        <a href="{{ url_for('gerencial') }}" class="pgm3-btn-ghost">Limpar filtros</a>
       </div>
-      <div class="hero-stat">
-        <div class="hero-stat-label">Execuções</div>
-        <div class="hero-stat-value">{{ dashboard.kpis_principais.total_execucoes }}</div>
-        <div class="hero-stat-subtitle">Registros consolidados no período</div>
-      </div>
-      <div class="hero-stat">
-        <div class="hero-stat-label">Ocorrências</div>
-        <div class="hero-stat-value">{{ dashboard.kpis_principais.total_ocorrencias }}</div>
-        <div class="hero-stat-subtitle">Impactos operacionais registrados</div>
-      </div>
-    </div>
-  </div>
-</section>
+    </form>
+  </section>
 
-<form method="get" action="{{ url_for('gerencial') }}" class="section" data-collapsible="1" data-collapsed="true">
-  <h3>Filtros gerenciais</h3>
-  <div class="body grid-2">
-    <div class="field">
-      <label>Período da obra (de)</label>
-      <input type="date" name="obra_from" value="{{ obra_from }}">
-    </div>
-    <div class="field">
-      <label>Período da obra (até)</label>
-      <input type="date" name="obra_to" value="{{ obra_to }}">
-    </div>
+  <section class="pgm3-kpi-grid">
+    <article class="pgm3-kpi-card">
+      <span class="pgm3-kpi-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M5 3h14v18H5z"></path><path d="M9 7h6"></path><path d="M9 11h6"></path><path d="M9 15h4"></path></svg></span>
+      <p class="pgm3-kpi-label">Nucleos</p>
+      <strong>{{ kpi.get('total_nucleos', 0) }}</strong>
+      <small>com atividade no periodo</small>
+    </article>
 
-    <div class="field">
-      <label>Processado em (de)</label>
-      <input type="date" name="processed_from" value="{{ processed_from }}">
-    </div>
-    <div class="field">
-      <label>Processado em (até)</label>
-      <input type="date" name="processed_to" value="{{ processed_to }}">
-    </div>
+    <article class="pgm3-kpi-card">
+      <span class="pgm3-kpi-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="5" width="16" height="14" rx="2"></rect><path d="M8 10h8"></path></svg></span>
+      <p class="pgm3-kpi-label">Frentes</p>
+      <strong>{{ kpi.get('total_frentes', 0) }}</strong>
+      <small>frentes registradas</small>
+    </article>
 
-    <div class="field">
-      <label>Núcleo</label>
-      <input name="nucleo" value="{{ nucleo }}" placeholder="Ex.: Mississipi">
-    </div>
-    <div class="field">
-      <label>Município</label>
-      <input name="municipio" value="{{ municipio }}" placeholder="Ex.: Carapicuíba">
-    </div>
+    <article class="pgm3-kpi-card">
+      <span class="pgm3-kpi-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l9 16H3z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
+      <p class="pgm3-kpi-label">Ocorrencias</p>
+      <strong>{{ kpi.get('total_ocorrencias', 0) }}</strong>
+      <small>itens de risco</small>
+    </article>
 
-    <div class="field">
-      <label>Equipe</label>
-      <input name="equipe" value="{{ equipe }}" placeholder="Ex.: Weslyn">
-    </div>
-    <div class="field">
-      <label>Status</label>
-      <select name="status">
-        <option value="" {% if not status_filter %}selected{% endif %}>Todos</option>
-        <option value="sucesso" {% if status_filter == 'sucesso' %}selected{% endif %}>Sucesso</option>
-        <option value="erro" {% if status_filter == 'erro' %}selected{% endif %}>Erro</option>
-      </select>
-    </div>
+    <article class="pgm3-kpi-card">
+      <span class="pgm3-kpi-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 9h16"></path><path d="M6 5h12v14H6z"></path><path d="M9 13h6"></path></svg></span>
+      <p class="pgm3-kpi-label">Qtd total</p>
+      <strong>{{ consolidado.get('volume_total_fmt', '0') }}</strong>
+      <small>volume consolidado</small>
+    </article>
 
-    <div class="field">
-      <label>Alertas</label>
-      <select name="alertas">
-        <option value="" {% if not alertas_filter %}selected{% endif %}>Todos</option>
-        <option value="com_alerta" {% if alertas_filter == 'com_alerta' %}selected{% endif %}>Com alerta</option>
-        <option value="sem_alerta" {% if alertas_filter == 'sem_alerta' %}selected{% endif %}>Sem alerta</option>
-      </select>
-    </div>
-    <div class="field">
-      <label>Top N (rankings)</label>
-      <input type="number" min="3" max="50" name="top_n" value="{{ top_n }}">
-    </div>
-  </div>
-  <div class="body" style="padding-top:0;">
-    <div class="actions" style="margin-top:0;">
-      <button type="submit">Atualizar painel</button>
-      <a href="{{ url_for('gerencial') }}"><button type="button" class="secondary">Limpar filtros</button></a>
-    </div>
-  </div>
-</form>
+    <article class="pgm3-kpi-card">
+      <span class="pgm3-kpi-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M7 5h10"></path><path d="M5 9h14"></path><path d="M4 13h16"></path><path d="M6 17h12"></path></svg></span>
+      <p class="pgm3-kpi-label">Categorias</p>
+      <strong>{{ categorias_items|length }}</strong>
+      <small>categorias ativas</small>
+    </article>
 
-{% if not dashboard.has_data and dashboard.kpis_principais.total_processamentos|int == 0 %}
-  <div class="notice warning">Sem dados para os filtros selecionados.</div>
-{% endif %}
+    <article class="pgm3-kpi-card">
+      <span class="pgm3-kpi-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="9" r="3"></circle><circle cx="16" cy="14" r="3"></circle><path d="M3 20c0-3 3-5 6-5"></path><path d="M11 20c0-2.7 2.5-4.5 5-4.5 2.6 0 5 1.8 5 4.5"></path></svg></span>
+      <p class="pgm3-kpi-label">Equipes</p>
+      <strong>{{ kpi.get('total_equipes', 0) }}</strong>
+      <small>equipes com producao</small>
+    </article>
+  </section>
 
-<div class="section">
-  <h3>Resumo executivo</h3>
-  <div class="body">
-    <p class="muted">Período de referência: <strong>{{ dashboard.resumo_executivo.periodo }}</strong></p>
-    <div class="dashboard-hero">
-      <div class="hero-card">
-        <h4>Leitura rápida</h4>
-        <ul class="hero-list">
-          {% for linha in dashboard.resumo_executivo.linhas %}
-            <li>{{ linha }}</li>
+  <section class="pgm3-analytics-grid">
+    <article class="pgm3-panel">
+      <header class="pgm3-panel-header">
+        <h3>Visao por Nucleo</h3>
+        <p>Frentes, itens, ocorrencias e volume</p>
+      </header>
+
+      {% if nucleos_items %}
+      <div class="pgm3-nuc-chart-wrap">
+        <div class="pgm3-nuc-chart">
+          {% for row in nucleos_items[:7] %}
+          {% set nuc_ratio = ((row.get('value', 0)|float / max_nucleo_val) if max_nucleo_val else 0.0) %}
+          {% if nuc_ratio > 1 %}{% set nuc_ratio = 1 %}{% endif %}
+          {% if nuc_ratio < 0 %}{% set nuc_ratio = 0 %}{% endif %}
+          {% set nuc_height_px = (10 + (nuc_ratio * 150)) if row.get('value', 0)|float > 0 else 6 %}
+          <div class="pgm3-nuc-col">
+            <span class="pgm3-nuc-bar" style="height: {{ '%.0f'|format(nuc_height_px) }}px;"></span>
+            <span class="pgm3-nuc-value">{{ row.get('value_fmt', '0') }}</span>
+          </div>
           {% endfor %}
-        </ul>
-      </div>
-      <div class="hero-card">
-        <h4>Contexto do recorte</h4>
-        <div class="chips">
-          <span class="chip">Obra: {{ dashboard.consolidado_periodo.periodo_obra }}</span>
-          <span class="chip">Processamento: {{ dashboard.consolidado_periodo.periodo_processamento }}</span>
-          <span class="chip">Runs válidas: {{ dashboard.consolidado_periodo.runs_com_dados }}</span>
-          <span class="chip">Volume total: {{ dashboard.consolidado_periodo.volume_total_fmt }}</span>
         </div>
-        {% if dashboard.comparativos_basicos.has_comparativo %}
-          <p style="margin-top:10px;">Comparativo ativo entre <strong>{{ dashboard.comparativos_basicos.label_atual }}</strong> e <strong>{{ dashboard.comparativos_basicos.label_anterior }}</strong>.</p>
-        {% else %}
-          <p style="margin-top:10px;">Sem comparativo temporal suficiente para o recorte atual.</p>
-        {% endif %}
       </div>
-    </div>
 
-    <div class="kpi-grid">
-      {% for card in dashboard.cards_executivos %}
-        <div class="kpi-card executive {% if card.tone %}state-{{ card.tone }}{% endif %}">
-          <div class="kpi-title">{{ card.title }}</div>
-          <div class="kpi-value">{{ card.value }}</div>
-          <div class="kpi-subtitle">{{ card.subtitle }}</div>
-        </div>
-      {% endfor %}
-    </div>
-  </div>
-</div>
+      <div class="pgm3-nuc-list">
+        {% for row in nucleos_items[:4] %}
+          {% set pct = ((row.get('value', 0) / nucleos_total) * 100) if nucleos_total else 0 %}
+          <article class="pgm3-nuc-row">
+            <span class="name">{{ row.get('label', '-') }}</span>
+            <span>{{ row.get('value_fmt', '0') }}</span>
+            <span>{{ '%.1f'|format(pct) }}%</span>
+          </article>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="pgm3-empty">Sem dados de nucleo para o recorte atual.</div>
+      {% endif %}
+    </article>
 
-<div class="section">
-  <h3>Gráficos executivos</h3>
-  <div class="body">
-    <div class="chart-grid">
-      <div class="chart-panel wide">
-        <p class="chart-title">Evolução de processamentos por período</p>
-        <p class="chart-subtitle">Leitura diária do volume processado no recorte filtrado.</p>
-        {% if dashboard.graficos_executivos.periodo.has_data %}
-          <div class="vchart-scroll">
-            <div class="vchart-list">
-          {% for row in dashboard.graficos_executivos.periodo["items"] %}
-                <div class="vbar-item">
-                  <div class="vbar-value">{{ row.value_fmt }}</div>
-                  <div class="vbar-track">
-                    <div class="vbar-fill" style="height: {{ row.height_pct }}%;"></div>
-                  </div>
-                  <div class="vbar-label">{{ row.short_label }}</div>
-                </div>
-              {% endfor %}
+    <article class="pgm3-panel">
+      <header class="pgm3-panel-header">
+        <h3>Visao por Categoria</h3>
+        <p>Participacao e status operacional</p>
+      </header>
+
+      {% if categorias_items %}
+      <div class="pgm3-cat-layout">
+        <div class="pgm3-cat-donut-wrap">
+          <div class="pgm3-cat-donut" data-cat-donut>
+            <div class="pgm3-cat-center">
+              <small>VOLUME</small>
+              <strong>{{ consolidado.get('volume_total_fmt', '0') }}</strong>
             </div>
           </div>
-        {% else %}
-          <p class="muted">Sem série temporal para exibir no recorte atual.</p>
-        {% endif %}
-      </div>
-
-      <div class="chart-panel">
-        <p class="chart-title">Mapeado x não mapeado</p>
-        <p class="chart-subtitle">Qualidade de classificação dos itens processados.</p>
-        <div class="stack-meter">
-          <div class="stack-fill mapped" style="width: {{ dashboard.graficos_executivos.mapeamento.mapped_pct }}%;"></div>
-          <div class="stack-fill unmapped" style="width: {{ dashboard.graficos_executivos.mapeamento.unmapped_pct }}%;"></div>
         </div>
-        <div class="legend-inline">
-          <span class="chip">Mapeado: {{ dashboard.graficos_executivos.mapeamento.mapped_pct_fmt }}% ({{ dashboard.graficos_executivos.mapeamento.mapped }})</span>
-          <span class="chip">Não mapeado: {{ dashboard.graficos_executivos.mapeamento.unmapped_pct_fmt }}% ({{ dashboard.graficos_executivos.mapeamento.unmapped }})</span>
-        </div>
-      </div>
 
-      <div class="chart-panel">
-        <p class="chart-title">Serviços mais recorrentes</p>
-        <p class="chart-subtitle">Ranking por volume consolidado.</p>
-        <div class="hbar-list">
-          {% for row in dashboard.graficos_executivos.servicos["items"] %}
-            <div class="hbar-row">
-              <div class="hbar-top">
-                <span class="hbar-label">{{ row.label }}</span>
-                <span class="hbar-value">{{ row.value_fmt }}</span>
-              </div>
-              {% if row.meta %}
-                <div class="hbar-meta">{{ row.meta }}</div>
-              {% endif %}
-              <div class="hbar-track"><div class="hbar-fill" style="width: {{ row.width_pct }}%;"></div></div>
-            </div>
-          {% else %}
-            <p class="muted">Sem dados de serviços.</p>
+        <div class="pgm3-cat-list">
+          {% for row in categorias_items[:6] %}
+            {% set color = cat_colors[loop.index0 % (cat_colors|length)] %}
+            {% set pct = ((row.get('value', 0) / categorias_total) * 100) if categorias_total else 0 %}
+            <article class="pgm3-cat-row" data-cat-item data-value="{{ row.get('value', 0) }}" data-color="{{ color }}">
+              <span class="dot" style="--dot: {{ color }};"></span>
+              <span class="label">{{ row.get('label', '-') }}</span>
+              <span class="val">{{ row.get('value_fmt', '0') }}</span>
+              <span class="pct" data-cat-pct>{{ '%.1f'|format(pct) }}%</span>
+              <span class="status">Ativa</span>
+            </article>
           {% endfor %}
         </div>
       </div>
-
-      <div class="chart-panel">
-        <p class="chart-title">Ocorrências mais recorrentes</p>
-        <p class="chart-subtitle">Principais impactos operacionais do recorte.</p>
-        <div class="hbar-list">
-          {% for row in dashboard.graficos_executivos.ocorrencias["items"] %}
-            <div class="hbar-row">
-              <div class="hbar-top">
-                <span class="hbar-label">{{ row.label }}</span>
-                <span class="hbar-value">{{ row.value_fmt }}</span>
-              </div>
-              <div class="hbar-track"><div class="hbar-fill occurrence" style="width: {{ row.width_pct }}%;"></div></div>
-            </div>
-          {% else %}
-            <p class="muted">Sem dados de ocorrências.</p>
-          {% endfor %}
-        </div>
-      </div>
-
-      <div class="chart-panel">
-        <p class="chart-title">Núcleos com mais processamentos</p>
-        <p class="chart-subtitle">Concentração operacional por núcleo.</p>
-        <div class="hbar-list">
-          {% for row in dashboard.graficos_executivos.nucleos["items"] %}
-            <div class="hbar-row">
-              <div class="hbar-top">
-                <span class="hbar-label">{{ row.label }}</span>
-                <span class="hbar-value">{{ row.value_fmt }}</span>
-              </div>
-              <div class="hbar-track"><div class="hbar-fill success" style="width: {{ row.width_pct }}%;"></div></div>
-            </div>
-          {% else %}
-            <p class="muted">Sem dados de núcleos.</p>
-          {% endfor %}
-        </div>
-      </div>
-
-      <div class="chart-panel">
-        <p class="chart-title">Equipes com mais processamentos</p>
-        <p class="chart-subtitle">Leitura rápida do volume por equipe.</p>
-        <div class="hbar-list">
-          {% for row in dashboard.graficos_executivos.equipes["items"] %}
-            <div class="hbar-row">
-              <div class="hbar-top">
-                <span class="hbar-label">{{ row.label }}</span>
-                <span class="hbar-value">{{ row.value_fmt }}</span>
-              </div>
-              <div class="hbar-track"><div class="hbar-fill" style="width: {{ row.width_pct }}%;"></div></div>
-            </div>
-          {% else %}
-            <p class="muted">Sem dados de equipes.</p>
-          {% endfor %}
-        </div>
-      </div>
-
-      {% if dashboard.graficos_executivos.categorias.has_data %}
-      <div class="chart-panel wide">
-        <p class="chart-title">Categorias mais recorrentes</p>
-        <p class="chart-subtitle">Distribuição do volume por categoria de serviço.</p>
-        <div class="hbar-list">
-          {% for row in dashboard.graficos_executivos.categorias["items"] %}
-            <div class="hbar-row">
-              <div class="hbar-top">
-                <span class="hbar-label">{{ row.label }}</span>
-                <span class="hbar-value">{{ row.value_fmt }}</span>
-              </div>
-              <div class="hbar-track"><div class="hbar-fill success" style="width: {{ row.width_pct }}%;"></div></div>
-            </div>
-          {% endfor %}
-        </div>
-      </div>
+      {% else %}
+      <div class="pgm3-empty">Sem dados de categoria para o recorte atual.</div>
       {% endif %}
-    </div>
-  </div>
-</div>
+    </article>
 
-<div class="section" data-collapsible="1" data-collapsed="true">
-  <h3>Comparativos simples</h3>
-  <div class="body">
-    {% if dashboard.comparativos_basicos.has_comparativo %}
-      <p class="muted">Atual: <strong>{{ dashboard.comparativos_basicos.label_atual }}</strong> | Anterior: <strong>{{ dashboard.comparativos_basicos.label_anterior }}</strong></p>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Indicador</th>
-              <th class="text-right">Atual</th>
-              <th class="text-right">Anterior</th>
-              <th class="text-right">Delta</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Processamentos</td>
-              <td class="text-right">{{ dashboard.comparativos_basicos.atual.processamentos }}</td>
-              <td class="text-right">{{ dashboard.comparativos_basicos.anterior.processamentos }}</td>
-              <td class="text-right">{{ dashboard.comparativos_basicos.delta.processamentos.absolute }} ({{ dashboard.comparativos_basicos.delta.processamentos.percent_fmt }}%)</td>
-            </tr>
-            <tr>
-              <td>Com alerta</td>
-              <td class="text-right">{{ dashboard.comparativos_basicos.atual.com_alerta }}</td>
-              <td class="text-right">{{ dashboard.comparativos_basicos.anterior.com_alerta }}</td>
-              <td class="text-right">{{ dashboard.comparativos_basicos.delta.com_alerta.absolute }} ({{ dashboard.comparativos_basicos.delta.com_alerta.percent_fmt }}%)</td>
-            </tr>
-            <tr>
-              <td>Não mapeados</td>
-              <td class="text-right">{{ dashboard.comparativos_basicos.atual.nao_mapeados }}</td>
-              <td class="text-right">{{ dashboard.comparativos_basicos.anterior.nao_mapeados }}</td>
-              <td class="text-right">{{ dashboard.comparativos_basicos.delta.nao_mapeados.absolute }} ({{ dashboard.comparativos_basicos.delta.nao_mapeados.percent_fmt }}%)</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    {% else %}
-      <p>Comparativo indisponível para os filtros atuais.</p>
-    {% endif %}
-  </div>
-</div>
+    <article class="pgm3-panel">
+      <header class="pgm3-panel-header">
+        <h3>Visao por Equipe</h3>
+        <p>Equipes com maior volume executado</p>
+      </header>
 
-<div class="section" data-collapsible="1" data-collapsed="true">
-  <h3>Leitura de risco e classificação</h3>
-  <div class="body detail-grid">
-    <div class="chart-panel">
-      <p class="chart-title">Principais alertas recorrentes</p>
-      <p class="chart-subtitle">Ocorrências de atenção mais frequentes no histórico filtrado.</p>
-      <ul class="simple-list">
-        {% for row in dashboard.alertas_recorrentes %}
-          <li>{{ row.alerta }} - {{ row.ocorrencias }}</li>
-        {% else %}
-          <li class="muted">Sem alertas recorrentes.</li>
+      {% if equipes_items %}
+      <div class="pgm3-team-list">
+        {% for row in equipes_items[:7] %}
+        {% set team_width = (row.get('width_pct', 0) * 1.15) %}
+        {% if team_width > 100 %}{% set team_width = 100 %}{% endif %}
+        <article class="pgm3-team-row">
+          <span class="label">{{ row.get('label', '-') }}</span>
+          <span class="track"><span style="width: {{ '%.1f'|format(team_width) }}%;"></span></span>
+          <span class="val">{{ row.get('value_fmt', '0') }}</span>
+        </article>
         {% endfor %}
-      </ul>
-    </div>
-    <div class="chart-panel">
-      <p class="chart-title">Termos não mapeados mais recorrentes</p>
-      <p class="chart-subtitle">Casos que ainda merecem expansão do dicionário.</p>
-      <ul class="simple-list">
-        {% for row in dashboard.ranking_nao_mapeados %}
-          <li>{{ row.termo }} - {{ row.ocorrencias }}</li>
-        {% else %}
-          <li class="muted">Sem recorrência de não mapeados.</li>
+      </div>
+      {% else %}
+      <div class="pgm3-empty">Sem dados de equipe para o recorte atual.</div>
+      {% endif %}
+    </article>
+
+    <article class="pgm3-panel">
+      <header class="pgm3-panel-header">
+        <h3>Visao por Servicos</h3>
+        <p>Top servicos com maior volume executado</p>
+      </header>
+
+      {% if servicos_items %}
+      <div class="pgm3-team-list">
+        {% for row in servicos_items[:7] %}
+        <article class="pgm3-team-row">
+          <span class="label">{{ row.get('label', '-') }}</span>
+          <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
+          <span class="val">{{ row.get('value_fmt', '0') }}</span>
+        </article>
         {% endfor %}
-      </ul>
-    </div>
-  </div>
-</div>
-
-<div class="section" data-collapsible="1" data-collapsed="true">
-  <h3>Consolidado do período</h3>
-  <div class="body table-wrap">
-    <table>
-      <tbody>
-        <tr><th>Período da obra</th><td>{{ dashboard.consolidado_periodo.periodo_obra }}</td></tr>
-        <tr><th>Período de processamento</th><td>{{ dashboard.consolidado_periodo.periodo_processamento }}</td></tr>
-        <tr><th>Runs consideradas</th><td>{{ dashboard.consolidado_periodo.runs_consideradas }}</td></tr>
-        <tr><th>Runs com dados válidos</th><td>{{ dashboard.consolidado_periodo.runs_com_dados }}</td></tr>
-        <tr><th>Execução (registros)</th><td>{{ dashboard.consolidado_periodo.execucao_registros }}</td></tr>
-        <tr><th>Frentes com produção</th><td>{{ dashboard.consolidado_periodo.frentes_com_producao }}</td></tr>
-        <tr><th>Frentes sem produção</th><td>{{ dashboard.consolidado_periodo.frentes_sem_producao }}</td></tr>
-        <tr><th>Ocorrências</th><td>{{ dashboard.consolidado_periodo.ocorrencias }}</td></tr>
-        <tr><th>Volume total</th><td>{{ dashboard.consolidado_periodo.volume_total_fmt }}</td></tr>
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<div class="section" data-collapsible="1" data-collapsed="true">
-  <h3>Resumo por período</h3>
-  <div class="body">
-    {% if dashboard.resumo_por_periodo %}
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Período</th>
-              <th class="text-right">Processamentos</th>
-              <th class="text-right">Com alerta</th>
-              <th class="text-right">Sucesso</th>
-              <th class="text-right">Erro</th>
-              <th class="text-right">Não mapeados</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in dashboard.resumo_por_periodo %}
-              <tr>
-                <td>{{ row.periodo }}</td>
-                <td class="text-right">{{ row.processamentos }}</td>
-                <td class="text-right">{{ row.processamentos_alerta }}</td>
-                <td class="text-right">{{ row.sucesso }}</td>
-                <td class="text-right">{{ row.erro }}</td>
-                <td class="text-right">{{ row.nao_mapeados }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
       </div>
-    {% else %}
-      <p>Nenhum resumo por período para os filtros aplicados.</p>
-    {% endif %}
-  </div>
-</div>
-
-<div class="section">
-  <h3>Indicadores detalhados</h3>
-  <div class="body detail-grid">
-    <div class="chart-panel">
-      <p class="chart-title">Indicadores por núcleo</p>
-      <p class="chart-subtitle">Top {{ top_n }} núcleos por volume e registros.</p>
-      {% if dashboard.indicadores_por_nucleo %}
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Núcleo</th>
-                <th class="text-right">Volume</th>
-                <th class="text-right">Execução</th>
-                <th class="text-right">Frentes</th>
-                <th class="text-right">Ocorrências</th>
-                <th class="text-right">Equipes</th>
-                <th class="text-right">Serviços</th>
-                <th class="text-right">Runs</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for row in dashboard.indicadores_por_nucleo %}
-                <tr>
-                  <td>{{ row.nucleo }}</td>
-                  <td class="text-right">{{ row.volume_total_fmt }}</td>
-                  <td class="text-right">{{ row.registros_execucao }}</td>
-                  <td class="text-right">{{ row.frentes }}</td>
-                  <td class="text-right">{{ row.ocorrencias }}</td>
-                  <td class="text-right">{{ row.equipes_ativas }}</td>
-                  <td class="text-right">{{ row.servicos_distintos }}</td>
-                  <td class="text-right">{{ row.runs }}</td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
       {% else %}
-        <p>Nenhum dado por núcleo para os filtros aplicados.</p>
+      <div class="pgm3-empty">Sem dados de servico para o recorte atual.</div>
       {% endif %}
-    </div>
-
-    <div class="chart-panel">
-      <p class="chart-title">Indicadores por equipe</p>
-      <p class="chart-subtitle">Top {{ top_n }} equipes por volume e registros.</p>
-      {% if dashboard.indicadores_por_equipe %}
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Equipe</th>
-                <th class="text-right">Volume</th>
-                <th class="text-right">Execução</th>
-                <th class="text-right">Frentes</th>
-                <th class="text-right">Ocorrências</th>
-                <th class="text-right">Núcleos</th>
-                <th class="text-right">Serviços</th>
-                <th class="text-right">Runs</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for row in dashboard.indicadores_por_equipe %}
-                <tr>
-                  <td>{{ row.equipe }}</td>
-                  <td class="text-right">{{ row.volume_total_fmt }}</td>
-                  <td class="text-right">{{ row.registros_execucao }}</td>
-                  <td class="text-right">{{ row.frentes }}</td>
-                  <td class="text-right">{{ row.ocorrencias }}</td>
-                  <td class="text-right">{{ row.nucleos_ativos }}</td>
-                  <td class="text-right">{{ row.servicos_distintos }}</td>
-                  <td class="text-right">{{ row.runs }}</td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      {% else %}
-        <p>Nenhum dado por equipe para os filtros aplicados.</p>
-      {% endif %}
-    </div>
-
-    <div class="chart-panel">
-      <p class="chart-title">Indicadores por município</p>
-      <p class="chart-subtitle">Top {{ top_n }} municípios do recorte.</p>
-      {% if dashboard.indicadores_por_municipio %}
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Município</th>
-                <th class="text-right">Processamentos</th>
-                <th class="text-right">Com alerta</th>
-                <th class="text-right">Não mapeados</th>
-                <th class="text-right">Núcleos</th>
-                <th class="text-right">Equipes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for row in dashboard.indicadores_por_municipio %}
-                <tr>
-                  <td>{{ row.municipio }}</td>
-                  <td class="text-right">{{ row.processamentos }}</td>
-                  <td class="text-right">{{ row.processamentos_alerta }}</td>
-                  <td class="text-right">{{ row.nao_mapeados }}</td>
-                  <td class="text-right">{{ row.nucleos_ativos }}</td>
-                  <td class="text-right">{{ row.equipes_ativas }}</td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      {% else %}
-        <p>Nenhum dado por município para os filtros aplicados.</p>
-      {% endif %}
-    </div>
-
-    <div class="chart-panel">
-      <p class="chart-title">Rankings detalhados</p>
-      <p class="chart-subtitle">Abertura completa dos serviços e ocorrências mais recorrentes.</p>
-      <div class="table-wrap" style="margin-bottom:10px;">
-        <table>
-          <thead>
-            <tr>
-              <th>Serviço</th>
-              <th>Categoria</th>
-              <th class="text-right">Volume</th>
-              <th class="text-right">Registros</th>
-              <th>Unidades</th>
-              <th class="text-right">Núcleos</th>
-              <th class="text-right">Equipes</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in dashboard.ranking_servicos %}
-              <tr>
-                <td>{{ row.servico }}</td>
-                <td>{{ row.categoria }}</td>
-                <td class="text-right">{{ row.volume_total_fmt }}</td>
-                <td class="text-right">{{ row.registros }}</td>
-                <td>{{ row.unidades }}</td>
-                <td class="text-right">{{ row.nucleos_ativos }}</td>
-                <td class="text-right">{{ row.equipes_ativas }}</td>
-              </tr>
-            {% else %}
-              <tr><td colspan="7">Nenhum serviço encontrado para os filtros aplicados.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Tipo de ocorrência</th>
-              <th class="text-right">Ocorrências</th>
-              <th class="text-right">Núcleos impactados</th>
-              <th class="text-right">Equipes impactadas</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in dashboard.ranking_ocorrencias %}
-              <tr>
-                <td>{{ row.tipo_ocorrencia }}</td>
-                <td class="text-right">{{ row.ocorrencias }}</td>
-                <td class="text-right">{{ row.nucleos_ativos }}</td>
-                <td class="text-right">{{ row.equipes_ativas }}</td>
-              </tr>
-            {% else %}
-              <tr><td colspan="4">Nenhuma ocorrência encontrada para os filtros aplicados.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
+    </article>
+  </section>
 </div>
 {% endblock %}
 
+{% block extra_scripts %}
+<script>
+  (function () {
+    const root = document.querySelector('[data-gerencial-v3]');
+    if (!root) return;
 
+    const toggleBtn = root.querySelector('[data-pgm3-toggle]');
+    const filterForm = root.querySelector('[data-pgm3-form]');
+
+    if (toggleBtn && filterForm) {
+      toggleBtn.addEventListener('click', function () {
+        const isHidden = filterForm.hasAttribute('hidden');
+        if (isHidden) {
+          filterForm.removeAttribute('hidden');
+          toggleBtn.classList.add('is-open');
+          toggleBtn.firstChild.textContent = 'Ocultar filtros ';
+        } else {
+          filterForm.setAttribute('hidden', '');
+          toggleBtn.classList.remove('is-open');
+          toggleBtn.firstChild.textContent = 'Mostrar filtros ';
+        }
+      });
+    }
+
+    const donut = root.querySelector('[data-cat-donut]');
+    const items = Array.from(root.querySelectorAll('[data-cat-item]'));
+    if (donut && items.length) {
+      const total = items.reduce((sum, item) => sum + Number(item.dataset.value || 0), 0);
+      let offset = 0;
+      const segments = [];
+
+      items.forEach((item) => {
+        const value = Number(item.dataset.value || 0);
+        const pct = total > 0 ? (value / total) * 100 : 0;
+        const color = item.dataset.color || '#49b6ff';
+        const end = offset + pct;
+        segments.push(`${color} ${offset.toFixed(2)}% ${end.toFixed(2)}%`);
+        const pctEl = item.querySelector('[data-cat-pct]');
+        if (pctEl) pctEl.textContent = `${pct.toFixed(1)}%`;
+        offset = end;
+      });
+
+      donut.style.setProperty('--pgm3-donut-bg', segments.length ? `conic-gradient(${segments.join(', ')})` : 'conic-gradient(#1e293b 0 100%)');
+    }
+  })();
+</script>
+{% endblock %}

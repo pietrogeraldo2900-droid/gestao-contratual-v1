@@ -8,6 +8,41 @@ from urllib.parse import quote_plus
 DEFAULT_LOCAL_SECRET = "sisg-local-dev-secret-key-2026-32-bytes"
 
 
+def _load_optional_dotenv(base_dir: Path) -> None:
+    """
+    Carrega .env local de forma opcional e segura:
+    - somente se o arquivo existir;
+    - nao sobrescreve variaveis ja definidas no ambiente.
+    """
+    env_file = base_dir / ".env"
+    if not env_file.exists():
+        return
+
+    try:
+        lines = env_file.read_text(encoding="utf-8").splitlines()
+    except Exception:
+        return
+
+    for raw_line in lines:
+        line = str(raw_line or "").strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.lower().startswith("export "):
+            line = line[7:].strip()
+        if "=" not in line:
+            continue
+
+        name, value = line.split("=", 1)
+        name = name.strip()
+        if not name or name in os.environ:
+            continue
+
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+            value = value[1:-1]
+        os.environ[name] = value
+
+
 def _env_bool(name: str, default: bool = False) -> bool:
     raw = str(os.environ.get(name, "") or "").strip().lower()
     if not raw:
@@ -72,6 +107,7 @@ class AppSettings:
 
 def load_settings(base_dir: Path | None = None) -> AppSettings:
     base = Path(base_dir) if base_dir else Path(__file__).resolve().parents[1]
+    _load_optional_dotenv(base)
     config_dir = base / "config"
     data_dir = base / "data"
     outputs_root = Path(os.environ.get("OUTPUTS_ROOT", str(base / "saidas")))

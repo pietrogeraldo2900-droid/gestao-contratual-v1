@@ -199,7 +199,7 @@
       </aside>
 
       <div class="app-main app-main-wrap main-content">
-        {% if endpoint != 'dashboard' %}
+        {% if endpoint not in ['dashboard', 'gerencial'] %}
         <header class="app-topbar app-context">
           <div>
             <div class="app-context-kicker">Painel autenticado</div>

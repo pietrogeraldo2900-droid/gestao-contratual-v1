@@ -40,6 +40,12 @@
   </div>
 {% endif %}
 
+<div class="flow-toolbar">
+  <a href="{{ url_for('history') }}">Historico operacional</a>
+  <a href="{{ url_for('results_list') }}">Resultados gerados</a>
+  <a href="{{ url_for('dashboard') }}">Voltar ao dashboard</a>
+</div>
+
 <form method="post" action="{{ url_for('preview') }}">
   <section class="section">
     <h3>Mensagem principal</h3>

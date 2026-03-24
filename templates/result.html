@@ -17,11 +17,17 @@
   </div>
 {% endif %}
 
-<div class="quick-links">
+<div class="quick-links compact">
   <a href="#resumo-revisao">Resumo da revisao</a>
   <a href="#dados-principais">Dados principais</a>
   <a href="#saida-gerada">Arquivos gerados</a>
   <a href="#status-master">Base mestra</a>
+</div>
+
+<div class="flow-toolbar compact">
+  <a href="{{ url_for('index') }}">Nova entrada</a>
+  <a href="{{ url_for('history') }}">Historico</a>
+  <a href="{{ url_for('results_list') }}">Resultados</a>
 </div>
 
 <div class="kpi-grid">
@@ -166,7 +172,7 @@
   </div>
 </div>
 
-<div class="section">
+<div class="section" data-collapsible="1" data-collapsed="true">
   <h3>Resumo operacional da geracao</h3>
   <div class="body">
     <table>
@@ -189,7 +195,7 @@
   </div>
 </div>
 
-<div class="section" id="status-master">
+<div class="section" id="status-master" data-collapsible="1" data-collapsed="true">
   <h3>Atualizacao da base mestra</h3>
   <div class="body">
     <table>
@@ -202,7 +208,7 @@
   </div>
 </div>
 
-<div class="section" id="saida-gerada">
+<div class="section" id="saida-gerada" data-collapsible="1" data-collapsed="true">
   <h3>Arquivos gerados</h3>
   <div class="body">
     <table>
@@ -219,7 +225,7 @@
 </div>
 
 {% if result.alert_items %}
-  <div class="section">
+  <div class="section" data-collapsible="1" data-collapsed="true">
     <h3>Alertas registrados no processamento</h3>
     <div class="body">
       {% for alert in result.alert_items %}

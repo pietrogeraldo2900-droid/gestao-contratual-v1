@@ -75,6 +75,11 @@ Arquivo exemplo:
 Copy-Item .env.example .env
 ```
 
+Notas de ambiente:
+- O `run_web.py` carrega o arquivo `.env` automaticamente (quando existir), sem sobrescrever variaveis ja definidas no sistema.
+- Para rodar local fora de container (`python run_web.py`), mantenha `DB_HOST=localhost` no `.env`.
+- Para rodar o servico `web` dentro do `docker-compose`, ajuste `DB_HOST=db`.
+
 ## Instalacao local (Windows)
 
 ```powershell
@@ -92,6 +97,12 @@ Atalho:
 ```
 
 ## Rodar aplicacao web (oficial)
+
+Se for rodar local com autenticacao, suba antes o Postgres:
+
+```powershell
+docker compose up -d db
+```
 
 ```powershell
 python run_web.py

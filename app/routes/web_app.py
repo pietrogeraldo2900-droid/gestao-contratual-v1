@@ -9,7 +9,7 @@ from flask import Flask, abort, flash, g, make_response, redirect, render_templa
 
 from config.settings import AppSettings, load_settings
 from app.database import build_database_manager, init_db
-from app.repositories import ContractRepository, ReportRepository, UserRepository
+from app.repositories import ContractRepository, ManagementRepository, ReportRepository, UserRepository
 from app.repositories.contract_repository import ContractConflictError
 from app.repositories.user_repository import UserAlreadyExistsError
 from app.routes.auth_api import register_auth_routes
@@ -208,12 +208,14 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     contract_service: ContractService | None = None
     report_service: ReportService | None = None
     user_service: UserService | None = None
+    management_repository: ManagementRepository | None = None
     app.config["CONTRACTS_DB_ENABLED"] = settings.db_enabled
     db_manager = build_database_manager(settings)
     if db_manager is not None:
         user_repository = UserRepository(db_manager)
         contract_repository = ContractRepository(db_manager)
         report_repository = ReportRepository(db_manager)
+        management_repository = ManagementRepository(db_manager, settings.master_dir)
         user_service = UserService(user_repository)
         contract_service = ContractService(contract_repository)
         report_service = ReportService(report_repository, contract_repository)
@@ -232,6 +234,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     app.config["CONTRACTS_SERVICE"] = contract_service
     app.config["REPORT_SERVICE"] = report_service
     app.config["USER_SERVICE"] = user_service
+    app.config["MANAGEMENT_REPOSITORY"] = management_repository
 
     protected_web_endpoints = {
         "dashboard",
@@ -1326,12 +1329,22 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     @app.get("/gerencial")
     def gerencial():
         filters = _collect_management_filters(request.args)
-        dashboard = service.build_management_layer(
-            {
-                **filters,
-                "history_limit": 3000,
-            }
-        )
+        dashboard = None
+        management_repo = app.config.get("MANAGEMENT_REPOSITORY")
+        build_dashboard = getattr(management_repo, "build_gerencial_dashboard", None)
+        if callable(build_dashboard):
+            try:
+                dashboard = build_dashboard(filters)
+            except Exception as exc:
+                app.logger.warning("Falha ao carregar painel gerencial pelo banco: %s", exc)
+
+        if dashboard is None:
+            dashboard = service.build_management_layer(
+                {
+                    **filters,
+                    "history_limit": 3000,
+                }
+            )
 
         return render_template(
             "gerencial.html",
