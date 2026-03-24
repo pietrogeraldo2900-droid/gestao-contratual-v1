@@ -211,11 +211,11 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     management_repository: ManagementRepository | None = None
     app.config["CONTRACTS_DB_ENABLED"] = settings.db_enabled
     db_manager = build_database_manager(settings)
+    management_repository = ManagementRepository(db_manager, settings.master_dir)
     if db_manager is not None:
         user_repository = UserRepository(db_manager)
         contract_repository = ContractRepository(db_manager)
         report_repository = ReportRepository(db_manager)
-        management_repository = ManagementRepository(db_manager, settings.master_dir)
         user_service = UserService(user_repository)
         contract_service = ContractService(contract_repository)
         report_service = ReportService(report_repository, contract_repository)

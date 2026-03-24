@@ -9,6 +9,8 @@
 {% set categorias_items = graficos.get('categorias', {}).get('items', []) %}
 {% set equipes_items = graficos.get('equipes', {}).get('items', []) %}
 {% set servicos_items = graficos.get('servicos', {}).get('items', []) %}
+{% set municipios_items = graficos.get('municipios', {}).get('items', []) %}
+{% set ocorrencias_tipo_items = graficos.get('tipos_ocorrencia', {}).get('items', []) %}
 {% set categorias_total = categorias_items | map(attribute='value') | sum %}
 {% set nucleos_total = nucleos_items | map(attribute='value') | sum %}
 {% set max_nucleo_val = (nucleos_items[0].get('value', 0)|float if nucleos_items else 0.0) %}
@@ -247,11 +249,11 @@
     <article class="pgm3-panel">
       <header class="pgm3-panel-header">
         <h3>Visao por Servicos</h3>
-        <p>Top servicos com maior volume executado</p>
+        <p>Top servicos mais executados (volume consolidado)</p>
       </header>
 
       {% if servicos_items %}
-      <div class="pgm3-team-list">
+      <div class="pgm3-team-list pgm3-team-list-wide">
         {% for row in servicos_items[:7] %}
         <article class="pgm3-team-row">
           <span class="label">{{ row.get('label', '-') }}</span>
@@ -262,6 +264,48 @@
       </div>
       {% else %}
       <div class="pgm3-empty">Sem dados de servico para o recorte atual.</div>
+      {% endif %}
+    </article>
+
+    <article class="pgm3-panel">
+      <header class="pgm3-panel-header">
+        <h3>Visao por Municipio</h3>
+        <p>Municipios com maior volume executado</p>
+      </header>
+
+      {% if municipios_items %}
+      <div class="pgm3-team-list pgm3-team-list-wide">
+        {% for row in municipios_items[:7] %}
+        <article class="pgm3-team-row">
+          <span class="label">{{ row.get('label', '-') }}</span>
+          <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
+          <span class="val">{{ row.get('value_fmt', '0') }}</span>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="pgm3-empty">Sem dados de municipio para o recorte atual.</div>
+      {% endif %}
+    </article>
+
+    <article class="pgm3-panel">
+      <header class="pgm3-panel-header">
+        <h3>Ocorrencias por Tipo</h3>
+        <p>Tipos de ocorrencia mais frequentes</p>
+      </header>
+
+      {% if ocorrencias_tipo_items %}
+      <div class="pgm3-team-list pgm3-team-list-wide">
+        {% for row in ocorrencias_tipo_items[:7] %}
+        <article class="pgm3-team-row">
+          <span class="label">{{ row.get('label', '-') }}</span>
+          <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
+          <span class="val">{{ row.get('value_fmt', '0') }}</span>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="pgm3-empty">Sem ocorrencias no recorte atual.</div>
       {% endif %}
     </article>
   </section>

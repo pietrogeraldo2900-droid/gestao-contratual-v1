@@ -5,7 +5,7 @@ import hashlib
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Iterable, List
+from typing import Any, Iterable, List, Optional
 
 from app.database.connection import DatabaseManager
 
@@ -55,6 +55,14 @@ def _normalize(value: object) -> str:
     return _safe_text(value).lower()
 
 
+def _pick_first_text(*values: object) -> str:
+    for value in values:
+        text = _safe_text(value)
+        if text:
+            return text
+    return ""
+
+
 def _match(value: object, probe: str) -> bool:
     if not probe:
         return True
@@ -100,7 +108,7 @@ class _Filters:
 
 
 class ManagementRepository:
-    def __init__(self, db: DatabaseManager, master_dir: Path):
+    def __init__(self, db: Optional[DatabaseManager], master_dir: Path):
         self._db = db
         self._master_dir = Path(master_dir)
 
@@ -124,7 +132,73 @@ class ManagementRepository:
                 continue
         return []
 
+    def _load_rows_from_master_csv(self) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+        exec_csv = self._pick_csv("base_mestra_execucao.csv", "execucao.csv")
+        frentes_csv = self._pick_csv("base_mestra_frentes.csv", "frentes.csv")
+        ocorr_csv = self._pick_csv("base_mestra_ocorrencias.csv", "ocorrencias.csv")
+
+        exec_rows: list[dict[str, Any]] = []
+        for row in self._read_csv(exec_csv):
+            exec_rows.append(
+                {
+                    "id_item": _safe_text(row.get("id_item")),
+                    "id_frente": _safe_text(row.get("id_frente")),
+                    "data_referencia": _parse_date(row.get("data_referencia") or row.get("data")),
+                    "nucleo": _safe_text(row.get("nucleo")),
+                    "nucleo_oficial": _safe_text(row.get("nucleo_oficial")),
+                    "municipio": _safe_text(row.get("municipio")),
+                    "municipio_oficial": _safe_text(row.get("municipio_oficial")),
+                    "equipe": _safe_text(row.get("equipe")),
+                    "servico_oficial": _safe_text(row.get("servico_oficial")),
+                    "servico_normalizado": _safe_text(row.get("servico_normalizado")),
+                    "servico_bruto": _safe_text(row.get("servico_bruto")),
+                    "item_normalizado": _safe_text(row.get("item_normalizado")),
+                    "item_original": _safe_text(row.get("item_original")),
+                    "categoria": _safe_text(row.get("categoria")),
+                    "categoria_item": _safe_text(row.get("categoria_item")),
+                    "quantidade": _parse_number(row.get("quantidade")),
+                    "unidade": _safe_text(row.get("unidade")),
+                }
+            )
+
+        frentes_rows: list[dict[str, Any]] = []
+        for row in self._read_csv(frentes_csv):
+            frentes_rows.append(
+                {
+                    "id_frente": _safe_text(row.get("id_frente")),
+                    "data_referencia": _parse_date(row.get("data_referencia") or row.get("data")),
+                    "nucleo": _safe_text(row.get("nucleo")),
+                    "nucleo_oficial": _safe_text(row.get("nucleo_oficial")),
+                    "municipio": _safe_text(row.get("municipio")),
+                    "municipio_oficial": _safe_text(row.get("municipio_oficial")),
+                    "equipe": _safe_text(row.get("equipe")),
+                    "status_frente": _safe_text(row.get("status_frente")),
+                }
+            )
+
+        ocorr_rows: list[dict[str, Any]] = []
+        for row in self._read_csv(ocorr_csv):
+            ocorr_rows.append(
+                {
+                    "id_ocorrencia": _safe_text(row.get("id_ocorrencia")),
+                    "id_frente": _safe_text(row.get("id_frente")),
+                    "data_referencia": _parse_date(row.get("data_referencia") or row.get("data")),
+                    "nucleo": _safe_text(row.get("nucleo")),
+                    "nucleo_oficial": _safe_text(row.get("nucleo_oficial")),
+                    "municipio": _safe_text(row.get("municipio")),
+                    "municipio_oficial": _safe_text(row.get("municipio_oficial")),
+                    "equipe": _safe_text(row.get("equipe")),
+                    "tipo_ocorrencia": _safe_text(row.get("tipo_ocorrencia")),
+                    "descricao": _safe_text(row.get("descricao")),
+                }
+            )
+
+        return exec_rows, frentes_rows, ocorr_rows
+
     def _sync_master_tables(self) -> dict[str, int]:
+        if self._db is None:
+            raise RuntimeError("database_manager_unavailable")
+
         exec_csv = self._pick_csv("base_mestra_execucao.csv", "execucao.csv")
         frentes_csv = self._pick_csv("base_mestra_frentes.csv", "frentes.csv")
         ocorr_csv = self._pick_csv("base_mestra_ocorrencias.csv", "ocorrencias.csv")
@@ -161,6 +235,10 @@ class ManagementRepository:
                     _safe_text(row.get("municipio")),
                     _safe_text(row.get("equipe")),
                     _safe_text(row.get("servico_oficial")),
+                    _safe_text(row.get("servico_normalizado")),
+                    _safe_text(row.get("servico_bruto")),
+                    _safe_text(row.get("item_normalizado")),
+                    _safe_text(row.get("item_original")),
                     _safe_text(row.get("categoria")),
                     _safe_text(row.get("categoria_item")),
                     _parse_number(row.get("quantidade")),
@@ -252,12 +330,14 @@ class ManagementRepository:
                             """
                             INSERT INTO management_execucao (
                                 source_uid, id_item, id_frente, data_referencia, contrato, programa,
-                                nucleo, logradouro, municipio, equipe, servico_oficial, categoria,
-                                categoria_item, quantidade, unidade, arquivo_origem, nucleo_oficial,
-                                municipio_oficial, nucleo_status_cadastro
+                                nucleo, logradouro, municipio, equipe, servico_oficial,
+                                servico_normalizado, servico_bruto, item_normalizado, item_original,
+                                categoria, categoria_item, quantidade, unidade, arquivo_origem,
+                                nucleo_oficial, municipio_oficial, nucleo_status_cadastro
                             ) VALUES (
                                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                                %s, %s, %s, %s, %s, %s, %s, %s, %s
+                                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                                %s, %s, %s
                             )
                             """,
                             exec_values,
@@ -360,67 +440,84 @@ class ManagementRepository:
         return f"Ate {end:%d/%m/%Y}"
 
     def build_gerencial_dashboard(self, raw_filters: dict[str, object] | None = None) -> dict[str, Any]:
-        self._sync_master_tables()
         filters = self._parse_filters(raw_filters)
 
-        cursor_kwargs = {}
-        dict_factory = _dict_row_factory()
-        if dict_factory is not None:
-            cursor_kwargs["row_factory"] = dict_factory
+        exec_rows: list[dict[str, Any]] = []
+        frentes_rows: list[dict[str, Any]] = []
+        ocorr_rows: list[dict[str, Any]] = []
+        use_csv_fallback = False
 
-        with self._db.connection() as conn:
-            with conn.cursor(**cursor_kwargs) as cur:
-                cur.execute(
-                    """
-                    SELECT
-                        id_item,
-                        id_frente,
-                        data_referencia,
-                        nucleo,
-                        nucleo_oficial,
-                        municipio,
-                        municipio_oficial,
-                        equipe,
-                        servico_oficial,
-                        categoria,
-                        categoria_item,
-                        quantidade,
-                        unidade
-                    FROM management_execucao
-                    """
-                )
-                exec_rows = cur.fetchall() or []
-                cur.execute(
-                    """
-                    SELECT
-                        id_frente,
-                        data_referencia,
-                        nucleo,
-                        nucleo_oficial,
-                        municipio,
-                        municipio_oficial,
-                        equipe,
-                        status_frente
-                    FROM management_frentes
-                    """
-                )
-                frentes_rows = cur.fetchall() or []
-                cur.execute(
-                    """
-                    SELECT
-                        id_ocorrencia,
-                        id_frente,
-                        data_referencia,
-                        nucleo,
-                        nucleo_oficial,
-                        municipio,
-                        municipio_oficial,
-                        equipe,
-                        tipo_ocorrencia
-                    FROM management_ocorrencias
-                    """
-                )
-                ocorr_rows = cur.fetchall() or []
+        try:
+            self._sync_master_tables()
+            if self._db is None:
+                raise RuntimeError("database_manager_unavailable")
+
+            cursor_kwargs = {}
+            dict_factory = _dict_row_factory()
+            if dict_factory is not None:
+                cursor_kwargs["row_factory"] = dict_factory
+
+            with self._db.connection() as conn:
+                with conn.cursor(**cursor_kwargs) as cur:
+                    cur.execute(
+                        """
+                        SELECT
+                            id_item,
+                            id_frente,
+                            data_referencia,
+                            nucleo,
+                            nucleo_oficial,
+                            municipio,
+                            municipio_oficial,
+                            equipe,
+                            servico_oficial,
+                            servico_normalizado,
+                            servico_bruto,
+                            item_normalizado,
+                            item_original,
+                            categoria,
+                            categoria_item,
+                            quantidade,
+                            unidade
+                        FROM management_execucao
+                        """
+                    )
+                    exec_rows = cur.fetchall() or []
+                    cur.execute(
+                        """
+                        SELECT
+                            id_frente,
+                            data_referencia,
+                            nucleo,
+                            nucleo_oficial,
+                            municipio,
+                            municipio_oficial,
+                            equipe,
+                            status_frente
+                        FROM management_frentes
+                        """
+                    )
+                    frentes_rows = cur.fetchall() or []
+                    cur.execute(
+                        """
+                        SELECT
+                            id_ocorrencia,
+                            id_frente,
+                            data_referencia,
+                            nucleo,
+                            nucleo_oficial,
+                            municipio,
+                            municipio_oficial,
+                            equipe,
+                            tipo_ocorrencia,
+                            descricao
+                        FROM management_ocorrencias
+                        """
+                    )
+                    ocorr_rows = cur.fetchall() or []
+        except Exception:
+            use_csv_fallback = True
+            exec_rows, frentes_rows, ocorr_rows = self._load_rows_from_master_csv()
 
         exec_filtered = [row for row in exec_rows if self._filter_row(row, filters)]
         frentes_filtered = [row for row in frentes_rows if self._filter_row(row, filters)]
@@ -468,23 +565,37 @@ class ManagementRepository:
         equipe_counts: dict[str, float] = {}
         categoria_values: dict[str, float] = {}
         servico_values: dict[str, float] = {}
+        municipio_values: dict[str, float] = {}
+        ocorrencia_tipo_values: dict[str, float] = {}
         servicos_set: set[str] = set()
         municipios_set: set[str] = set()
 
         for row in exec_filtered:
-            nucleo = _safe_text(row.get("nucleo_oficial")) or _safe_text(row.get("nucleo")) or "-"
+            nucleo = _pick_first_text(row.get("nucleo_oficial"), row.get("nucleo")) or "-"
             equipe = _safe_text(row.get("equipe")) or "-"
-            municipio = _safe_text(row.get("municipio_oficial")) or _safe_text(row.get("municipio")) or "-"
-            categoria = _safe_text(row.get("categoria")) or _safe_text(row.get("categoria_item")) or "-"
-            servico = _safe_text(row.get("servico_oficial")) or "-"
+            municipio = _pick_first_text(row.get("municipio_oficial"), row.get("municipio")) or "-"
+            categoria = _pick_first_text(row.get("categoria"), row.get("categoria_item")) or "-"
+            servico = _pick_first_text(
+                row.get("servico_oficial"),
+                row.get("servico_normalizado"),
+                row.get("servico_bruto"),
+                row.get("item_normalizado"),
+                row.get("item_original"),
+            ) or "-"
             quantidade = float(row.get("quantidade", 0) or 0)
+            peso = quantidade if quantidade > 0 else 1.0
 
             nucleo_counts[nucleo] = nucleo_counts.get(nucleo, 0) + 1
             equipe_counts[equipe] = equipe_counts.get(equipe, 0) + 1
-            categoria_values[categoria] = categoria_values.get(categoria, 0) + (quantidade if quantidade > 0 else 1.0)
-            servico_values[servico] = servico_values.get(servico, 0) + (quantidade if quantidade > 0 else 1.0)
+            categoria_values[categoria] = categoria_values.get(categoria, 0) + peso
+            servico_values[servico] = servico_values.get(servico, 0) + peso
+            municipio_values[municipio] = municipio_values.get(municipio, 0) + peso
             servicos_set.add(servico)
             municipios_set.add(municipio)
+
+        for row in ocorr_filtered:
+            tipo = _pick_first_text(row.get("tipo_ocorrencia"), row.get("descricao")) or "-"
+            ocorrencia_tipo_values[tipo] = ocorrencia_tipo_values.get(tipo, 0) + 1
 
         top_n = filters.top_n
         nucleo_rows = [
@@ -502,6 +613,14 @@ class ManagementRepository:
         servico_rows = [
             {"label": label, "value": value}
             for label, value in sorted(servico_values.items(), key=lambda item: item[1], reverse=True)[:top_n]
+        ]
+        municipio_rows = [
+            {"label": label, "value": value}
+            for label, value in sorted(municipio_values.items(), key=lambda item: item[1], reverse=True)[:top_n]
+        ]
+        ocorrencia_tipo_rows = [
+            {"label": label, "value": value}
+            for label, value in sorted(ocorrencia_tipo_values.items(), key=lambda item: item[1], reverse=True)[:top_n]
         ]
 
         data_refs = [row.get("data_referencia") for row in exec_filtered if row.get("data_referencia")]
@@ -530,6 +649,7 @@ class ManagementRepository:
 
         return {
             "has_data": has_data,
+            "source": "master_csv" if use_csv_fallback else "database",
             "kpis_principais": {
                 "total_processamentos": total_execucao,
                 "total_execucoes": total_execucao,
@@ -585,6 +705,16 @@ class ManagementRepository:
                     "items": _chart_items(servico_rows),
                     "has_data": bool(servico_rows),
                     "max_value_fmt": _display_number(max((row["value"] for row in servico_rows), default=0)),
+                },
+                "municipios": {
+                    "items": _chart_items(municipio_rows),
+                    "has_data": bool(municipio_rows),
+                    "max_value_fmt": _display_number(max((row["value"] for row in municipio_rows), default=0)),
+                },
+                "tipos_ocorrencia": {
+                    "items": _chart_items(ocorrencia_tipo_rows),
+                    "has_data": bool(ocorrencia_tipo_rows),
+                    "max_value_fmt": _display_number(max((row["value"] for row in ocorrencia_tipo_rows), default=0)),
                 },
             },
         }

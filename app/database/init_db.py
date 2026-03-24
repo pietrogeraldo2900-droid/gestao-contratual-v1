@@ -82,6 +82,10 @@ def init_db(db: DatabaseManager) -> None:
             municipio VARCHAR(180),
             equipe VARCHAR(180),
             servico_oficial VARCHAR(255),
+            servico_normalizado VARCHAR(255),
+            servico_bruto TEXT,
+            item_normalizado TEXT,
+            item_original TEXT,
             categoria VARCHAR(180),
             categoria_item VARCHAR(180),
             quantidade NUMERIC(18,3) NOT NULL DEFAULT 0,
@@ -92,6 +96,10 @@ def init_db(db: DatabaseManager) -> None:
             nucleo_status_cadastro VARCHAR(80)
         )
         """,
+        "ALTER TABLE management_execucao ADD COLUMN IF NOT EXISTS servico_normalizado VARCHAR(255)",
+        "ALTER TABLE management_execucao ADD COLUMN IF NOT EXISTS servico_bruto TEXT",
+        "ALTER TABLE management_execucao ADD COLUMN IF NOT EXISTS item_normalizado TEXT",
+        "ALTER TABLE management_execucao ADD COLUMN IF NOT EXISTS item_original TEXT",
         """
         CREATE TABLE IF NOT EXISTS management_frentes (
             id BIGSERIAL PRIMARY KEY,
