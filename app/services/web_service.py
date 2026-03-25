@@ -2569,6 +2569,31 @@ class WebPipelineService:
             return text
         return text
 
+    def _sanitize_institutional_text(self, value: object) -> str:
+        text = self._fix_mojibake_text(value)
+        if not text:
+            return ""
+        text = re.sub(r"[\u2705\u26A0\uFE0F]", " ", text)
+        text = re.sub(r"[\U0001F300-\U0001FAFF]", " ", text)
+        text = re.sub(r"[^0-9A-Za-zÀ-ÿ\s,.;:/()\-+%_'’]", " ", text)
+        text = re.sub(r"\s+", " ", text).strip()
+        return text
+
+    def _institutional_text_or_fallback(self, value: object, fallback: str = "Não informado") -> str:
+        text = self._sanitize_institutional_text(value)
+        if not text or text in {"-", "--"}:
+            return fallback
+        return text
+
+    def _normalize_institutional_note(self, value: object) -> str:
+        text = self._sanitize_institutional_text(value)
+        if not text or text in {"-", "--"}:
+            return "Não informado"
+        text = re.sub(r"(?i)^\s*obs\.?\s*:?\s*", "Observação: ", text)
+        text = re.sub(r"(?i)^\s*observacao\s*:?\s*", "Observação: ", text)
+        text = re.sub(r"(?i)^\s*observação\s*:?\s*", "Observação: ", text)
+        return text
+
     def _title_case_label(self, value: object) -> str:
         text = " ".join(str(value or "").split()).strip()
         if not text:
@@ -2587,17 +2612,21 @@ class WebPipelineService:
         return " ".join(out)
 
     def _institutional_label(self, value: object, domain: str = "geral") -> str:
-        raw = self._fix_mojibake_text(value)
+        raw = self._sanitize_institutional_text(value)
         if not raw:
-            return "-"
+            return "Não informado"
         text = re.sub(r"\s+", " ", raw.replace("_", " ")).strip(" -")
         norm = normalizar_texto(text)
         if not norm:
-            return "-"
+            return "Não informado"
 
         common_map = {
-            "nao informado": "Não informado",
+            "-": "Não informado",
+            "--": "Não informado",
+            "n a": "Não informado",
+            "n/a": "Não informado",
             "nao_informado": "Não informado",
+            "nao informado": "Não informado",
             "servico_nao_informado": "Serviço não informado",
             "servico nao informado": "Serviço não informado",
             "servico_nao_mapeado": "Serviço não mapeado",
@@ -2615,33 +2644,44 @@ class WebPipelineService:
             "ligacoes intradomiciliares": "Ligações intradomiciliares",
             "ligacao intradomiciliar": "Ligação intradomiciliar",
             "ligacao intradomiciliares": "Ligações intradomiciliares",
-            "rede agua": "Rede de água",
-            "rede de agua": "Rede de água",
-            "prolongamento rede agua": "Prolongamento de rede de água",
-            "prolongamento de rede": "Prolongamento de rede de água",
-            "prolongamento de rede agua": "Prolongamento de rede de água",
-            "ramal agua": "Ramal de água",
-            "ramais agua": "Ramais de água",
+            "rede agua": "Rede de Água",
+            "rede de agua": "Rede de Água",
+            "prolongamento rede agua": "Prolongamento de Rede de Água",
+            "prolongamento de rede": "Prolongamento de Rede de Água",
+            "prolongamento de rede agua": "Prolongamento de Rede de Água",
+            "ramal agua": "Ramal de Água",
+            "ramais agua": "Ramais de Água",
             "ramal esgoto": "Ramal de esgoto",
             "ramais esgoto": "Ramais de esgoto",
             "interligacao": "Interligação de rede",
             "interligacao de rede": "Interligação de rede",
-            "caixa uma": "Instalação de caixas UMA",
-            "caixas uma": "Instalação de caixas UMA",
-            "caixas uma instaladas": "Instalação de caixas UMA",
+            "caixa uma": "Instalação de Caixas UMA",
+            "caixas uma": "Instalação de Caixas UMA",
+            "caixas uma instaladas": "Instalação de Caixas UMA",
+            "instalacao de caixas uma": "Instalação de Caixas UMA",
+            "instalacao de caixas umas": "Instalação de Caixas UMA",
+            "instalacao de caixa dagua": "Instalação de Caixa d'água",
+            "instalacao de caixas dagua": "Instalação de Caixas d'água",
+            "instalacao de caixa d agua": "Instalação de Caixa d'água",
+            "instalacao de caixas d agua": "Instalação de Caixas d'água",
+            "adesoes realizadas": "Adesões realizadas",
+            "caixas dagua instaladas": "Instalação de Caixas d'água",
+            "luvas executadas": "Luvas executadas",
             "embutida": "Instalação de caixas UMA (embutida)",
             "mureta": "Instalação de caixas UMA (mureta)",
             "servico complementar": "Serviço complementar",
             "recomposicao de valas": "Recomposição de valas",
             "recomposicao asfaltica": "Recomposição asfáltica",
+            "atividade realizada": "Atividade realizada",
+            "atividades realizadas": "Atividades realizadas",
         }
         category_map = {
             "hidrometro": "Hidrômetro",
             "intradomiciliar": "Intradomiciliar",
             "rede": "Rede",
-            "rede agua": "Rede de água",
-            "rede_agua": "Rede de água",
-            "ramal_agua": "Ramal de água",
+            "rede agua": "Rede de Água",
+            "rede_agua": "Rede de Água",
+            "ramal_agua": "Ramal de Água",
             "ramal_esgoto": "Ramal de esgoto",
             "interligacao": "Interligação",
             "caixa_uma": "Caixa UMA",
@@ -2658,10 +2698,13 @@ class WebPipelineService:
             "interferencia com rede de esgoto": "Interferência com rede de esgoto",
             "restricao_operacional": "Restrição operacional",
             "restricao operacional": "Restrição operacional",
+            "ocorrencia operacional": "Ocorrência operacional",
+            "ocorrencia_operacional": "Ocorrência operacional",
             "imovel fechado": "Imóvel fechado",
             "vistoria": "Vistoria",
             "chuva": "Chuvas",
             "sem_producao": "Sem produção",
+            "sem producao": "Sem produção",
         }
 
         if norm in common_map:
@@ -2672,7 +2715,10 @@ class WebPipelineService:
             return category_map[norm]
         if domain == "ocorrencia" and norm in occurrence_map:
             return occurrence_map[norm]
-        return self._title_case_label(text)
+        label = self._title_case_label(text)
+        if not label or label in {"-", "--"}:
+            return "Não informado"
+        return label
 
     def _summarize_values(self, values: List[str], limit: int = 3) -> str:
         clean = [str(v or "").strip() for v in values if str(v or "").strip()]
@@ -4391,9 +4437,9 @@ class WebPipelineService:
                 tipo = self._institutional_label(tipo_raw, domain="ocorrencia")
                 item["occurrence_counter"][tipo] += 1
 
-                descricao = str(occ_row.get("descricao", "") or "").strip()
-                if descricao:
-                    item["observation_counter"][self._fix_mojibake_text(descricao)] += 1
+                descricao = self._normalize_institutional_note(occ_row.get("descricao", ""))
+                if descricao and descricao != "Não informado":
+                    item["observation_counter"][descricao] += 1
                 _apply_single_municipio(
                     item,
                     nucleo,
@@ -4466,11 +4512,11 @@ class WebPipelineService:
                 }
                 for nome, qtd in item["occurrence_counter"].most_common(5)
             ]
-            observacoes_relevantes = [
-                nome
-                for nome, _ in item["observation_counter"].most_common(3)
-                if str(nome or "").strip()
-            ]
+            observacoes_relevantes = []
+            for nome, _ in item["observation_counter"].most_common(3):
+                clean_obs = self._normalize_institutional_note(nome)
+                if clean_obs and clean_obs != "Não informado":
+                    observacoes_relevantes.append(clean_obs)
 
             top_servico = principais_servicos[0]["nome"] if principais_servicos else "-"
             top_ocorrencia = principais_ocorrencias[0]["nome"] if principais_ocorrencias else "-"
@@ -4561,17 +4607,20 @@ class WebPipelineService:
         municipio_filter = normalizar_texto(str(raw_filters.get("municipio", "") or "").strip())
         equipe_filter = normalizar_texto(str(raw_filters.get("equipe", "") or "").strip())
 
-        analise_por_nucleo = self._build_institutional_nucleo_analysis(
+        analise_limite_completo = max(top_n * 3, 30)
+        analise_por_nucleo_completa = self._build_institutional_nucleo_analysis(
             filtered_history,
-            top_n=top_n,
+            top_n=analise_limite_completo,
             nucleo_filter=nucleo_filter,
             municipio_filter=municipio_filter,
             equipe_filter=equipe_filter,
             include_history_alerts=False,
         )
+        analise_por_nucleo = list(analise_por_nucleo_completa[:top_n])
+        analise_por_nucleo_apendice = list(analise_por_nucleo_completa[top_n:])
         analise_tecnica_por_nucleo = self._build_institutional_nucleo_analysis(
             filtered_history,
-            top_n=top_n,
+            top_n=analise_limite_completo,
             nucleo_filter=nucleo_filter,
             municipio_filter=municipio_filter,
             equipe_filter=equipe_filter,
@@ -4669,16 +4718,16 @@ class WebPipelineService:
         ranking_nao_mapeados_fmt: List[dict] = []
         for row in nao_mapeados_recorrentes:
             item = dict(row)
-            item["termo"] = self._fix_mojibake_text(item.get("termo", ""))
+            item["termo"] = self._institutional_text_or_fallback(item.get("termo", ""))
             item["ultimo_nucleo"] = self._canonicalize_nucleo_for_aggregation(
                 item.get("ultimo_nucleo", "")
-            ) or str(item.get("ultimo_nucleo", "") or "").strip()
+            ) or self._institutional_text_or_fallback(item.get("ultimo_nucleo", ""))
             item["ultimo_municipio"] = self._canonicalize_municipio_for_aggregation(
                 item.get("ultimo_municipio", "")
-            )
+            ) or "Não informado"
             item["ultimo_equipe"] = self._canonicalize_equipe_for_aggregation(
                 item.get("ultimo_equipe", "")
-            )
+            ) or "Não informado"
             ranking_nao_mapeados_fmt.append(item)
         nao_mapeados_recorrentes = ranking_nao_mapeados_fmt
 
@@ -4737,31 +4786,65 @@ class WebPipelineService:
         top_ocorrencia = _top_label(ranking_ocorrencias, "tipo_ocorrencia")
         top_categoria = _top_label(ranking_categorias, "categoria")
 
+        top_nucleo = self._institutional_text_or_fallback(top_nucleo)
+        top_equipe = self._institutional_text_or_fallback(top_equipe)
+        top_servico = self._institutional_text_or_fallback(top_servico)
+        top_ocorrencia = self._institutional_text_or_fallback(top_ocorrencia)
+        top_categoria = self._institutional_text_or_fallback(top_categoria)
+
+        pontos_atencao: List[str] = []
+        if processamentos_erro > 0:
+            pontos_atencao.append(self._count_label(processamentos_erro, "mensagem com erro", "mensagens com erro"))
+        if processamentos_alerta > 0:
+            pontos_atencao.append(
+                self._count_label(
+                    processamentos_alerta,
+                    "mensagem com alerta operacional",
+                    "mensagens com alerta operacional",
+                )
+            )
+        if total_nao_mapeados > 0:
+            pontos_atencao.append(self._count_label(total_nao_mapeados, "item não mapeado", "itens não mapeados"))
+
+        if pontos_atencao:
+            linha_atencao = (
+                "Pontos de atenção imediata: "
+                f"{self._join_natural_phrases(pontos_atencao)}."
+            )
+        else:
+            linha_atencao = "Pontos de atenção imediata: não foram identificadas inconformidades críticas no recorte."
+
+        encaminhamentos_resumo: List[str] = []
+        if total_nao_mapeados > 0:
+            encaminhamentos_resumo.append("concluir o tratamento de itens não mapeados")
+        if processamentos_erro > 0:
+            encaminhamentos_resumo.append("encerrar o tratamento das mensagens com erro")
+        if processamentos_alerta > 0:
+            encaminhamentos_resumo.append("manter monitoramento ativo dos alertas recorrentes")
+        if analise_por_nucleo:
+            nucleo_prioritario = self._institutional_text_or_fallback(
+                analise_por_nucleo[0].get("nucleo", "")
+            )
+            encaminhamentos_resumo.append(
+                f"acompanhar de forma prioritária o núcleo {nucleo_prioritario}"
+            )
+        if not encaminhamentos_resumo:
+            encaminhamentos_resumo.append("manter o ritmo operacional com revisão periódica dos indicadores")
+
         resumo_linhas = [
             (
-                f"O quantitativo real consolidado no período foi de {total_volume_fmt}, "
+                f"No período analisado, o quantitativo real consolidado foi de {total_volume_fmt}, "
                 f"com {total_execucoes} {_plural(total_execucoes, 'execução registrada', 'execuções registradas')} "
-                f"(apoio: {total_processamentos} {_plural(total_processamentos, 'mensagem processada', 'mensagens processadas')}), "
-                f"{total_frentes} {_plural(total_frentes, 'frente', 'frentes')} e "
-                f"{total_ocorrencias} {_plural(total_ocorrencias, 'ocorrência', 'ocorrências')}."
+                f"(apoio: {total_processamentos} {_plural(total_processamentos, 'mensagem processada', 'mensagens processadas')})."
             ),
-            f"A maior concentração operacional ocorreu em {top_nucleo}, com maior recorrência da equipe {top_equipe}.",
-            f"Em serviços executados, houve predominância de {top_servico}, com destaque de volume para {top_categoria}.",
-            f"No eixo de risco operacional, a ocorrência mais recorrente foi {top_ocorrencia}.",
             (
-                f"O índice de mapeamento ficou em {_fmt_pct(kpis.get('percentual_mapeado_fmt', '0'))}% "
-                f"(não mapeados: {_fmt_pct(kpis.get('percentual_nao_mapeado_fmt', '0'))}%)."
+                f"A concentração operacional permaneceu em {top_nucleo}, com recorrência da equipe {top_equipe}, "
+                f"predominância de {top_servico} e maior representatividade da categoria {top_categoria}."
             ),
+            linha_atencao,
+            "Encaminhamento gerencial recomendado: "
+            f"{self._join_natural_phrases(encaminhamentos_resumo[:3])}.",
         ]
-
-        if processamentos_erro > 0:
-            resumo_linhas.append(
-                f"Foram identificadas {self._count_label(processamentos_erro, 'mensagem com erro', 'mensagens com erro')} no recorte."
-            )
-        if processamentos_alerta > 0:
-            resumo_linhas.append(
-                f"{self._count_label(processamentos_alerta, 'mensagem com alerta operacional', 'mensagens com alerta operacional')} no período."
-            )
 
         inconsistencias_final: List[str] = []
         if processamentos_erro > 0:
@@ -4797,6 +4880,32 @@ class WebPipelineService:
         volume_total_fmt = str(
             dashboard.get("consolidado_periodo", {}).get("volume_total_fmt", "0") or "0"
         )
+        panorama_topicos = [
+            {
+                "titulo": "Serviços com maior volume",
+                "texto": (
+                    str(ranking_servicos[0].get("descricao_institucional", "") or "").strip()
+                    if ranking_servicos
+                    else "Sem serviços relevantes no recorte."
+                ),
+            },
+            {
+                "titulo": "Categorias com maior representatividade",
+                "texto": (
+                    str(ranking_categorias[0].get("descricao_institucional", "") or "").strip()
+                    if ranking_categorias
+                    else "Sem categorias relevantes no recorte."
+                ),
+            },
+            {
+                "titulo": "Ocorrências mais recorrentes",
+                "texto": (
+                    str(ranking_ocorrencias[0].get("descricao_institucional", "") or "").strip()
+                    if ranking_ocorrencias
+                    else "Sem ocorrências recorrentes no recorte."
+                ),
+            },
+        ]
         if total_processamentos > 0:
             nucleos_texto = self._count_label(
                 len(entidades_nucleos), "núcleo", "núcleos"
@@ -4805,12 +4914,9 @@ class WebPipelineService:
                 len(entidades_equipes), "equipe", "equipes"
             )
             panorama_texto = (
-                f"No período analisado, a operação consolidou volume total de {volume_total_fmt}, "
-                f"com {self._count_label(total_execucoes, 'execução', 'execuções')} distribuídas em "
-                f"{nucleos_texto} e {equipes_texto}. "
-                f"A produção ficou concentrada em {top_nucleo}, com predominância de {top_servico} "
-                f"e destaque de categoria em {top_categoria}. "
-                f"Em ocorrências, {top_ocorrencia} foi o evento mais recorrente."
+                f"A operação consolidou volume total de {volume_total_fmt} no período, com "
+                f"{self._count_label(total_execucoes, 'execução', 'execuções')} distribuídas em {nucleos_texto} e {equipes_texto}. "
+                "A leitura analítica está organizada por serviços, categorias e ocorrências prioritárias."
             )
         else:
             panorama_texto = "Não há dados suficientes no recorte para compor o panorama operacional."
@@ -4820,20 +4926,27 @@ class WebPipelineService:
         else:
             recomendacoes: List[str] = []
             if total_nao_mapeados > 0:
-                recomendacoes.append("reduzir os itens não mapeados")
+                recomendacoes.append("priorizar o fechamento dos itens não mapeados remanescentes")
             else:
-                recomendacoes.append("manter o padrão atual de mapeamento")
+                recomendacoes.append("manter o padrão atual de mapeamento e validação")
             if processamentos_erro > 0:
-                recomendacoes.append("tratar as mensagens com erro")
+                recomendacoes.append("eliminar as mensagens com erro ainda pendentes")
             if processamentos_alerta > 0:
-                recomendacoes.append("monitorar os alertas operacionais recorrentes")
+                recomendacoes.append("atuar sobre os alertas operacionais mais recorrentes")
+            if analise_por_nucleo:
+                recomendacoes.append(
+                    f"acompanhar os núcleos com maior concentração operacional, com foco inicial em {top_nucleo}"
+                )
 
-            recomendacao_texto = self._join_natural_phrases(recomendacoes)
+            recomendacoes = recomendacoes[:3]
+            recomendacao_texto = "; ".join(
+                f"{idx + 1}) {texto}" for idx, texto in enumerate(recomendacoes)
+            )
             conclusao = (
                 f"No recorte analisado, o quantitativo consolidado foi de {total_volume_fmt}, "
                 f"com maior presença em {top_nucleo}. "
                 f"Como informação complementar, houve {self._count_label(total_processamentos, 'mensagem processada', 'mensagens processadas')}. "
-                f"Como próximos focos gerenciais, recomenda-se {recomendacao_texto}."
+                f"Encaminhamentos gerenciais recomendados: {recomendacao_texto}."
             )
 
         def _render_filter_value(value: object, fallback: str = "Todos") -> str:
@@ -4882,12 +4995,14 @@ class WebPipelineService:
             },
             "panorama_operacional": {
                 "texto_analitico": panorama_texto,
+                "topicos": panorama_topicos,
                 "servicos_recorrentes": ranking_servicos,
                 "categorias_recorrentes": ranking_categorias,
                 "ocorrencias_recorrentes": ranking_ocorrencias,
                 "resumo_periodo": resumo_periodo,
             },
             "analise_por_nucleo": analise_por_nucleo,
+            "analise_por_nucleo_apendice": analise_por_nucleo_apendice,
             "alertas_pendencias": {
                 "processamentos_alerta": processamentos_alerta,
                 "processamentos_erro": processamentos_erro,
@@ -4991,6 +5106,11 @@ class WebPipelineService:
         texto_panorama = str(panorama.get("texto_analitico", "") or "").strip()
         if texto_panorama:
             doc.add_paragraph(texto_panorama)
+        topicos_panorama = list(panorama.get("topicos", []) or [])
+        for topico in topicos_panorama:
+            titulo = self._institutional_text_or_fallback(topico.get("titulo", ""))
+            texto = self._institutional_text_or_fallback(topico.get("texto", ""))
+            doc.add_paragraph(f"{titulo}: {texto}", style="List Bullet")
         for servico in list(panorama.get("servicos_recorrentes", []) or [])[:5]:
             doc.add_paragraph(
                 str(servico.get("descricao_institucional", "-") or "-"),
@@ -5057,6 +5177,21 @@ class WebPipelineService:
             leitura = str(nucleo.get("observacao_analitica", "") or "").strip()
             if leitura:
                 doc.add_paragraph(f"Leitura executiva: {leitura}")
+
+        analise_apendice = list(final_report.get("analise_por_nucleo_apendice", []) or [])
+        if analise_apendice:
+            doc.add_heading("Apêndice - Demais núcleos do recorte", level=1)
+            for nucleo in analise_apendice:
+                nome_nucleo = self._institutional_text_or_fallback(nucleo.get("nucleo", ""))
+                volume_nucleo = str(nucleo.get("volume_total_fmt", "0") or "0")
+                registros_nucleo = int(nucleo.get("processamentos", 0) or 0)
+                alertas_nucleo = int(nucleo.get("processamentos_alerta", 0) or 0)
+                doc.add_paragraph(
+                    f"{nome_nucleo}: quantitativo {volume_nucleo}, "
+                    f"{self._count_label(registros_nucleo, 'registro', 'registros')} "
+                    f"e {self._count_label(alertas_nucleo, 'alerta', 'alertas')}.",
+                    style="List Bullet",
+                )
 
         doc.add_heading("Alertas e pendências", level=1)
         doc.add_paragraph(

@@ -71,6 +71,15 @@
     {% if final.panorama_operacional.texto_analitico %}
       <p>{{ final.panorama_operacional.texto_analitico }}</p>
     {% endif %}
+    {% if final.panorama_operacional.topicos %}
+      <p><strong>Eixos de leitura gerencial:</strong></p>
+      <ul class="simple-list">
+        {% for topico in final.panorama_operacional.topicos %}
+          <li><strong>{{ topico.titulo }}:</strong> {{ topico.texto }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
     <div class="multi-preview-grid">
       <div class="multi-preview-card">
         <div class="multi-preview-title">Serviços mais recorrentes</div>
@@ -108,7 +117,7 @@
 </div>
 
 <div class="section">
-  <h3>Análise por núcleo</h3>
+  <h3>Análise por núcleo (prioridades)</h3>
   <div class="body">
     {% for nucleo in final.analise_por_nucleo %}
       <div class="confirm-panel" style="margin-bottom:12px;">
@@ -166,6 +175,37 @@
     {% endfor %}
   </div>
 </div>
+
+{% if final.analise_por_nucleo_apendice %}
+<div class="section">
+  <h3>Apêndice | Demais núcleos do recorte</h3>
+  <div class="body">
+    <p class="muted">Detalhamento complementar dos núcleos fora do bloco principal de prioridades.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Núcleo</th>
+            <th class="text-right">Quantitativo</th>
+            <th class="text-right">Registros (apoio)</th>
+            <th class="text-right">Com alerta</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for nucleo in final.analise_por_nucleo_apendice %}
+            <tr>
+              <td>{{ nucleo.nucleo }}</td>
+              <td class="text-right">{{ nucleo.volume_total_fmt }}</td>
+              <td class="text-right">{{ nucleo.processamentos }}</td>
+              <td class="text-right">{{ nucleo.processamentos_alerta }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <div class="section">
   <h3>Alertas e pendências</h3>
