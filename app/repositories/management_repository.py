@@ -386,6 +386,80 @@ class ManagementRepository:
             "ocorrencias": len(ocorr_values),
         }
 
+    def _load_rows_from_database(self) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+        if self._db is None:
+            raise RuntimeError("database_manager_unavailable")
+
+        exec_rows: list[dict[str, Any]] = []
+        frentes_rows: list[dict[str, Any]] = []
+        ocorr_rows: list[dict[str, Any]] = []
+
+        cursor_kwargs = {}
+        dict_factory = _dict_row_factory()
+        if dict_factory is not None:
+            cursor_kwargs["row_factory"] = dict_factory
+
+        with self._db.connection() as conn:
+            with conn.cursor(**cursor_kwargs) as cur:
+                cur.execute(
+                    """
+                    SELECT
+                        id_item,
+                        id_frente,
+                        data_referencia,
+                        nucleo,
+                        nucleo_oficial,
+                        municipio,
+                        municipio_oficial,
+                        equipe,
+                        servico_oficial,
+                        servico_normalizado,
+                        servico_bruto,
+                        item_normalizado,
+                        item_original,
+                        categoria,
+                        categoria_item,
+                        quantidade,
+                        unidade
+                    FROM management_execucao
+                    """
+                )
+                exec_rows = cur.fetchall() or []
+                cur.execute(
+                    """
+                    SELECT
+                        id_frente,
+                        data_referencia,
+                        nucleo,
+                        nucleo_oficial,
+                        municipio,
+                        municipio_oficial,
+                        equipe,
+                        status_frente
+                    FROM management_frentes
+                    """
+                )
+                frentes_rows = cur.fetchall() or []
+                cur.execute(
+                    """
+                    SELECT
+                        id_ocorrencia,
+                        id_frente,
+                        data_referencia,
+                        nucleo,
+                        nucleo_oficial,
+                        municipio,
+                        municipio_oficial,
+                        equipe,
+                        tipo_ocorrencia,
+                        descricao
+                    FROM management_ocorrencias
+                    """
+                )
+                ocorr_rows = cur.fetchall() or []
+
+        return exec_rows, frentes_rows, ocorr_rows
+
     def _parse_filters(self, raw_filters: dict[str, object] | None) -> _Filters:
         raw = raw_filters or {}
         top_n_raw = _safe_text(raw.get("top_n")) or "10"
@@ -453,73 +527,7 @@ class ManagementRepository:
         use_csv_fallback = False
 
         try:
-            self._sync_master_tables()
-            if self._db is None:
-                raise RuntimeError("database_manager_unavailable")
-
-            cursor_kwargs = {}
-            dict_factory = _dict_row_factory()
-            if dict_factory is not None:
-                cursor_kwargs["row_factory"] = dict_factory
-
-            with self._db.connection() as conn:
-                with conn.cursor(**cursor_kwargs) as cur:
-                    cur.execute(
-                        """
-                        SELECT
-                            id_item,
-                            id_frente,
-                            data_referencia,
-                            nucleo,
-                            nucleo_oficial,
-                            municipio,
-                            municipio_oficial,
-                            equipe,
-                            servico_oficial,
-                            servico_normalizado,
-                            servico_bruto,
-                            item_normalizado,
-                            item_original,
-                            categoria,
-                            categoria_item,
-                            quantidade,
-                            unidade
-                        FROM management_execucao
-                        """
-                    )
-                    exec_rows = cur.fetchall() or []
-                    cur.execute(
-                        """
-                        SELECT
-                            id_frente,
-                            data_referencia,
-                            nucleo,
-                            nucleo_oficial,
-                            municipio,
-                            municipio_oficial,
-                            equipe,
-                            status_frente
-                        FROM management_frentes
-                        """
-                    )
-                    frentes_rows = cur.fetchall() or []
-                    cur.execute(
-                        """
-                        SELECT
-                            id_ocorrencia,
-                            id_frente,
-                            data_referencia,
-                            nucleo,
-                            nucleo_oficial,
-                            municipio,
-                            municipio_oficial,
-                            equipe,
-                            tipo_ocorrencia,
-                            descricao
-                        FROM management_ocorrencias
-                        """
-                    )
-                    ocorr_rows = cur.fetchall() or []
+            exec_rows, frentes_rows, ocorr_rows = self._load_rows_from_database()
         except Exception:
             use_csv_fallback = True
             exec_rows, frentes_rows, ocorr_rows = self._load_rows_from_master_csv()
