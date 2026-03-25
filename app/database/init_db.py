@@ -69,6 +69,33 @@ def init_db(db: DatabaseManager) -> None:
         )
         """,
         """
+        CREATE TABLE IF NOT EXISTS processing_history (
+            id BIGSERIAL PRIMARY KEY,
+            processed_at VARCHAR(40) NOT NULL,
+            obra_data VARCHAR(32),
+            nucleo TEXT,
+            nucleo_detectado_texto TEXT,
+            nucleo_oficial TEXT,
+            logradouro TEXT,
+            municipio TEXT,
+            municipio_detectado_texto TEXT,
+            municipio_oficial TEXT,
+            nucleo_status_cadastro VARCHAR(80),
+            equipe TEXT,
+            status TEXT,
+            contract_id VARCHAR(64),
+            contract_label TEXT,
+            output_dir TEXT,
+            base_gerencial_path TEXT,
+            master_dir TEXT,
+            nao_mapeados VARCHAR(32),
+            alertas TEXT,
+            mensagem TEXT,
+            generated_files_json JSONB NOT NULL DEFAULT '[]'::jsonb,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        """,
+        """
         CREATE TABLE IF NOT EXISTS management_execucao (
             id BIGSERIAL PRIMARY KEY,
             source_uid VARCHAR(180) NOT NULL UNIQUE,
@@ -149,6 +176,8 @@ def init_db(db: DatabaseManager) -> None:
         "CREATE INDEX IF NOT EXISTS idx_reports_contract_id ON reports(contract_id)",
         "CREATE INDEX IF NOT EXISTS idx_reports_created_at ON reports(created_at DESC)",
         "CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_processing_history_created_at ON processing_history(created_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_processing_history_processed_at ON processing_history(processed_at DESC)",
         "CREATE INDEX IF NOT EXISTS idx_mgmt_exec_data ON management_execucao(data_referencia DESC)",
         "CREATE INDEX IF NOT EXISTS idx_mgmt_exec_nucleo ON management_execucao(nucleo_oficial, nucleo)",
         "CREATE INDEX IF NOT EXISTS idx_mgmt_exec_equipe ON management_execucao(equipe)",

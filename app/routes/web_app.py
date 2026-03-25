@@ -211,6 +211,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     management_repository: ManagementRepository | None = None
     app.config["CONTRACTS_DB_ENABLED"] = settings.db_enabled
     db_manager = build_database_manager(settings)
+    service.set_database_manager(db_manager)
     management_repository = ManagementRepository(db_manager, settings.master_dir)
     if db_manager is not None:
         user_repository = UserRepository(db_manager)

@@ -15,6 +15,7 @@ from typing import Dict, List, Tuple
 from docx import Document
 from docx.shared import Pt
 
+from app.database.connection import DatabaseManager
 from app.core.input_layer import (
     OfficialMessageParser,
     aplicar_regra_primeira_equipe,
@@ -44,6 +45,7 @@ class WebPipelineService:
         history_file: Path | None = None,
         draft_dir: Path | None = None,
         nucleo_reference_file: Path | None = None,
+        db_manager: DatabaseManager | None = None,
     ):
         self.base_dir = Path(base_dir)
         self.outputs_root = Path(outputs_root) if outputs_root else self.base_dir / "saidas"
@@ -66,6 +68,7 @@ class WebPipelineService:
         self.dictionary_csv = self.base_dir / "config" / "service_dictionary.csv"
         self.service_dictionary_v2_json = self.base_dir / "config" / "service_dictionary_v2.json"
         self.nucleo_reference_file = Path(nucleo_reference_file) if nucleo_reference_file else self.base_dir / "config" / "nucleo_reference.json"
+        self.db_manager = db_manager
 
         self.legacy_dictionary = ServiceDictionary(self.dictionary_csv)
         self.legacy_parser = WhatsAppReportParser(self.legacy_dictionary)
@@ -77,6 +80,9 @@ class WebPipelineService:
 
         self.nucleo_reference = self._load_nucleo_reference()
         self.service_catalog = self._build_service_catalog()
+
+    def set_database_manager(self, db_manager: DatabaseManager | None) -> None:
+        self.db_manager = db_manager
 
     def parse_message(self, raw_message: str, source_name: str | None = None) -> Tuple[dict, str]:
         source_name = source_name or f"mensagem_web_{datetime.now():%Y%m%d_%H%M%S}.txt"
@@ -1778,6 +1784,109 @@ class WebPipelineService:
             "mensagem",
         ]
 
+    def _append_history_to_db(self, row_data: dict, generated_files: List[dict]) -> bool:
+        if self.db_manager is None:
+            return False
+        headers = self._history_headers()
+        payload = {h: str(row_data.get(h, "") or "") for h in headers}
+        try:
+            with self.db_manager.connection() as conn:
+                try:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            """
+                            INSERT INTO processing_history (
+                                processed_at, obra_data, nucleo, nucleo_detectado_texto, nucleo_oficial,
+                                logradouro, municipio, municipio_detectado_texto, municipio_oficial,
+                                nucleo_status_cadastro, equipe, status, contract_id, contract_label,
+                                output_dir, base_gerencial_path, master_dir, nao_mapeados, alertas, mensagem,
+                                generated_files_json
+                            ) VALUES (
+                                %s, %s, %s, %s, %s,
+                                %s, %s, %s, %s,
+                                %s, %s, %s, %s, %s,
+                                %s, %s, %s, %s, %s, %s,
+                                %s::jsonb
+                            )
+                            """,
+                            (
+                                payload["processed_at"],
+                                payload["obra_data"],
+                                payload["nucleo"],
+                                payload["nucleo_detectado_texto"],
+                                payload["nucleo_oficial"],
+                                payload["logradouro"],
+                                payload["municipio"],
+                                payload["municipio_detectado_texto"],
+                                payload["municipio_oficial"],
+                                payload["nucleo_status_cadastro"],
+                                payload["equipe"],
+                                payload["status"],
+                                payload["contract_id"],
+                                payload["contract_label"],
+                                payload["output_dir"],
+                                payload["base_gerencial_path"],
+                                payload["master_dir"],
+                                payload["nao_mapeados"],
+                                payload["alertas"],
+                                payload["mensagem"],
+                                json.dumps(generated_files or [], ensure_ascii=False),
+                            ),
+                        )
+                    conn.commit()
+                    return True
+                except Exception:
+                    conn.rollback()
+                    raise
+        except Exception:
+            return False
+
+    def _read_history_from_db(self, limit: int) -> List[dict]:
+        if self.db_manager is None:
+            return []
+
+        safe_limit = max(1, min(int(limit), 10000))
+        try:
+            with self.db_manager.connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        SELECT
+                            processed_at, obra_data, nucleo, nucleo_detectado_texto, nucleo_oficial,
+                            logradouro, municipio, municipio_detectado_texto, municipio_oficial,
+                            nucleo_status_cadastro, equipe, status, contract_id, contract_label,
+                            output_dir, base_gerencial_path, master_dir, nao_mapeados, alertas, mensagem,
+                            COALESCE(generated_files_json::text, '[]') AS generated_files_json
+                        FROM processing_history
+                        ORDER BY id DESC
+                        LIMIT %s
+                        """,
+                        (safe_limit,),
+                    )
+                    fetched = cur.fetchall() or []
+                    cols = [str(d[0]) for d in (cur.description or [])]
+        except Exception:
+            return []
+
+        rows: List[dict] = []
+        for item in fetched:
+            row = {cols[i]: item[i] for i in range(min(len(cols), len(item)))}
+            generated_raw = row.get("generated_files_json", "[]")
+            parsed_generated: List[dict] = []
+            if isinstance(generated_raw, (list, tuple)):
+                parsed_generated = [dict(x) for x in generated_raw if isinstance(x, dict)]
+            else:
+                try:
+                    maybe = json.loads(str(generated_raw or "[]"))
+                    if isinstance(maybe, list):
+                        parsed_generated = [dict(x) for x in maybe if isinstance(x, dict)]
+                except Exception:
+                    parsed_generated = []
+            row["generated_files"] = parsed_generated
+            rows.append({k: ("" if v is None else str(v)) for k, v in row.items() if k != "generated_files"})
+            rows[-1]["generated_files"] = parsed_generated
+        return rows
+
     def _ensure_history_schema(self, headers: List[str]) -> None:
         if not self.history_file.exists() or self.history_file.stat().st_size == 0:
             return
@@ -1930,6 +2039,16 @@ class WebPipelineService:
         row_data = dict(row or {})
         row_data["equipe"] = self._first_team(row_data.get("equipe", ""))
 
+        output_dir_raw = str(row_data.get("output_dir", "") or "").strip()
+        base_gerencial_raw = str(row_data.get("base_gerencial_path", "") or "").strip()
+        output_dir_path = Path(output_dir_raw) if output_dir_raw else None
+        base_gerencial_path = Path(base_gerencial_raw) if base_gerencial_raw else None
+        generated_files = self._list_generated_files(
+            output_dir_path if output_dir_path else Path("__sem_saida__"),
+            base_gerencial_path,
+        )
+        self._append_history_to_db(row_data, generated_files)
+
         exists = self.history_file.exists() and self.history_file.stat().st_size > 0
         with self.history_file.open("a", encoding="utf-8-sig", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=headers)
@@ -1953,12 +2072,14 @@ class WebPipelineService:
         return candidate
 
     def read_history(self, limit: int = 100) -> List[dict]:
-        if not self.history_file.exists():
-            return []
-        with self.history_file.open("r", encoding="utf-8-sig", newline="") as f:
-            rows = list(csv.DictReader(f))
+        rows = self._read_history_from_db(limit)
+        if not rows:
+            if not self.history_file.exists():
+                return []
+            with self.history_file.open("r", encoding="utf-8-sig", newline="") as f:
+                rows = list(csv.DictReader(f))
+            rows.reverse()
 
-        rows.reverse()
         out: List[dict] = []
         municipio_cache: Dict[str, str] = {}
         generated_files_cache: Dict[str, List[dict]] = {}
@@ -2013,13 +2134,19 @@ class WebPipelineService:
                 canonicalizer=self._canonicalize_equipe_for_aggregation,
             ) or self._first_team(row.get("equipe", ""))
 
-            cache_key = f"{output_dir_raw}|{base_gerencial_raw}"
-            if cache_key not in generated_files_cache:
-                generated_files_cache[cache_key] = self._list_generated_files(
-                    output_dir_path if output_dir_path else Path("__sem_saida__"),
-                    base_gerencial_path,
-                )
-            generated_files = generated_files_cache[cache_key]
+            generated_files = []
+            raw_generated = raw_row.get("generated_files", []) if isinstance(raw_row, dict) else []
+            if isinstance(raw_generated, list):
+                generated_files = [dict(item) for item in raw_generated if isinstance(item, dict)]
+
+            if not generated_files:
+                cache_key = f"{output_dir_raw}|{base_gerencial_raw}"
+                if cache_key not in generated_files_cache:
+                    generated_files_cache[cache_key] = self._list_generated_files(
+                        output_dir_path if output_dir_path else Path("__sem_saida__"),
+                        base_gerencial_path,
+                    )
+                generated_files = generated_files_cache[cache_key]
             names_preview = [str(item.get("name", "") or "").strip() for item in generated_files if str(item.get("name", "") or "").strip()]
             generated_preview = ", ".join(names_preview[:3])
             if len(names_preview) > 3:
