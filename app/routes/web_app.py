@@ -1338,7 +1338,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             except Exception as exc:
                 app.logger.warning("Falha ao carregar painel gerencial pelo banco: %s", exc)
 
-        if dashboard is None:
+        if dashboard is None or not bool((dashboard or {}).get("has_data")):
             dashboard = service.build_management_layer(
                 {
                     **filters,

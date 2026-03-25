@@ -528,6 +528,10 @@ class ManagementRepository:
 
         try:
             exec_rows, frentes_rows, ocorr_rows = self._load_rows_from_database()
+            # Banco continua sendo a fonte principal, mas se ainda nao houver
+            # dados consolidados nas tabelas management_* evitamos dashboard vazio.
+            if not exec_rows and not frentes_rows and not ocorr_rows:
+                raise RuntimeError("management_tables_empty")
         except Exception:
             use_csv_fallback = True
             exec_rows, frentes_rows, ocorr_rows = self._load_rows_from_master_csv()
