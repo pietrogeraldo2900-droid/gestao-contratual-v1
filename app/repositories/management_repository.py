@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import re
+import unicodedata
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -53,6 +55,65 @@ def _display_number(value: float) -> str:
 
 def _normalize(value: object) -> str:
     return _safe_text(value).lower()
+
+
+def _strip_prefix_symbols(value: object) -> str:
+    text = _safe_text(value)
+    if not text:
+        return ""
+    text = re.sub(r"^[^0-9A-Za-zÀ-ÿ]+", "", text).strip()
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _normalize_lookup(value: object) -> str:
+    text = _strip_prefix_symbols(value).lower()
+    text = "".join(ch for ch in unicodedata.normalize("NFKD", text) if not unicodedata.combining(ch))
+    text = re.sub(r"[^a-z0-9]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+_SERVICE_EQUIVALENCE_MAP: dict[str, str] = {
+    "prolongamento rede agua": "Prolongamento de rede de água",
+    "prolongamento de rede agua": "Prolongamento de rede de água",
+    "prolongamento rede": "Prolongamento de rede de água",
+    "ramais agua": "Execução de ramais de água",
+    "ramais de agua": "Execução de ramais de água",
+    "ramais esgoto": "Execução de ramais de esgoto",
+    "ramais de esgoto": "Execução de ramais de esgoto",
+    "intradomiciliares": "Ligações intradomiciliares",
+    "ligacoes intradomiciliares": "Ligações intradomiciliares",
+    "hidrometro": "Instalação de hidrômetros",
+    "hidrometros": "Instalação de hidrômetros",
+    "hidrometros instalados": "Instalação de hidrômetros",
+    "caixas uma": "Instalação de caixas UMA",
+    "caixas uma instaladas": "Instalação de caixas UMA",
+    "embutida": "Instalação de caixas UMA",
+    "mureta": "Instalação de caixas UMA",
+    "interligacao": "Execução de interligação de rede",
+    "interligacoes de rede": "Execução de interligação de rede",
+    "interligacao de rede": "Execução de interligação de rede",
+    "interligacoes executadas": "Execução de interligação de rede",
+    "interligacao 63 x 63": "Execução de interligação de rede",
+    "concretagem de vala realizada": "Concretagem de vala",
+    "servico complementar": "Instalação de caixa de inspeção",
+}
+
+
+def _canonical_service_label(value: object) -> str:
+    text = _strip_prefix_symbols(value)
+    if not text:
+        return "-"
+    lookup = _normalize_lookup(text)
+    mapped = _SERVICE_EQUIVALENCE_MAP.get(lookup)
+    if mapped:
+        return mapped
+    if lookup.startswith("corte de pavimento com serra clip"):
+        return "Corte de pavimento com serra clip"
+    if lookup.startswith("prolongamento rede"):
+        return "Prolongamento de rede de água"
+    if lookup.startswith("interligacao"):
+        return "Execução de interligação de rede"
+    return text
 
 
 def _pick_first_text(*values: object) -> str:
@@ -597,7 +658,8 @@ class ManagementRepository:
                 row.get("servico_bruto"),
                 row.get("item_normalizado"),
                 row.get("item_original"),
-            ) or "-"
+            )
+            servico = _canonical_service_label(servico)
             quantidade = float(row.get("quantidade", 0) or 0)
             unidade = _safe_text(row.get("unidade"))
             peso = quantidade if quantidade > 0 else 1.0
