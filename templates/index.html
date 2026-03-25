@@ -47,6 +47,30 @@
 </div>
 
 <form method="post" action="{{ url_for('preview') }}">
+  <section class="entry-stepper" aria-label="Etapas da entrada">
+    <article class="entry-step is-current" data-entry-step="1">
+      <span class="entry-step-index">1</span>
+      <div>
+        <strong>Mensagem</strong>
+        <small>Conteudo principal</small>
+      </div>
+    </article>
+    <article class="entry-step" data-entry-step="2">
+      <span class="entry-step-index">2</span>
+      <div>
+        <strong>Contexto</strong>
+        <small>Vinculos operacionais</small>
+      </div>
+    </article>
+    <article class="entry-step" data-entry-step="3">
+      <span class="entry-step-index">3</span>
+      <div>
+        <strong>Revisao</strong>
+        <small>Antes de processar</small>
+      </div>
+    </article>
+  </section>
+
   <section class="section">
     <h3>Mensagem principal</h3>
     <div class="body">
@@ -55,10 +79,13 @@
         <label for="mensagem">Mensagem WhatsApp</label>
         <textarea id="mensagem" name="mensagem" placeholder="Cole aqui a mensagem completa...">{{ mensagem }}</textarea>
       </div>
-      <div class="actions">
+      <div class="actions entry-actions">
         <button type="submit">Processar mensagem</button>
+        <button type="button" class="secondary" id="entry-save-draft">Salvar rascunho local</button>
+        <button type="button" class="secondary" id="entry-restore-draft">Recuperar rascunho</button>
         <button type="reset" class="secondary">Limpar campos</button>
       </div>
+      <p id="entry-draft-status" class="field-hint">Rascunho local desativado ate salvar.</p>
     </div>
   </section>
 
@@ -137,19 +164,74 @@
       </div>
     </div>
   </section>
+
+  <section class="section entry-review-section">
+    <h3>Revisao antes do processamento</h3>
+    <div class="body">
+      <p class="section-lead">Confirme os principais campos antes de enviar para analise e geracao.</p>
+      <div class="entry-review-grid">
+        <article class="entry-review-item">
+          <span>Mensagem</span>
+          <strong id="entry-review-message">Nao informada</strong>
+        </article>
+        <article class="entry-review-item">
+          <span>Nucleo</span>
+          <strong id="entry-review-nucleo">Nao informado</strong>
+        </article>
+        <article class="entry-review-item">
+          <span>Municipio</span>
+          <strong id="entry-review-municipio">Nao informado</strong>
+        </article>
+        <article class="entry-review-item">
+          <span>Equipes</span>
+          <strong id="entry-review-equipes">Nao informadas</strong>
+        </article>
+        <article class="entry-review-item">
+          <span>Logradouros</span>
+          <strong id="entry-review-logradouros">Nao informados</strong>
+        </article>
+        <article class="entry-review-item">
+          <span>Contrato</span>
+          <strong id="entry-review-contrato">Nao vinculado</strong>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <div class="entry-sticky-actions" aria-label="Acoes rapidas mobile">
+    <button type="submit">Processar</button>
+    <a href="{{ url_for('history') }}">Historico</a>
+  </div>
 </form>
 
 <script>
 (function () {
+  const entryForm = document.querySelector('form[action$="/preview"]');
   const nucleoInput = document.getElementById('nucleo');
+  const dataInput = document.getElementById('data');
+  const mensagemInput = document.getElementById('mensagem');
   const municipioInput = document.getElementById('municipio');
   const logradouroInput = document.getElementById('logradouro');
   const equipeInput = document.getElementById('equipe');
+  const contractIdInput = document.getElementById('contract_id');
   const profileHint = document.getElementById('index-nucleo-profile');
   const logradouroList = document.getElementById('index-logradouro-list');
   const equipeList = document.getElementById('index-equipe-list');
   const logradouroCount = document.getElementById('index-logradouro-count');
   const equipeCount = document.getElementById('index-equipe-count');
+  const saveDraftButton = document.getElementById('entry-save-draft');
+  const restoreDraftButton = document.getElementById('entry-restore-draft');
+  const draftStatus = document.getElementById('entry-draft-status');
+  const reviewMessage = document.getElementById('entry-review-message');
+  const reviewNucleo = document.getElementById('entry-review-nucleo');
+  const reviewMunicipio = document.getElementById('entry-review-municipio');
+  const reviewEquipes = document.getElementById('entry-review-equipes');
+  const reviewLogradouros = document.getElementById('entry-review-logradouros');
+  const reviewContrato = document.getElementById('entry-review-contrato');
+  const step1 = document.querySelector('[data-entry-step="1"]');
+  const step2 = document.querySelector('[data-entry-step="2"]');
+  const step3 = document.querySelector('[data-entry-step="3"]');
+  const DRAFT_KEY = 'sisg_entry_draft_v1';
 
   const nucleoProfilesByKey = {{ (nucleo_reference.profiles_by_key if nucleo_reference else {}) | tojson }};
 
@@ -196,8 +278,82 @@
   };
 
   const refreshMultiPreview = () => {
-    renderList(splitMulti(logradouroInput ? logradouroInput.value : ''), logradouroList, logradouroCount, 'Nenhum logradouro separado.');
-    renderList(splitMulti(equipeInput ? equipeInput.value : ''), equipeList, equipeCount, 'Nenhuma equipe separada.');
+    const logradouros = splitMulti(logradouroInput ? logradouroInput.value : '');
+    const equipes = splitMulti(equipeInput ? equipeInput.value : '');
+    renderList(logradouros, logradouroList, logradouroCount, 'Nenhum logradouro separado.');
+    renderList(equipes, equipeList, equipeCount, 'Nenhuma equipe separada.');
+    updateReview(logradouros, equipes);
+    updateStepState(logradouros, equipes);
+  };
+
+  const setStepState = (stepElement, mode) => {
+    if (!stepElement) return;
+    stepElement.classList.remove('is-current', 'is-complete');
+    if (mode === 'complete') stepElement.classList.add('is-complete');
+    if (mode === 'current') stepElement.classList.add('is-current');
+  };
+
+  const updateStepState = (logradouros = null, equipes = null) => {
+    const msgSize = String(mensagemInput ? mensagemInput.value : '').trim().length;
+    const hasMsg = msgSize >= 20;
+    const hasContext = Boolean(
+      String(dataInput ? dataInput.value : '').trim() ||
+      String(nucleoInput ? nucleoInput.value : '').trim() ||
+      String(municipioInput ? municipioInput.value : '').trim() ||
+      String(equipeInput ? equipeInput.value : '').trim() ||
+      String(logradouroInput ? logradouroInput.value : '').trim() ||
+      String(contractIdInput ? contractIdInput.value : '').trim()
+    );
+
+    const l = Array.isArray(logradouros) ? logradouros : splitMulti(logradouroInput ? logradouroInput.value : '');
+    const e = Array.isArray(equipes) ? equipes : splitMulti(equipeInput ? equipeInput.value : '');
+    const hasReview = hasMsg && (hasContext || l.length > 0 || e.length > 0);
+
+    setStepState(step1, hasMsg ? 'complete' : 'current');
+    setStepState(step2, hasContext ? 'complete' : (hasMsg ? 'current' : ''));
+    setStepState(step3, hasReview ? 'complete' : (hasContext ? 'current' : ''));
+  };
+
+  const updateReview = (logradouros = null, equipes = null) => {
+    const msg = String(mensagemInput ? mensagemInput.value : '').trim();
+    const nucleo = String(nucleoInput ? nucleoInput.value : '').trim();
+    const municipio = String(municipioInput ? municipioInput.value : '').trim();
+    const contrato = String(contractIdInput ? contractIdInput.value : '').trim();
+    const l = Array.isArray(logradouros) ? logradouros : splitMulti(logradouroInput ? logradouroInput.value : '');
+    const e = Array.isArray(equipes) ? equipes : splitMulti(equipeInput ? equipeInput.value : '');
+
+    if (reviewMessage) reviewMessage.textContent = msg.length >= 20 ? `Pronta (${msg.length} caracteres)` : 'Curta ou nao informada';
+    if (reviewNucleo) reviewNucleo.textContent = nucleo || 'Nao informado';
+    if (reviewMunicipio) reviewMunicipio.textContent = municipio || 'Nao informado';
+    if (reviewEquipes) reviewEquipes.textContent = e.length ? `${e.length} item(ns)` : 'Nao informadas';
+    if (reviewLogradouros) reviewLogradouros.textContent = l.length ? `${l.length} item(ns)` : 'Nao informados';
+    if (reviewContrato) reviewContrato.textContent = contrato ? `ID ${contrato}` : 'Nao vinculado';
+  };
+
+  const setDraftStatus = (text) => {
+    if (draftStatus) draftStatus.textContent = text;
+  };
+
+  const collectDraftPayload = () => ({
+    mensagem: String(mensagemInput ? mensagemInput.value : ''),
+    data: String(dataInput ? dataInput.value : ''),
+    nucleo: String(nucleoInput ? nucleoInput.value : ''),
+    logradouro: String(logradouroInput ? logradouroInput.value : ''),
+    municipio: String(municipioInput ? municipioInput.value : ''),
+    equipe: String(equipeInput ? equipeInput.value : ''),
+    contract_id: String(contractIdInput ? contractIdInput.value : ''),
+    updated_at: new Date().toISOString(),
+  });
+
+  const applyDraftPayload = (payload) => {
+    if (!payload || typeof payload !== 'object') return;
+    if (mensagemInput) mensagemInput.value = String(payload.mensagem || '');
+    if (dataInput) dataInput.value = String(payload.data || '');
+    if (nucleoInput) nucleoInput.value = String(payload.nucleo || '');
+    if (logradouroInput) logradouroInput.value = String(payload.logradouro || '');
+    if (municipioInput) municipioInput.value = String(payload.municipio || '');
+    if (equipeInput) equipeInput.value = String(payload.equipe || '');
+    if (contractIdInput) contractIdInput.value = String(payload.contract_id || '');
   };
 
   const applyProfileFromNucleo = () => {
@@ -230,9 +386,56 @@
     refreshMultiPreview();
   };
 
+  if (saveDraftButton) {
+    saveDraftButton.addEventListener('click', () => {
+      try {
+        window.localStorage.setItem(DRAFT_KEY, JSON.stringify(collectDraftPayload()));
+        setDraftStatus('Rascunho local salvo neste navegador.');
+      } catch (e) {
+        setDraftStatus('Nao foi possivel salvar o rascunho local.');
+      }
+    });
+  }
+
+  if (restoreDraftButton) {
+    restoreDraftButton.addEventListener('click', () => {
+      try {
+        const raw = window.localStorage.getItem(DRAFT_KEY);
+        if (!raw) {
+          setDraftStatus('Nenhum rascunho local encontrado.');
+          return;
+        }
+        applyDraftPayload(JSON.parse(raw));
+        refreshMultiPreview();
+        applyProfileFromNucleo();
+        setDraftStatus('Rascunho local recuperado com sucesso.');
+      } catch (e) {
+        setDraftStatus('Nao foi possivel recuperar o rascunho local.');
+      }
+    });
+  }
+
   if (nucleoInput) {
     nucleoInput.addEventListener('change', applyProfileFromNucleo);
     nucleoInput.addEventListener('blur', applyProfileFromNucleo);
+  }
+  if (mensagemInput) {
+    mensagemInput.addEventListener('input', () => {
+      updateReview();
+      updateStepState();
+    });
+  }
+  if (dataInput) {
+    dataInput.addEventListener('input', () => {
+      updateReview();
+      updateStepState();
+    });
+  }
+  if (municipioInput) {
+    municipioInput.addEventListener('input', () => {
+      updateReview();
+      updateStepState();
+    });
   }
   if (logradouroInput) {
     logradouroInput.addEventListener('input', refreshMultiPreview);
@@ -240,9 +443,27 @@
   if (equipeInput) {
     equipeInput.addEventListener('input', refreshMultiPreview);
   }
+  if (contractIdInput) {
+    contractIdInput.addEventListener('input', () => {
+      updateReview();
+      updateStepState();
+    });
+  }
+
+  if (entryForm) {
+    entryForm.addEventListener('reset', () => {
+      window.setTimeout(() => {
+        refreshMultiPreview();
+        applyProfileFromNucleo();
+        setDraftStatus('Formulario limpo.');
+      }, 0);
+    });
+  }
 
   applyProfileFromNucleo();
   refreshMultiPreview();
+  updateReview();
+  updateStepState();
 })();
 </script>
 {% endblock %}

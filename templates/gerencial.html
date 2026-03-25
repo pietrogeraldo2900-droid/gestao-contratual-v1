@@ -11,18 +11,41 @@
 {% set servicos_items = graficos.get('servicos', {}).get('items', []) %}
 {% set municipios_items = graficos.get('municipios', {}).get('items', []) %}
 {% set ocorrencias_tipo_items = graficos.get('tipos_ocorrencia', {}).get('items', []) %}
+{% set nucleos_small_mode = (nucleos_items|length <= 4) %}
+{% set ocorrencias_small_mode = (ocorrencias_tipo_items|length <= 4) %}
 {% set categorias_total = categorias_items | map(attribute='value') | sum %}
 {% set nucleos_total = nucleos_items | map(attribute='value') | sum %}
 {% set max_nucleo_val = (nucleos_items[0].get('value', 0)|float if nucleos_items else 0.0) %}
 {% if max_nucleo_val <= 0 %}{% set max_nucleo_val = 1.0 %}{% endif %}
 {% set cat_colors = ['#49b6ff', '#33d6dd', '#4ade80', '#a3e635', '#facc15', '#fb7185', '#a78bfa', '#60a5fa'] %}
 {% set user_initials = (session.get('user_email', 'OP')[:2] or 'OP')|upper %}
+{% set pretty_label_map = {
+  'rede_agua': 'Rede de Água',
+  'ramal_agua': 'Ramal de Água',
+  'ocorrencia_operacional': 'Ocorrência Operacional',
+  'sem_producao': 'Sem produção',
+  'caixa_uma': 'Caixa UMA',
+  'intradomiciliar': 'Intradomiciliar',
+  'hidrometro': 'Hidrômetro',
+  'recomposicao': 'Recomposição'
+} %}
+{% macro pretty_metric_label(value) -%}
+  {%- set raw = (value|string).strip() -%}
+  {%- set norm = raw|lower -%}
+  {%- if not raw or norm in ['-', '--', 'null', 'none', 'nan', 'n/a'] -%}
+    Não informado
+  {%- elif norm in pretty_label_map -%}
+    {{ pretty_label_map[norm] }}
+  {%- else -%}
+    {{ raw.replace('_', ' ').replace('-', ' ')|title }}
+  {%- endif -%}
+{%- endmacro %}
 
 <div class="gerencial-page-v3" data-gerencial-v3>
   <header class="pgm3-hero">
     <div>
       <h1>Painel Gerencial de Evolucao de Obra</h1>
-      <p>Base executiva interativa inspirada no legado, com visual moderno</p>
+      <p>Base executiva consolidada para leitura rapida e acompanhamento operacional.</p>
     </div>
     <div class="pgm3-hero-actions" aria-hidden="true">
       <span class="pgm3-icon-btn">
@@ -34,76 +57,6 @@
       <span class="pgm3-user-badge">{{ user_initials }}</span>
     </div>
   </header>
-
-  <section class="pgm3-filters-shell">
-    <div class="pgm3-filters-header">
-      <div>
-        <h2>Filtros gerenciais</h2>
-        <p>Use filtros para refinar os indicadores da visao executiva.</p>
-      </div>
-      <button type="button" class="pgm3-filter-toggle" data-pgm3-toggle>
-        Mostrar filtros
-        <svg viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6"></path></svg>
-      </button>
-    </div>
-
-    <form method="get" action="{{ url_for('gerencial') }}" class="pgm3-filter-form" data-pgm3-form hidden>
-      <div class="pgm3-filter-grid">
-        <label>
-          Periodo da obra (de)
-          <input type="date" name="obra_from" value="{{ obra_from }}">
-        </label>
-        <label>
-          Periodo da obra (ate)
-          <input type="date" name="obra_to" value="{{ obra_to }}">
-        </label>
-        <label>
-          Processado em (de)
-          <input type="date" name="processed_from" value="{{ processed_from }}">
-        </label>
-        <label>
-          Processado em (ate)
-          <input type="date" name="processed_to" value="{{ processed_to }}">
-        </label>
-        <label>
-          Nucleo
-          <input name="nucleo" value="{{ nucleo }}" placeholder="Ex.: Mississipi">
-        </label>
-        <label>
-          Municipio
-          <input name="municipio" value="{{ municipio }}" placeholder="Ex.: Carapicuiba">
-        </label>
-        <label>
-          Equipe
-          <input name="equipe" value="{{ equipe }}" placeholder="Ex.: Xavier">
-        </label>
-        <label>
-          Status
-          <select name="status">
-            <option value="" {% if not status_filter %}selected{% endif %}>Todos</option>
-            <option value="sucesso" {% if status_filter == 'sucesso' %}selected{% endif %}>Sucesso</option>
-            <option value="erro" {% if status_filter == 'erro' %}selected{% endif %}>Erro</option>
-          </select>
-        </label>
-        <label>
-          Alertas
-          <select name="alertas">
-            <option value="" {% if not alertas_filter %}selected{% endif %}>Todos</option>
-            <option value="com_alerta" {% if alertas_filter == 'com_alerta' %}selected{% endif %}>Com alerta</option>
-            <option value="sem_alerta" {% if alertas_filter == 'sem_alerta' %}selected{% endif %}>Sem alerta</option>
-          </select>
-        </label>
-        <label>
-          Top N
-          <input type="number" min="3" max="50" name="top_n" value="{{ top_n }}">
-        </label>
-      </div>
-      <div class="pgm3-filter-actions">
-        <button type="submit" class="pgm3-btn-primary">Aplicar filtros</button>
-        <a href="{{ url_for('gerencial') }}" class="pgm3-btn-ghost">Limpar filtros</a>
-      </div>
-    </form>
-  </section>
 
   <section class="pgm3-kpi-grid">
     <article class="pgm3-kpi-card">
@@ -150,13 +103,14 @@
   </section>
 
   <section class="pgm3-analytics-grid">
-    <article class="pgm3-panel">
+    <article class="pgm3-panel {% if nucleos_small_mode %}pgm3-panel-compact{% endif %}">
       <header class="pgm3-panel-header">
         <h3>Visao por Nucleo</h3>
         <p>Frentes, itens, ocorrencias e volume</p>
       </header>
 
       {% if nucleos_items %}
+      {% if not nucleos_small_mode %}
       <div class="pgm3-nuc-chart-wrap">
         <div class="pgm3-nuc-chart">
           {% for row in nucleos_items[:7] %}
@@ -176,12 +130,25 @@
         {% for row in nucleos_items[:4] %}
           {% set pct = ((row.get('value', 0) / nucleos_total) * 100) if nucleos_total else 0 %}
           <article class="pgm3-nuc-row">
-            <span class="name">{{ row.get('label', '-') }}</span>
+            <span class="name">{{ pretty_metric_label(row.get('label', '-')) }}</span>
             <span>{{ row.get('value_fmt', '0') }}</span>
             <span>{{ '%.1f'|format(pct) }}%</span>
           </article>
         {% endfor %}
       </div>
+      {% else %}
+      <div class="pgm3-team-list pgm3-team-list-wide pgm3-team-list-compact">
+        {% for row in nucleos_items[:4] %}
+        {% set pct = ((row.get('value', 0) / nucleos_total) * 100) if nucleos_total else 0 %}
+        {% set nuc_width = pct if pct > 0 else 0 %}
+        <article class="pgm3-team-row">
+          <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
+          <span class="track"><span style="width: {{ '%.1f'|format(nuc_width) }}%;"></span></span>
+          <span class="val">{{ row.get('value_fmt', '0') }}</span>
+        </article>
+        {% endfor %}
+      </div>
+      {% endif %}
       {% else %}
       <div class="pgm3-empty">Sem dados de nucleo para o recorte atual.</div>
       {% endif %}
@@ -210,7 +177,7 @@
             {% set pct = ((row.get('value', 0) / categorias_total) * 100) if categorias_total else 0 %}
             <article class="pgm3-cat-row" data-cat-item data-value="{{ row.get('value', 0) }}" data-color="{{ color }}">
               <span class="dot" style="--dot: {{ color }};"></span>
-              <span class="label">{{ row.get('label', '-') }}</span>
+              <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
               <span class="val">{{ row.get('value_fmt', '0') }}</span>
               <span class="pct" data-cat-pct>{{ '%.1f'|format(pct) }}%</span>
               <span class="status">Ativa</span>
@@ -223,7 +190,7 @@
       {% endif %}
     </article>
 
-    <article class="pgm3-panel">
+    <article class="pgm3-panel pgm3-panel-rank">
       <header class="pgm3-panel-header">
         <h3>Visao por Equipe</h3>
         <p>Equipes com maior volume executado</p>
@@ -235,7 +202,7 @@
         {% set team_width = (row.get('width_pct', 0) * 1.15) %}
         {% if team_width > 100 %}{% set team_width = 100 %}{% endif %}
         <article class="pgm3-team-row">
-          <span class="label">{{ row.get('label', '-') }}</span>
+          <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
           <span class="track"><span style="width: {{ '%.1f'|format(team_width) }}%;"></span></span>
           <span class="val">{{ row.get('value_fmt', '0') }}</span>
         </article>
@@ -246,7 +213,7 @@
       {% endif %}
     </article>
 
-    <article class="pgm3-panel">
+    <article class="pgm3-panel pgm3-panel-rank">
       <header class="pgm3-panel-header">
         <h3>Visao por Servicos</h3>
         <p>Top servicos mais executados (volume consolidado)</p>
@@ -256,7 +223,7 @@
       <div class="pgm3-team-list pgm3-team-list-wide">
         {% for row in servicos_items[:7] %}
         <article class="pgm3-team-row">
-          <span class="label">{{ row.get('label', '-') }}</span>
+          <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
           <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
           <span class="val">{{ row.get('value_fmt', '0') }}</span>
         </article>
@@ -267,17 +234,17 @@
       {% endif %}
     </article>
 
-    <article class="pgm3-panel">
+    <article class="pgm3-panel pgm3-panel-rank pgm3-panel-compact">
       <header class="pgm3-panel-header">
         <h3>Visao por Municipio</h3>
         <p>Municipios com maior volume executado</p>
       </header>
 
       {% if municipios_items %}
-      <div class="pgm3-team-list pgm3-team-list-wide">
+      <div class="pgm3-team-list pgm3-team-list-wide pgm3-team-list-compact">
         {% for row in municipios_items[:7] %}
         <article class="pgm3-team-row">
-          <span class="label">{{ row.get('label', '-') }}</span>
+          <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
           <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
           <span class="val">{{ row.get('value_fmt', '0') }}</span>
         </article>
@@ -288,17 +255,17 @@
       {% endif %}
     </article>
 
-    <article class="pgm3-panel">
+    <article class="pgm3-panel pgm3-panel-rank {% if ocorrencias_small_mode %}pgm3-panel-compact{% endif %}">
       <header class="pgm3-panel-header">
         <h3>Ocorrencias por Tipo</h3>
         <p>Tipos de ocorrencia mais frequentes</p>
       </header>
 
       {% if ocorrencias_tipo_items %}
-      <div class="pgm3-team-list pgm3-team-list-wide">
+      <div class="pgm3-team-list pgm3-team-list-wide {% if ocorrencias_small_mode %}pgm3-team-list-compact{% endif %}">
         {% for row in ocorrencias_tipo_items[:7] %}
         <article class="pgm3-team-row">
-          <span class="label">{{ row.get('label', '-') }}</span>
+          <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
           <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
           <span class="val">{{ row.get('value_fmt', '0') }}</span>
         </article>
