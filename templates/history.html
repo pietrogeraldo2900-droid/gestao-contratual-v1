@@ -310,11 +310,11 @@
                   <div class="muted">{{ row.status }}</div>
                 </td>
                 <td>{{ row.nao_mapeados }}</td>
-                <td>
+                <td class="history-cell-alerts">
                   {% if row.alert_count|int > 0 %}
                     <span class="badge warning">{{ row.alert_count }} alerta(s)</span>
-                    <div class="muted">{{ row.alert_preview }}</div>
-                    <details>
+                    <div class="muted history-alert-preview">{{ row.alert_preview }}</div>
+                    <details class="history-alerts-details">
                       <summary>Detalhes</summary>
                       <ul class="simple-list">
                         {% for alert in row.alert_list %}
@@ -326,32 +326,67 @@
                     <span class="badge success">0 alerta</span>
                   {% endif %}
                 </td>
-                <td>
+                <td class="history-cell-files">
                   {% if row.generated_files %}
-                    <ul class="simple-list">
-                      {% for file in row.generated_files %}
-                        <li>
+                    <div class="history-files-summary">
+                      <span class="badge info">{{ row.generated_files|length }} arquivo(s)</span>
+                      <div class="history-files-preview-list">
+                        {% for file in row.generated_files[:3] %}
                           {% if file.uri %}
-                            <a href="{{ file.uri }}">{{ file.name }}</a>
+                            <a href="{{ file.uri }}" class="history-inline-file">{{ file.name }}</a>
                           {% else %}
-                            {{ file.name }}
+                            <span class="history-inline-file">{{ file.name }}</span>
                           {% endif %}
-                        </li>
-                      {% endfor %}
-                    </ul>
+                        {% endfor %}
+                        {% if row.generated_files|length > 3 %}
+                          <span class="muted history-inline-more">+{{ row.generated_files|length - 3 }} adicional(is)</span>
+                        {% endif %}
+                      </div>
+                      <div class="muted history-files-preview">{{ row.generated_files_preview or '-' }}</div>
+                    </div>
+                    {% if row.generated_files|length > 3 %}
+                      <details class="history-files-details">
+                        <summary>Ver lista completa</summary>
+                        <ul class="simple-list history-files-list">
+                          {% for file in row.generated_files %}
+                            <li>
+                              {% if file.uri %}
+                                <a href="{{ file.uri }}">{{ file.name }}</a>
+                              {% else %}
+                                {{ file.name }}
+                              {% endif %}
+                            </li>
+                          {% endfor %}
+                        </ul>
+                      </details>
+                    {% endif %}
                   {% else %}
                     <div>{{ row.generated_files_preview or '-' }}</div>
                   {% endif %}
-                  {% if row.output_dir_uri %}
-                    <div><a href="{{ row.output_dir_uri }}">Abrir pasta de saida</a></div>
-                  {% endif %}
-                  {% if row.base_gerencial_uri %}
-                    <div><a href="{{ row.base_gerencial_uri }}">Abrir base gerencial</a></div>
-                  {% endif %}
                 </td>
-                <td>
-                  <div class="mono">{{ row.output_dir or '-' }}</div>
-                  <div class="mono">{{ row.base_gerencial_path or '-' }}</div>
+                <td class="history-cell-paths">
+                  <div class="history-paths-actions">
+                    {% if row.output_dir_uri %}
+                      <div><a href="{{ row.output_dir_uri }}">Abrir pasta de saída</a></div>
+                    {% endif %}
+                    {% if row.base_gerencial_uri %}
+                      <div><a href="{{ row.base_gerencial_uri }}">Abrir base gerencial</a></div>
+                    {% endif %}
+                    {% if not row.output_dir_uri and not row.base_gerencial_uri %}
+                      <span class="muted">Sem caminhos disponíveis</span>
+                    {% endif %}
+                  </div>
+                  {% if row.output_dir or row.base_gerencial_path %}
+                    <details class="history-paths-details">
+                      <summary>Ver caminhos técnicos</summary>
+                      {% if row.output_dir %}
+                        <div class="mono history-tech-path">{{ row.output_dir }}</div>
+                      {% endif %}
+                      {% if row.base_gerencial_path %}
+                        <div class="mono history-tech-path">{{ row.base_gerencial_path }}</div>
+                      {% endif %}
+                    </details>
+                  {% endif %}
                 </td>
               </tr>
             {% endfor %}
