@@ -714,5 +714,52 @@
                         "verificacao de contas altas",
                         "inspecao em campo"
                     ]
+    },
+    {
+        "servico_oficial":  "furo_direcional",
+        "categoria":  "rede",
+        "unidades_aceitas":  [
+                                 "m"
+                             ],
+        "aliases":  [
+                        "furo direcional",
+                        "execucao de furo direcional",
+                        "perfuração direcional",
+                        "perfuracao direcional",
+                        "furacao direcional"
+                    ]
+    },
+    {
+        "servico_oficial":  "adesao_agua",
+        "categoria":  "ligacao",
+        "unidades_aceitas":  [
+                                 "un"
+                             ],
+        "aliases":  [
+                        "adesao",
+                        "adesoes",
+                        "adesao realizada",
+                        "adesoes realizadas",
+                        "adesao de agua",
+                        "adesoes de agua"
+                    ]
+    },
+    {
+        "servico_oficial":  "caixa_dagua",
+        "categoria":  "ligacao",
+        "unidades_aceitas":  [
+                                 "un"
+                             ],
+        "aliases":  [
+                        "caixa dagua",
+                        "caixa d agua",
+                        "caixa d'agua",
+                        "instalacao de caixa dagua",
+                        "instalacao de caixa d agua",
+                        "instalacao de caixa d'agua",
+                        "instalacao de caixa de agua",
+                        "instalacao caixa dagua",
+                        "instalacao de caixas dagua"
+                    ]
     }
 ]

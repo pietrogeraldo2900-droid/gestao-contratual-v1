@@ -48,8 +48,9 @@
         </tr>
       </thead>
       <tbody>
-        <tr><td>Mensagens processadas</td><td class="text-right">{{ final.indicadores_principais.total_processamentos }}</td></tr>
-        <tr><td>Execuções registradas</td><td class="text-right">{{ final.indicadores_principais.total_execucoes }}</td></tr>
+        <tr><td>Quantitativo consolidado (métrica principal)</td><td class="text-right">{{ final.indicadores_principais.total_volume_fmt }}</td></tr>
+        <tr><td>Execuções registradas (apoio)</td><td class="text-right">{{ final.indicadores_principais.total_execucoes }}</td></tr>
+        <tr><td>Mensagens processadas (apoio)</td><td class="text-right">{{ final.indicadores_principais.total_processamentos }}</td></tr>
         <tr><td>Frentes</td><td class="text-right">{{ final.indicadores_principais.total_frentes }}</td></tr>
         <tr><td>Ocorrências</td><td class="text-right">{{ final.indicadores_principais.total_ocorrencias }}</td></tr>
         <tr><td>Núcleos atendidos</td><td class="text-right">{{ final.indicadores_principais.total_nucleos }}</td></tr>
@@ -114,7 +115,8 @@
         <div class="confirm-panel-title">{{ nucleo.nucleo }}</div>
         <div class="confirm-panel-body">
           <div class="chips" style="margin-bottom:8px;">
-            <span class="chip">Atividade: {{ nucleo.processamentos }}</span>
+            <span class="chip">Quantitativo: {{ nucleo.volume_total_fmt }}</span>
+            <span class="chip">Registros (apoio): {{ nucleo.processamentos }}</span>
             <span class="chip">Com alerta: {{ nucleo.processamentos_alerta }}</span>
             <span class="chip">Sucesso: {{ nucleo.sucesso }}</span>
             <span class="chip">Erro: {{ nucleo.erro }}</span>

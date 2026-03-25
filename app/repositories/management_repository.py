@@ -69,19 +69,24 @@ def _match(value: object, probe: str) -> bool:
     return probe in _normalize(value)
 
 
-def _chart_items(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+def _chart_items(rows: Iterable[dict[str, Any]], *, unit_field: str = "") -> list[dict[str, Any]]:
     parsed: list[dict[str, Any]] = []
     max_value = 0.0
     for idx, row in enumerate(rows, start=1):
         label = _safe_text(row.get("label", "")) or "-"
         value = float(row.get("value", 0) or 0)
+        unit = _safe_text(row.get(unit_field, "")) if unit_field else ""
         max_value = max(max_value, value)
+        value_fmt = _display_number(value)
+        value_display = f"{value_fmt} {unit}".strip()
         parsed.append(
             {
                 "rank": idx,
                 "label": label,
                 "value": value,
-                "value_fmt": _display_number(value),
+                "value_fmt": value_fmt,
+                "value_display": value_display,
+                "unit": unit,
                 "meta": "",
             }
         )
@@ -561,10 +566,11 @@ class ManagementRepository:
         total_ocorrencias = len(ocorr_filtered)
         volume_total = sum(float(row.get("quantidade", 0) or 0) for row in exec_filtered)
 
-        nucleo_counts: dict[str, float] = {}
-        equipe_counts: dict[str, float] = {}
+        nucleo_values: dict[str, float] = {}
+        equipe_values: dict[str, float] = {}
         categoria_values: dict[str, float] = {}
         servico_values: dict[str, float] = {}
+        servico_units: dict[str, set[str]] = {}
         municipio_values: dict[str, float] = {}
         ocorrencia_tipo_values: dict[str, float] = {}
         servicos_set: set[str] = set()
@@ -583,13 +589,20 @@ class ManagementRepository:
                 row.get("item_original"),
             ) or "-"
             quantidade = float(row.get("quantidade", 0) or 0)
+            unidade = _safe_text(row.get("unidade"))
             peso = quantidade if quantidade > 0 else 1.0
 
-            nucleo_counts[nucleo] = nucleo_counts.get(nucleo, 0) + 1
-            equipe_counts[equipe] = equipe_counts.get(equipe, 0) + 1
+            nucleo_values[nucleo] = nucleo_values.get(nucleo, 0) + peso
+            equipe_values[equipe] = equipe_values.get(equipe, 0) + peso
             categoria_values[categoria] = categoria_values.get(categoria, 0) + peso
             servico_values[servico] = servico_values.get(servico, 0) + peso
             municipio_values[municipio] = municipio_values.get(municipio, 0) + peso
+            if unidade:
+                units = servico_units.get(servico)
+                if units is None:
+                    units = set()
+                    servico_units[servico] = units
+                units.add(unidade)
             servicos_set.add(servico)
             municipios_set.add(municipio)
 
@@ -600,18 +613,22 @@ class ManagementRepository:
         top_n = filters.top_n
         nucleo_rows = [
             {"label": label, "value": value}
-            for label, value in sorted(nucleo_counts.items(), key=lambda item: item[1], reverse=True)[:top_n]
+            for label, value in sorted(nucleo_values.items(), key=lambda item: item[1], reverse=True)[:top_n]
         ]
         equipe_rows = [
             {"label": label, "value": value}
-            for label, value in sorted(equipe_counts.items(), key=lambda item: item[1], reverse=True)[:top_n]
+            for label, value in sorted(equipe_values.items(), key=lambda item: item[1], reverse=True)[:top_n]
         ]
         categoria_rows = [
             {"label": label, "value": value}
             for label, value in sorted(categoria_values.items(), key=lambda item: item[1], reverse=True)[:top_n]
         ]
         servico_rows = [
-            {"label": label, "value": value}
+            {
+                "label": label,
+                "value": value,
+                "unit": next(iter(servico_units.get(label, set())), "") if len(servico_units.get(label, set())) == 1 else "",
+            }
             for label, value in sorted(servico_values.items(), key=lambda item: item[1], reverse=True)[:top_n]
         ]
         municipio_rows = [
@@ -642,8 +659,8 @@ class ManagementRepository:
         percentual_nao_mapeado = 100.0 - percentual_mapeado if total_execucao else 0.0
 
         has_data = bool(total_execucao or total_frentes or total_ocorrencias)
-        total_nucleos = len(nucleo_counts)
-        total_equipes = len(equipe_counts)
+        total_nucleos = len(nucleo_values)
+        total_equipes = len(equipe_values)
         processamentos_com_alerta = min(total_execucao, total_ocorrencias)
         processamentos_sem_alerta = max(total_execucao - processamentos_com_alerta, 0)
 
@@ -702,7 +719,7 @@ class ManagementRepository:
                     "max_value_fmt": _display_number(max((row["value"] for row in categoria_rows), default=0)),
                 },
                 "servicos": {
-                    "items": _chart_items(servico_rows),
+                    "items": _chart_items(servico_rows, unit_field="unit"),
                     "has_data": bool(servico_rows),
                     "max_value_fmt": _display_number(max((row["value"] for row in servico_rows), default=0)),
                 },

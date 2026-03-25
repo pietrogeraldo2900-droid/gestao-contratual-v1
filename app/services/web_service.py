@@ -5,7 +5,7 @@ import json
 import re
 import shutil
 import uuid
-from collections import Counter
+from collections import Counter, defaultdict
 from copy import deepcopy
 from datetime import date, datetime, timedelta
 from io import BytesIO
@@ -2577,6 +2577,7 @@ class WebPipelineService:
         limit: int = 10,
         domain: str = "",
         value_mode: str = "count",
+        unit_field: str = "",
     ) -> dict:
         items: List[dict] = []
         max_value = 0.0
@@ -2585,6 +2586,8 @@ class WebPipelineService:
             if domain:
                 label = self._institutional_label(label, domain=domain)
             raw_value = row.get(value_field, 0)
+            unit_raw = str(row.get(unit_field, "") or "").strip() if unit_field else ""
+            unit = "" if unit_raw in {"-", "--", "n/a", "N/A"} else unit_raw
             value = (
                 float(raw_value or 0.0)
                 if value_mode == "number"
@@ -2596,12 +2599,15 @@ class WebPipelineService:
                 if value_mode == "number"
                 else str(int(value))
             )
+            value_display = f"{display} {unit}".strip()
             items.append(
                 {
                     "rank": idx,
                     "label": label,
                     "value": value,
                     "value_fmt": display,
+                    "value_display": value_display,
+                    "unit": unit,
                     "meta": str(row.get("categoria", "") or "").strip(),
                 }
             )
@@ -3506,6 +3512,7 @@ class WebPipelineService:
 
         volume_por_categoria = []
         volume_total_base = float(base.get("consolidado_periodo", {}).get("volume_total", 0.0) or 0.0)
+        total_execucoes_base = int(base.get("consolidado_periodo", {}).get("execucao_registros", 0) or 0)
         for item in volume_categoria_map.values():
             pct = (100.0 * item["volume_total"] / volume_total_base) if volume_total_base > 0 else 0.0
             volume_por_categoria.append(
@@ -3594,6 +3601,22 @@ class WebPipelineService:
                 "processamentos": v,
             }
             for k, v in ranking_equipe_counter.most_common(top_n)
+        ]
+        ranking_nucleos_volume = [
+            {
+                "nucleo": str(row.get("nucleo", "") or "").strip() or "-",
+                "volume_total": float(row.get("volume_total", 0.0) or 0.0),
+                "volume_total_fmt": str(row.get("volume_total_fmt", "") or self._display_number(float(row.get("volume_total", 0.0) or 0.0))),
+            }
+            for row in list(base.get("indicadores_por_nucleo", []) or [])[:top_n]
+        ]
+        ranking_equipes_volume = [
+            {
+                "equipe": str(row.get("equipe", "") or "").strip() or "-",
+                "volume_total": float(row.get("volume_total", 0.0) or 0.0),
+                "volume_total_fmt": str(row.get("volume_total_fmt", "") or self._display_number(float(row.get("volume_total", 0.0) or 0.0))),
+            }
+            for row in list(base.get("indicadores_por_equipe", []) or [])[:top_n]
         ]
         ranking_municipios_processamentos = [
             {
@@ -3690,15 +3713,23 @@ class WebPipelineService:
                 },
             }
 
-        top_nucleo = ranking_nucleos_processamentos[0]["nucleo"] if ranking_nucleos_processamentos else "-"
-        top_equipe = ranking_equipes_processamentos[0]["equipe"] if ranking_equipes_processamentos else "-"
+        top_nucleo = (
+            ranking_nucleos_volume[0]["nucleo"]
+            if ranking_nucleos_volume
+            else (ranking_nucleos_processamentos[0]["nucleo"] if ranking_nucleos_processamentos else "-")
+        )
+        top_equipe = (
+            ranking_equipes_volume[0]["equipe"]
+            if ranking_equipes_volume
+            else (ranking_equipes_processamentos[0]["equipe"] if ranking_equipes_processamentos else "-")
+        )
         top_alerta = alertas_recorrentes[0]["alerta"] if alertas_recorrentes else "-"
         top_nao_mapeado = ranking_nao_mapeados[0]["termo"] if ranking_nao_mapeados else "-"
 
         resumo_executivo = {
             "periodo": base.get("consolidado_periodo", {}).get("periodo_obra", "-"),
             "linhas": [
-                f"{total_processamentos} processamento(s) no periodo filtrado, com {processamentos_com_alerta} com alerta.",
+                f"Quantitativo consolidado do período: {self._display_number(volume_total_base)}, com {total_execucoes_base} execucao(oes) e {total_processamentos} processamento(s).",
                 f"Nucleo mais recorrente: {top_nucleo}. Equipe mais recorrente: {top_equipe}.",
                 f"Mapeamento: {self._display_number(percentual_mapeado)}% mapeado e {self._display_number(percentual_nao_mapeado)}% nao mapeado.",
                 f"Alerta mais recorrente: {top_alerta}. Nao mapeado mais recorrente: {top_nao_mapeado}.",
@@ -3712,6 +3743,8 @@ class WebPipelineService:
         base["kpis_principais"] = {
             "total_processamentos": total_processamentos,
             "total_execucoes": int(base.get("consolidado_periodo", {}).get("execucao_registros", 0) or 0),
+            "total_volume": float(base.get("consolidado_periodo", {}).get("volume_total", 0.0) or 0.0),
+            "total_volume_fmt": str(base.get("consolidado_periodo", {}).get("volume_total_fmt", "0") or "0"),
             "total_frentes": int(base.get("consolidado_periodo", {}).get("frentes", 0) or 0),
             "total_ocorrencias": int(base.get("consolidado_periodo", {}).get("ocorrencias", 0) or 0),
             "total_nucleos": len(ranking_nucleo_counter) if ranking_nucleo_counter else int(base.get("consolidado_periodo", {}).get("nucleos_ativos", 0) or 0),
@@ -3734,6 +3767,8 @@ class WebPipelineService:
         base["resumo_por_periodo"] = resumo_por_periodo[: max(top_n, 10)]
         base["ranking_nucleos_processamentos"] = ranking_nucleos_processamentos
         base["ranking_equipes_processamentos"] = ranking_equipes_processamentos
+        base["ranking_nucleos_volume"] = ranking_nucleos_volume
+        base["ranking_equipes_volume"] = ranking_equipes_volume
         base["ranking_municipios_processamentos"] = ranking_municipios_processamentos
         base["ranking_nao_mapeados"] = ranking_nao_mapeados[:top_n]
         base["alertas_recorrentes"] = alertas_recorrentes
@@ -3742,15 +3777,15 @@ class WebPipelineService:
         chart_limit = min(max(top_n, 5), 10)
         base["cards_executivos"] = [
             {
-                "title": "Mensagens processadas",
-                "value": base["kpis_principais"]["total_processamentos"],
-                "subtitle": "recorte filtrado",
+                "title": "Quantitativo total",
+                "value": base["kpis_principais"]["total_volume_fmt"],
+                "subtitle": "volume consolidado",
                 "tone": "info",
             },
             {
                 "title": "Execuções",
                 "value": base["kpis_principais"]["total_execucoes"],
-                "subtitle": "itens consolidados",
+                "subtitle": "registros de apoio",
                 "tone": "",
             },
             {
@@ -3811,6 +3846,7 @@ class WebPipelineService:
                 limit=chart_limit,
                 domain="servico",
                 value_mode="number",
+                unit_field="unidades",
             ),
             "ocorrencias": self._build_dashboard_bar_chart(
                 base.get("ranking_ocorrencias", []),
@@ -3820,16 +3856,18 @@ class WebPipelineService:
                 domain="ocorrencia",
             ),
             "nucleos": self._build_dashboard_bar_chart(
-                base.get("ranking_nucleos_processamentos", []),
+                base.get("ranking_nucleos_volume", []),
                 label_field="nucleo",
-                value_field="processamentos",
+                value_field="volume_total",
                 limit=chart_limit,
+                value_mode="number",
             ),
             "equipes": self._build_dashboard_bar_chart(
-                base.get("ranking_equipes_processamentos", []),
+                base.get("ranking_equipes_volume", []),
                 label_field="equipe",
-                value_field="processamentos",
+                value_field="volume_total",
                 limit=chart_limit,
+                value_mode="number",
             ),
             "categorias": self._build_dashboard_bar_chart(
                 base.get("volume_por_categoria", []),
@@ -3983,10 +4021,13 @@ class WebPipelineService:
                 "sucesso": 0,
                 "erro": 0,
                 "processamentos_alerta": 0,
+                "volume_total": 0.0,
                 "municipio": "",
                 "equipes": set(),
                 "logradouros": set(),
                 "service_counter": Counter(),
+                "service_volume_map": defaultdict(float),
+                "service_unit_map": {},
                 "occurrence_counter": Counter(),
                 "observation_counter": Counter(),
             }
@@ -4145,7 +4186,13 @@ class WebPipelineService:
                     or "servico_nao_informado"
                 )
                 servico = self._institutional_label(servico_raw, domain="servico")
+                quantidade = self._parse_quantity(exec_row.get("quantidade", ""))
+                unidade = str(exec_row.get("unidade", "") or "").strip()
                 item["service_counter"][servico] += 1
+                item["service_volume_map"][servico] += quantidade
+                if unidade and not item["service_unit_map"].get(servico):
+                    item["service_unit_map"][servico] = unidade
+                item["volume_total"] += quantidade
                 _apply_single_municipio(
                     item,
                     nucleo,
@@ -4241,14 +4288,49 @@ class WebPipelineService:
             equipes = sorted(item["equipes"], key=lambda x: normalizar_texto(x))
             logradouros = sorted(item["logradouros"], key=lambda x: normalizar_texto(x))
 
-            principais_servicos = [
-                {
-                    "nome": nome,
-                    "ocorrencias": qtd,
-                    "descricao_institucional": f"{nome}, com {self._count_label(qtd, 'ocorrência', 'ocorrências')} no período.",
-                }
-                for nome, qtd in item["service_counter"].most_common(5)
-            ]
+            service_volume_rows = sorted(
+                item["service_volume_map"].items(),
+                key=lambda kv: float(kv[1] or 0.0),
+                reverse=True,
+            )
+            principais_servicos = []
+            if service_volume_rows:
+                for nome, volume in service_volume_rows[:5]:
+                    ocorrencias = int(item["service_counter"].get(nome, 0) or 0)
+                    unidade = str(item["service_unit_map"].get(nome, "") or "").strip()
+                    volume_fmt = self._display_number(float(volume or 0.0))
+                    unit_suffix = f" {unidade}" if unidade else ""
+                    descricao = (
+                        f"{nome}, com quantitativo consolidado de {volume_fmt}{unit_suffix} no período"
+                    )
+                    if ocorrencias > 0:
+                        descricao += (
+                            f" ({self._count_label(ocorrencias, 'registro', 'registros')})."
+                        )
+                    else:
+                        descricao += "."
+                    principais_servicos.append(
+                        {
+                            "nome": nome,
+                            "ocorrencias": ocorrencias,
+                            "volume_total": float(volume or 0.0),
+                            "volume_total_fmt": volume_fmt,
+                            "unidade": unidade,
+                            "descricao_institucional": descricao,
+                        }
+                    )
+            else:
+                principais_servicos = [
+                    {
+                        "nome": nome,
+                        "ocorrencias": qtd,
+                        "volume_total": 0.0,
+                        "volume_total_fmt": "0",
+                        "unidade": "",
+                        "descricao_institucional": f"{nome}, com {self._count_label(qtd, 'ocorrência', 'ocorrências')} no período.",
+                    }
+                    for nome, qtd in item["service_counter"].most_common(5)
+                ]
             principais_ocorrencias = [
                 {
                     "nome": nome,
@@ -4271,15 +4353,18 @@ class WebPipelineService:
                 processos_texto = self._count_label(
                     item["processamentos"], "registro operacional", "registros operacionais"
                 )
+                volume_texto = self._display_number(float(item.get("volume_total", 0.0) or 0.0))
                 if top_ocorrencia != "-":
                     observacao_analitica = (
-                        f"No período, o núcleo concentrou {processos_texto}, com destaque para "
-                        f"{top_servico.lower()} e recorrência de {top_ocorrencia.lower()}."
+                        f"No período, o núcleo consolidou quantitativo de {volume_texto}, "
+                        f"com destaque para {top_servico.lower()} e recorrência de {top_ocorrencia.lower()} "
+                        f"(apoio: {processos_texto})."
                     )
                 else:
                     observacao_analitica = (
-                        f"No período, o núcleo concentrou {processos_texto}, com destaque para "
-                        f"{top_servico.lower()} e sem recorrência relevante de ocorrências."
+                        f"No período, o núcleo consolidou quantitativo de {volume_texto}, "
+                        f"com destaque para {top_servico.lower()} e sem recorrência relevante de ocorrências "
+                        f"(apoio: {processos_texto})."
                     )
             else:
                 observacao_analitica = "Sem atividade consolidada no período filtrado."
@@ -4288,6 +4373,8 @@ class WebPipelineService:
                 {
                     "nucleo": item["nucleo"],
                     "processamentos": item["processamentos"],
+                    "volume_total": float(item.get("volume_total", 0.0) or 0.0),
+                    "volume_total_fmt": self._display_number(float(item.get("volume_total", 0.0) or 0.0)),
                     "sucesso": item["sucesso"],
                     "erro": item["erro"],
                     "processamentos_alerta": item["processamentos_alerta"],
@@ -4304,6 +4391,7 @@ class WebPipelineService:
 
         analysis.sort(
             key=lambda row: (
+                float(row.get("volume_total", 0.0) or 0.0),
                 int(row.get("processamentos", 0)),
                 int(row.get("processamentos_alerta", 0)),
                 len(row.get("principais_servicos", [])),
@@ -4368,13 +4456,23 @@ class WebPipelineService:
         total_execucoes = int(kpis.get("total_execucoes", 0) or 0)
         total_frentes = int(dashboard.get("consolidado_periodo", {}).get("frentes", 0) or 0)
         total_ocorrencias = int(kpis.get("total_ocorrencias", 0) or 0)
+        total_volume = float(dashboard.get("consolidado_periodo", {}).get("volume_total", 0.0) or 0.0)
+        total_volume_fmt = str(dashboard.get("consolidado_periodo", {}).get("volume_total_fmt", "0") or "0")
         processamentos_alerta = int(kpis.get("processamentos_com_alerta", 0) or 0)
         processamentos_erro = int(kpis.get("processamentos_erro", 0) or 0)
         total_mapeados = int(kpis.get("total_mapeados", 0) or 0)
         total_nao_mapeados = int(kpis.get("total_nao_mapeados", 0) or 0)
 
-        ranking_nucleos = list(dashboard.get("ranking_nucleos_processamentos", []) or [])
-        ranking_equipes = list(dashboard.get("ranking_equipes_processamentos", []) or [])
+        ranking_nucleos = list(
+            dashboard.get("ranking_nucleos_volume", [])
+            or dashboard.get("ranking_nucleos_processamentos", [])
+            or []
+        )
+        ranking_equipes = list(
+            dashboard.get("ranking_equipes_volume", [])
+            or dashboard.get("ranking_equipes_processamentos", [])
+            or []
+        )
         ranking_servicos = list(dashboard.get("ranking_servicos", []) or [])[:top_n]
         ranking_ocorrencias = list(dashboard.get("ranking_ocorrencias", []) or [])[:top_n]
         ranking_categorias = list(dashboard.get("volume_por_categoria", []) or [])[:top_n]
@@ -4402,9 +4500,19 @@ class WebPipelineService:
             item["servico"] = _humanize_label(item.get("servico", ""), domain="servico")
             item["categoria"] = _humanize_label(item.get("categoria", ""), domain="categoria")
             registros = int(item.get("registros", 0) or 0)
+            volume_total_item = float(item.get("volume_total", 0.0) or 0.0)
+            volume_total_fmt_item = self._display_number(volume_total_item)
+            unidade_item = str(item.get("unidades", "") or "").strip()
+            unidade_suffix = "" if not unidade_item or unidade_item == "-" else f" {unidade_item}"
             item["descricao_institucional"] = (
-                f"{item['servico']}, com {self._count_label(registros, 'ocorrência', 'ocorrências')} no período."
+                f"{item['servico']}, com quantitativo consolidado de {volume_total_fmt_item}{unidade_suffix} no período"
             )
+            if registros > 0:
+                item["descricao_institucional"] += (
+                    f" ({self._count_label(registros, 'registro', 'registros')})."
+                )
+            else:
+                item["descricao_institucional"] += "."
             ranking_servicos_fmt.append(item)
         ranking_servicos = ranking_servicos_fmt
 
@@ -4504,9 +4612,9 @@ class WebPipelineService:
 
         resumo_linhas = [
             (
-                f"Foram processadas {total_processamentos} "
-                f"{_plural(total_processamentos, 'mensagem', 'mensagens')} no período, "
-                f"com {total_execucoes} {_plural(total_execucoes, 'execução registrada', 'execuções registradas')}, "
+                f"O quantitativo real consolidado no período foi de {total_volume_fmt}, "
+                f"com {total_execucoes} {_plural(total_execucoes, 'execução registrada', 'execuções registradas')} "
+                f"(apoio: {total_processamentos} {_plural(total_processamentos, 'mensagem processada', 'mensagens processadas')}), "
                 f"{total_frentes} {_plural(total_frentes, 'frente', 'frentes')} e "
                 f"{total_ocorrencias} {_plural(total_ocorrencias, 'ocorrência', 'ocorrências')}."
             ),
@@ -4595,8 +4703,10 @@ class WebPipelineService:
 
             recomendacao_texto = self._join_natural_phrases(recomendacoes)
             conclusao = (
-                f"No recorte analisado, a operação reuniu {self._count_label(total_processamentos, 'mensagem processada', 'mensagens processadas')}, "
-                f"com maior presença em {top_nucleo}. Como próximos focos gerenciais, recomenda-se {recomendacao_texto}."
+                f"No recorte analisado, o quantitativo consolidado foi de {total_volume_fmt}, "
+                f"com maior presença em {top_nucleo}. "
+                f"Como informação complementar, houve {self._count_label(total_processamentos, 'mensagem processada', 'mensagens processadas')}. "
+                f"Como próximos focos gerenciais, recomenda-se {recomendacao_texto}."
             )
 
         def _render_filter_value(value: object, fallback: str = "Todos") -> str:
@@ -4627,6 +4737,8 @@ class WebPipelineService:
                 "linhas": resumo_linhas,
             },
             "indicadores_principais": {
+                "total_volume": total_volume,
+                "total_volume_fmt": total_volume_fmt,
                 "total_processamentos": total_processamentos,
                 "total_execucoes": total_execucoes,
                 "total_frentes": total_frentes,
@@ -4727,6 +4839,7 @@ class WebPipelineService:
         kpi_table.rows[0].cells[0].text = "Indicador"
         kpi_table.rows[0].cells[1].text = "Valor"
         kpi_rows = [
+            ("Quantitativo consolidado", indicadores.get("total_volume_fmt", "0")),
             ("Total de processamentos", indicadores.get("total_processamentos", 0)),
             ("Total de execuções", indicadores.get("total_execucoes", 0)),
             ("Total de frentes", indicadores.get("total_frentes", 0)),
@@ -4773,7 +4886,8 @@ class WebPipelineService:
                 str(nucleo.get("nucleo", "(sem núcleo)") or "(sem núcleo)"), level=2
             )
             doc.add_paragraph(
-                f"Atividade do período: {self._count_label(int(nucleo.get('processamentos', 0) or 0), 'registro operacional', 'registros operacionais')}"
+                f"Quantitativo consolidado no período: {nucleo.get('volume_total_fmt', '0')} "
+                f"(apoio: {self._count_label(int(nucleo.get('processamentos', 0) or 0), 'registro operacional', 'registros operacionais')})"
             )
             logradouros = list(nucleo.get("logradouros", []) or [])
             doc.add_paragraph(

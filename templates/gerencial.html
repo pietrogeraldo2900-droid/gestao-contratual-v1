@@ -120,7 +120,7 @@
           {% set nuc_height_px = (10 + (nuc_ratio * 150)) if row.get('value', 0)|float > 0 else 6 %}
           <div class="pgm3-nuc-col">
             <span class="pgm3-nuc-bar" style="height: {{ '%.0f'|format(nuc_height_px) }}px;"></span>
-            <span class="pgm3-nuc-value">{{ row.get('value_fmt', '0') }}</span>
+            <span class="pgm3-nuc-value">{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
           </div>
           {% endfor %}
         </div>
@@ -131,7 +131,7 @@
           {% set pct = ((row.get('value', 0) / nucleos_total) * 100) if nucleos_total else 0 %}
           <article class="pgm3-nuc-row">
             <span class="name">{{ pretty_metric_label(row.get('label', '-')) }}</span>
-            <span>{{ row.get('value_fmt', '0') }}</span>
+            <span>{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
             <span>{{ '%.1f'|format(pct) }}%</span>
           </article>
         {% endfor %}
@@ -144,7 +144,7 @@
         <article class="pgm3-team-row">
           <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
           <span class="track"><span style="width: {{ '%.1f'|format(nuc_width) }}%;"></span></span>
-          <span class="val">{{ row.get('value_fmt', '0') }}</span>
+          <span class="val">{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
         </article>
         {% endfor %}
       </div>
@@ -178,7 +178,7 @@
             <article class="pgm3-cat-row" data-cat-item data-value="{{ row.get('value', 0) }}" data-color="{{ color }}">
               <span class="dot" style="--dot: {{ color }};"></span>
               <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
-              <span class="val">{{ row.get('value_fmt', '0') }}</span>
+              <span class="val">{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
               <span class="pct" data-cat-pct>{{ '%.1f'|format(pct) }}%</span>
               <span class="status">Ativa</span>
             </article>
@@ -204,7 +204,7 @@
         <article class="pgm3-team-row">
           <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
           <span class="track"><span style="width: {{ '%.1f'|format(team_width) }}%;"></span></span>
-          <span class="val">{{ row.get('value_fmt', '0') }}</span>
+          <span class="val">{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
         </article>
         {% endfor %}
       </div>
@@ -225,7 +225,7 @@
         <article class="pgm3-team-row">
           <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
           <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
-          <span class="val">{{ row.get('value_fmt', '0') }}</span>
+          <span class="val">{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
         </article>
         {% endfor %}
       </div>
@@ -246,7 +246,7 @@
         <article class="pgm3-team-row">
           <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
           <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
-          <span class="val">{{ row.get('value_fmt', '0') }}</span>
+          <span class="val">{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
         </article>
         {% endfor %}
       </div>
@@ -267,7 +267,7 @@
         <article class="pgm3-team-row">
           <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
           <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
-          <span class="val">{{ row.get('value_fmt', '0') }}</span>
+          <span class="val">{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
         </article>
         {% endfor %}
       </div>

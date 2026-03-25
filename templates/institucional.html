@@ -19,9 +19,9 @@
         <div class="hero-stat-subtitle">Recorte institucional ativo</div>
       </div>
       <div class="hero-stat">
-        <div class="hero-stat-label">Mensagens</div>
-        <div class="hero-stat-value">{{ report.relatorio_final.indicadores_principais.total_processamentos if report and report.relatorio_final is defined else 0 }}</div>
-        <div class="hero-stat-subtitle">Base usada para a minuta</div>
+        <div class="hero-stat-label">Quantitativo real</div>
+        <div class="hero-stat-value">{{ report.relatorio_final.indicadores_principais.total_volume_fmt if report and report.relatorio_final is defined else 0 }}</div>
+        <div class="hero-stat-subtitle">Volume consolidado no recorte</div>
       </div>
     </div>
   </div>
