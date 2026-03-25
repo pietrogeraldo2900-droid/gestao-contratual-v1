@@ -526,15 +526,13 @@ class ManagementRepository:
         ocorr_rows: list[dict[str, Any]] = []
         use_csv_fallback = False
 
-        try:
-            exec_rows, frentes_rows, ocorr_rows = self._load_rows_from_database()
-            # Banco continua sendo a fonte principal, mas se ainda nao houver
-            # dados consolidados nas tabelas management_* evitamos dashboard vazio.
-            if not exec_rows and not frentes_rows and not ocorr_rows:
-                raise RuntimeError("management_tables_empty")
-        except Exception:
+        if self._db is None:
             use_csv_fallback = True
             exec_rows, frentes_rows, ocorr_rows = self._load_rows_from_master_csv()
+        else:
+            # Com banco habilitado, o painel deve refletir somente o que existe no banco.
+            # Se as tabelas estiverem vazias, devolvemos painel vazio (sem fallback CSV).
+            exec_rows, frentes_rows, ocorr_rows = self._load_rows_from_database()
 
         exec_filtered = [row for row in exec_rows if self._filter_row(row, filters)]
         frentes_filtered = [row for row in frentes_rows if self._filter_row(row, filters)]
