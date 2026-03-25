@@ -2180,7 +2180,35 @@ class WebPipelineService:
         safe_limit = max(1, min(safe_limit, 1000))
 
         results: List[dict] = []
+        entities_cache: Dict[str, Dict[str, List[str]]] = {}
         for row in self.read_history(limit=safe_limit):
+            row_data = dict(row)
+            output_dir_raw = str(row_data.get("output_dir", "") or "").strip()
+            entities: Dict[str, List[str]] = {"nucleos": [], "equipes": [], "municipios": []}
+            if output_dir_raw:
+                if output_dir_raw not in entities_cache:
+                    entities_cache[output_dir_raw] = self._collect_management_entities_for_row(row_data)
+                entities = entities_cache[output_dir_raw]
+            else:
+                entities = self._collect_management_entities_for_row(row_data)
+
+            nucleos_reais = list(entities.get("nucleos", []) or [])
+            municipios_reais = list(entities.get("municipios", []) or [])
+
+            nucleo_display = self._join_history_display_values(
+                nucleos_reais,
+                canonicalizer=self._canonicalize_nucleo_for_aggregation,
+            )
+            if nucleo_display:
+                row_data["nucleo"] = nucleo_display
+
+            municipio_display = self._join_history_display_values(
+                municipios_reais,
+                canonicalizer=self._canonicalize_municipio_for_aggregation,
+            )
+            if municipio_display:
+                row_data["municipio"] = municipio_display
+
             generated_files = list(row.get("generated_files", []) or [])
             report_files = [item for item in generated_files if item.get("category") == "report"]
             spreadsheet_files = [item for item in generated_files if item.get("category") == "spreadsheet"]
@@ -2195,11 +2223,13 @@ class WebPipelineService:
 
             results.append(
                 {
-                    **row,
+                    **row_data,
                     "result_id": str(row.get("output_name", "") or "").strip(),
                     "process_type": "Processamento de entrada",
                     "contract_id": str(row.get("contract_id", "") or "").strip(),
                     "contract_label": str(row.get("contract_label", "") or "").strip(),
+                    "nucleos_reais": nucleos_reais,
+                    "municipios_reais": municipios_reais,
                     "report_files": report_files,
                     "spreadsheet_files": spreadsheet_files,
                     "primary_download_relative_path": str((primary_download or {}).get("relative_path", "") or ""),

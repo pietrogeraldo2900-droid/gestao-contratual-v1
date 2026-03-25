@@ -967,7 +967,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
 
     @app.get("/resultados")
     def results_list():
-        rows = service.list_processing_results(limit=200)
+        rows = [row for row in service.list_processing_results(limit=200) if bool(row.get("has_files"))]
         for row in rows:
             if row.get("contract_label"):
                 continue
@@ -1456,7 +1456,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         alertas_filter = str(request.args.get("alertas", "") or "").strip().lower()
         processed_from_raw = str(request.args.get("processed_from", "") or "").strip()
         processed_to_raw = str(request.args.get("processed_to", "") or "").strip()
-        nm_days_raw = str(request.args.get("nm_days", "30") or "30").strip()
+        nm_days_raw = str(request.args.get("nm_days", "1") or "1").strip()
         nm_runs_raw = str(request.args.get("nm_runs", "120") or "120").strip()
 
         q_norm = service._normalize_nucleo_key(q_raw)
@@ -1488,7 +1488,15 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         processed_from = _parse_date(processed_from_raw)
         processed_to = _parse_date(processed_to_raw)
 
-        all_rows = service.read_history(limit=1000)
+        today = datetime.now().date()
+        all_rows = []
+        for row in service.read_history(limit=1000):
+            processed_dt = service._parse_history_datetime(row.get("processed_at", ""))
+            if not processed_dt or processed_dt.date() != today:
+                continue
+            if not bool(row.get("generated_files")):
+                continue
+            all_rows.append(row)
         rows = list(all_rows)
 
         if status_filter in {"sucesso", "erro"}:

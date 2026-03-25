@@ -88,6 +88,7 @@
               <th>Data</th>
               <th>Processo</th>
               <th>Contrato</th>
+              <th>Nucleo</th>
               <th>Status</th>
               <th>Relatorio</th>
               <th>Planilha</th>
@@ -118,6 +119,7 @@
                     -
                   {% endif %}
                 </td>
+                <td>{{ row.nucleo or 'Nao informado' }}</td>
                 <td>
                   {% if row.status_level == 'erro' %}
                     <span class="badge error">erro</span>
