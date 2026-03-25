@@ -58,6 +58,79 @@
     </div>
   </header>
 
+  <section class="pgm3-filters-shell">
+    <div class="pgm3-filters-header">
+      <div>
+        <h2>Filtros do painel</h2>
+        <p>Refine o recorte por periodo, nucleo, municipio, equipe e status.</p>
+      </div>
+      <button type="button" class="pgm3-filter-toggle is-open" data-pgm3-toggle>
+        <span data-pgm3-toggle-label>Ocultar filtros</span>
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M6 9l6 6 6-6"></path>
+        </svg>
+      </button>
+    </div>
+
+    <form method="get" action="{{ url_for('gerencial') }}" class="pgm3-filter-form" data-pgm3-form>
+      <div class="pgm3-filter-grid">
+        <label>
+          Periodo da obra (de)
+          <input type="date" name="obra_from" value="{{ obra_from }}">
+        </label>
+        <label>
+          Periodo da obra (ate)
+          <input type="date" name="obra_to" value="{{ obra_to }}">
+        </label>
+        <label>
+          Processado em (de)
+          <input type="date" name="processed_from" value="{{ processed_from }}">
+        </label>
+        <label>
+          Processado em (ate)
+          <input type="date" name="processed_to" value="{{ processed_to }}">
+        </label>
+        <label>
+          Nucleo
+          <input type="text" name="nucleo" value="{{ nucleo }}" placeholder="Ex.: Mississipi">
+        </label>
+        <label>
+          Municipio
+          <input type="text" name="municipio" value="{{ municipio }}" placeholder="Ex.: Carapicuiba">
+        </label>
+        <label>
+          Equipe
+          <input type="text" name="equipe" value="{{ equipe }}" placeholder="Ex.: Sidney">
+        </label>
+        <label>
+          Status
+          <select name="status">
+            <option value="" {% if not status_filter %}selected{% endif %}>Todos</option>
+            <option value="sucesso" {% if status_filter == 'sucesso' %}selected{% endif %}>Sucesso</option>
+            <option value="erro" {% if status_filter == 'erro' %}selected{% endif %}>Erro</option>
+          </select>
+        </label>
+        <label>
+          Alertas
+          <select name="alertas">
+            <option value="" {% if not alertas_filter %}selected{% endif %}>Todos</option>
+            <option value="com_alerta" {% if alertas_filter == 'com_alerta' %}selected{% endif %}>Com alerta</option>
+            <option value="sem_alerta" {% if alertas_filter == 'sem_alerta' %}selected{% endif %}>Sem alerta</option>
+          </select>
+        </label>
+        <label>
+          Top N
+          <input type="number" min="3" max="50" name="top_n" value="{{ top_n }}">
+        </label>
+      </div>
+
+      <div class="pgm3-filter-actions">
+        <button type="submit" class="pgm3-btn-primary">Aplicar filtros</button>
+        <a href="{{ url_for('gerencial') }}" class="pgm3-btn-ghost">Limpar filtros</a>
+      </div>
+    </form>
+  </section>
+
   <section class="pgm3-kpi-grid">
     <article class="pgm3-kpi-card">
       <span class="pgm3-kpi-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M5 3h14v18H5z"></path><path d="M9 7h6"></path><path d="M9 11h6"></path><path d="M9 15h4"></path></svg></span>
@@ -287,6 +360,7 @@
 
     const toggleBtn = root.querySelector('[data-pgm3-toggle]');
     const filterForm = root.querySelector('[data-pgm3-form]');
+    const toggleLabel = root.querySelector('[data-pgm3-toggle-label]');
 
     if (toggleBtn && filterForm) {
       toggleBtn.addEventListener('click', function () {
@@ -294,11 +368,11 @@
         if (isHidden) {
           filterForm.removeAttribute('hidden');
           toggleBtn.classList.add('is-open');
-          toggleBtn.firstChild.textContent = 'Ocultar filtros ';
+          if (toggleLabel) toggleLabel.textContent = 'Ocultar filtros';
         } else {
           filterForm.setAttribute('hidden', '');
           toggleBtn.classList.remove('is-open');
-          toggleBtn.firstChild.textContent = 'Mostrar filtros ';
+          if (toggleLabel) toggleLabel.textContent = 'Mostrar filtros';
         }
       });
     }
