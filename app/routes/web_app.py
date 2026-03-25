@@ -975,6 +975,16 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             if resolved_label and resolved_label != str(row.get("contract_id", "") or "").strip():
                 row["contract_label"] = resolved_label
 
+        nucleo_registry_rows = service.list_nucleo_registry(search="", status="")
+        nucleo_options = sorted(
+            {
+                str(item.get("nucleo", "") or "").strip()
+                for item in nucleo_registry_rows
+                if str(item.get("nucleo", "") or "").strip()
+            },
+            key=lambda value: service._normalize_nucleo_key(value),
+        )
+
         summary = {
             "total": len(rows),
             "success": sum(1 for row in rows if row.get("status_level") == "sucesso"),
@@ -986,6 +996,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             title="Resultados gerados",
             rows=rows,
             summary=summary,
+            nucleo_options=nucleo_options,
         )
 
     @app.get("/resultados/<output_name>")

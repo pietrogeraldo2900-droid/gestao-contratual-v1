@@ -102,6 +102,7 @@
                 data-result-row
                 data-contract="{{ row.contract_label or ('Contrato #' ~ row.contract_id if row.contract_id else '-') }}"
                 data-nucleo="{{ row.nucleo or '-' }}"
+                data-nucleo-values="{% if row.nucleos_reais %}{% for nucleo_item in row.nucleos_reais %}{{ nucleo_item }}{% if not loop.last %}||{% endif %}{% endfor %}{% else %}{{ row.nucleo or '' }}{% endif %}"
                 data-date="{{ date_iso }}"
                 class="{% if row.status_level == 'erro' %}row-critical{% elif row.alert_count|int > 0 %}row-warning{% endif %}"
               >
@@ -177,6 +178,7 @@
 
 <script>
 (function () {
+  const officialNucleoOptions = {{ (nucleo_options or []) | tojson }};
   const rows = Array.from(document.querySelectorAll('[data-result-row]'));
   const contractFilter = document.getElementById('results-contract-filter');
   const nucleoFilter = document.getElementById('results-nucleo-filter');
@@ -206,7 +208,10 @@
   };
 
   appendUniqueOptions(contractFilter, rows.map((row) => row.dataset.contract || ''));
-  appendUniqueOptions(nucleoFilter, rows.map((row) => row.dataset.nucleo || ''));
+  appendUniqueOptions(
+    nucleoFilter,
+    officialNucleoOptions.length ? officialNucleoOptions : rows.map((row) => row.dataset.nucleo || '')
+  );
 
   const updateView = () => {
     const selectedContract = String(contractFilter.value || '').trim();
@@ -228,7 +233,11 @@
     let visible = 0;
     rows.forEach((row) => {
       const matchesContract = !selectedContract || String(row.dataset.contract || '') === selectedContract;
-      const matchesNucleo = !selectedNucleo || String(row.dataset.nucleo || '') === selectedNucleo;
+      const nucleoValues = String(row.dataset.nucleoValues || '')
+        .split('||')
+        .map((value) => value.trim())
+        .filter(Boolean);
+      const matchesNucleo = !selectedNucleo || nucleoValues.includes(selectedNucleo);
       const matchesDate = !selectedDate || String(row.dataset.date || '') === selectedDate;
       const show = matchesContract && matchesNucleo && matchesDate;
       row.hidden = !show;
