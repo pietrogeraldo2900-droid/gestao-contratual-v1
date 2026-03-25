@@ -75,7 +75,9 @@ def _normalize_lookup(value: object) -> str:
 _SERVICE_EQUIVALENCE_MAP: dict[str, str] = {
     "prolongamento rede agua": "Prolongamento de rede de água",
     "prolongamento de rede agua": "Prolongamento de rede de água",
+    "prolongamento de rede de agua": "Prolongamento de rede de água",
     "prolongamento rede": "Prolongamento de rede de água",
+    "prolongamento de rede": "Prolongamento de rede de água",
     "ramais agua": "Execução de ramais de água",
     "ramais de agua": "Execução de ramais de água",
     "ramais esgoto": "Execução de ramais de esgoto",
@@ -86,6 +88,8 @@ _SERVICE_EQUIVALENCE_MAP: dict[str, str] = {
     "hidrometros": "Instalação de hidrômetros",
     "hidrometros instalados": "Instalação de hidrômetros",
     "caixas uma": "Instalação de caixas UMA",
+    "instalacao de caixas uma": "Instalação de caixas UMA",
+    "instalacao de caixa uma": "Instalação de caixas UMA",
     "caixas uma instaladas": "Instalação de caixas UMA",
     "embutida": "Instalação de caixas UMA",
     "mureta": "Instalação de caixas UMA",
@@ -107,9 +111,11 @@ def _canonical_service_label(value: object) -> str:
     mapped = _SERVICE_EQUIVALENCE_MAP.get(lookup)
     if mapped:
         return mapped
+    if lookup.startswith("instalacao de caixas uma") or lookup.startswith("instalacao de caixa uma"):
+        return "Instalação de caixas UMA"
     if lookup.startswith("corte de pavimento com serra clip"):
         return "Corte de pavimento com serra clip"
-    if lookup.startswith("prolongamento rede"):
+    if lookup.startswith("prolongamento rede") or lookup.startswith("prolongamento de rede"):
         return "Prolongamento de rede de água"
     if lookup.startswith("interligacao"):
         return "Execução de interligação de rede"
