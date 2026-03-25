@@ -288,6 +288,246 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             return candidate  # type: ignore[return-value]
         return None
 
+    def _build_institutional_report_from_dashboard_fallback(
+        dashboard: dict,
+        filters: Dict[str, object],
+    ) -> dict:
+        top_n = max(3, min(int(filters.get("top_n", 5) or 5), 20))
+        kpis = dict(dashboard.get("kpis_principais", {}) or {})
+        consolidado = dict(dashboard.get("consolidado_periodo", {}) or {})
+        charts = dict(dashboard.get("graficos_executivos", {}) or {})
+
+        total_processamentos = int(kpis.get("total_processamentos", 0) or 0)
+        total_execucoes = int(kpis.get("total_execucoes", 0) or 0)
+        total_frentes = int(kpis.get("total_frentes", 0) or 0)
+        total_ocorrencias = int(kpis.get("total_ocorrencias", 0) or 0)
+        total_volume = float(kpis.get("total_volume", consolidado.get("volume_total", 0.0)) or 0.0)
+        total_volume_fmt = str(kpis.get("total_volume_fmt", consolidado.get("volume_total_fmt", "0")) or "0")
+        processamentos_alerta = int(kpis.get("processamentos_com_alerta", 0) or 0)
+        processamentos_erro = int(kpis.get("processamentos_erro", 0) or 0)
+        total_mapeados = int(kpis.get("total_mapeados", 0) or 0)
+        total_nao_mapeados = int(kpis.get("total_nao_mapeados", 0) or 0)
+
+        def _render_filter_value(value: object, fallback: str = "Todos") -> str:
+            text = str(value or "").strip()
+            return text if text else fallback
+
+        def _chart_items(key: str) -> list[dict]:
+            return list(charts.get(key, {}).get("items", []) or [])[:top_n]
+
+        def _plural(valor: int, singular: str, plural: str) -> str:
+            return singular if int(valor) == 1 else plural
+
+        ranking_servicos = []
+        for row in _chart_items("servicos"):
+            servico = service._institutional_label(row.get("label", ""), domain="servico")
+            value_fmt = str(row.get("value_display", "") or row.get("value_fmt", "0") or "0")
+            registros = int(float(row.get("value", 0) or 0))
+            desc = f"{servico}, com quantitativo consolidado de {value_fmt}"
+            if registros > 0:
+                desc += f" ({registros} {_plural(registros, 'registro', 'registros')})."
+            else:
+                desc += "."
+            ranking_servicos.append(
+                {
+                    "servico": servico,
+                    "categoria": "-",
+                    "registros": registros,
+                    "volume_total": float(row.get("value", 0) or 0.0),
+                    "volume_total_fmt": str(row.get("value_fmt", "0") or "0"),
+                    "unidades": str(row.get("unit", "") or "").strip() or "-",
+                    "descricao_institucional": desc,
+                }
+            )
+
+        ranking_categorias = []
+        for row in _chart_items("categorias"):
+            categoria = service._institutional_label(row.get("label", ""), domain="categoria")
+            ranking_categorias.append(
+                {
+                    "categoria": categoria,
+                    "registros": int(float(row.get("value", 0) or 0)),
+                    "volume_total": float(row.get("value", 0) or 0.0),
+                    "volume_total_fmt": str(row.get("value_fmt", "0") or "0"),
+                    "percentual_volume": 0.0,
+                    "percentual_volume_fmt": "0",
+                    "descricao_institucional": f"{categoria}, com volume consolidado de {row.get('value_fmt', '0')}.",
+                }
+            )
+
+        ranking_ocorrencias = []
+        for row in _chart_items("tipos_ocorrencia"):
+            tipo = service._institutional_label(row.get("label", ""), domain="ocorrencia")
+            qtd = int(float(row.get("value", 0) or 0))
+            ranking_ocorrencias.append(
+                {
+                    "tipo_ocorrencia": tipo,
+                    "ocorrencias": qtd,
+                    "descricao_institucional": f"{tipo}, com {qtd} {_plural(qtd, 'ocorrência', 'ocorrências')}.",
+                }
+            )
+
+        analise_por_nucleo = []
+        for row in _chart_items("nucleos"):
+            nucleo = service._institutional_label(row.get("label", ""), domain="nucleo")
+            qtd = int(float(row.get("value", 0) or 0))
+            analise_por_nucleo.append(
+                {
+                    "nucleo": nucleo,
+                    "processamentos": qtd,
+                    "volume_total": float(row.get("value", 0) or 0.0),
+                    "volume_total_fmt": str(row.get("value_fmt", "0") or "0"),
+                    "sucesso": qtd,
+                    "erro": 0,
+                    "processamentos_alerta": 0,
+                    "municipio": "-",
+                    "equipes": [],
+                    "logradouro": "-",
+                    "logradouros": [],
+                    "principais_servicos": ranking_servicos[:3],
+                    "principais_ocorrencias": ranking_ocorrencias[:3],
+                    "observacoes_relevantes": [],
+                    "observacao_analitica": (
+                        f"{nucleo} consolidou quantitativo de {row.get('value_fmt', '0')} no recorte aplicado."
+                    ),
+                }
+            )
+
+        filtros_aplicados = [
+            {"label": "Período da obra (de)", "valor": _render_filter_value(filters.get("obra_from", ""), "-")},
+            {"label": "Período da obra (até)", "valor": _render_filter_value(filters.get("obra_to", ""), "-")},
+            {"label": "Processado em (de)", "valor": _render_filter_value(filters.get("processed_from", ""), "-")},
+            {"label": "Processado em (até)", "valor": _render_filter_value(filters.get("processed_to", ""), "-")},
+            {"label": "Núcleo", "valor": _render_filter_value(filters.get("nucleo", ""))},
+            {"label": "Município", "valor": _render_filter_value(filters.get("municipio", ""))},
+            {"label": "Equipe", "valor": _render_filter_value(filters.get("equipe", ""))},
+            {"label": "Status", "valor": _render_filter_value(filters.get("status", ""), "Todos")},
+            {"label": "Alertas", "valor": _render_filter_value(filters.get("alertas", ""), "Todos")},
+        ]
+
+        top_nucleo = analise_por_nucleo[0]["nucleo"] if analise_por_nucleo else "-"
+        top_servico = ranking_servicos[0]["servico"] if ranking_servicos else "-"
+        top_ocorrencia = ranking_ocorrencias[0]["tipo_ocorrencia"] if ranking_ocorrencias else "-"
+
+        resumo_linhas = [
+            (
+                f"O quantitativo real consolidado no período foi de {total_volume_fmt}, com "
+                f"{total_execucoes} {_plural(total_execucoes, 'execução registrada', 'execuções registradas')} "
+                f"e {total_processamentos} {_plural(total_processamentos, 'mensagem processada', 'mensagens processadas')}."
+            ),
+            f"A maior concentração operacional ocorreu em {top_nucleo}.",
+            f"Em serviços executados, houve predominância de {top_servico}.",
+            f"No eixo de risco operacional, a ocorrência mais recorrente foi {top_ocorrencia}.",
+        ]
+
+        conclusao = (
+            f"No recorte analisado, o quantitativo consolidado foi de {total_volume_fmt}. "
+            f"Como próximos focos gerenciais, recomenda-se manter o acompanhamento por núcleo, serviço e ocorrência."
+        )
+
+        final_payload = {
+            "has_data": bool(total_processamentos or total_execucoes or total_volume > 0),
+            "header": {
+                "titulo": "Relatório Institucional de Acompanhamento Operacional",
+                "periodo": str(consolidado.get("periodo_obra", "-") or "-"),
+                "emissao": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                "filtros_aplicados": filtros_aplicados,
+            },
+            "resumo_executivo": {"linhas": resumo_linhas},
+            "indicadores_principais": {
+                "total_volume": total_volume,
+                "total_volume_fmt": total_volume_fmt,
+                "total_processamentos": total_processamentos,
+                "total_execucoes": total_execucoes,
+                "total_frentes": total_frentes,
+                "total_ocorrencias": total_ocorrencias,
+                "total_nucleos": int(kpis.get("total_nucleos", 0) or 0),
+                "total_municipios": int(kpis.get("total_municipios", 0) or 0),
+                "total_equipes": int(kpis.get("total_equipes", 0) or 0),
+                "total_mapeados": total_mapeados,
+                "total_nao_mapeados": total_nao_mapeados,
+                "percentual_mapeado_fmt": str(kpis.get("percentual_mapeado_fmt", "0") or "0"),
+                "percentual_nao_mapeado_fmt": str(kpis.get("percentual_nao_mapeado_fmt", "0") or "0"),
+                "processamentos_alerta": processamentos_alerta,
+                "processamentos_erro": processamentos_erro,
+            },
+            "panorama_operacional": {
+                "texto_analitico": (
+                    f"Panorama consolidado com quantitativo total de {total_volume_fmt}, "
+                    f"distribuído entre serviços, categorias e ocorrências do recorte."
+                ),
+                "servicos_recorrentes": ranking_servicos,
+                "categorias_recorrentes": ranking_categorias,
+                "ocorrencias_recorrentes": ranking_ocorrencias,
+                "resumo_periodo": [],
+            },
+            "analise_por_nucleo": analise_por_nucleo,
+            "alertas_pendencias": {
+                "processamentos_alerta": processamentos_alerta,
+                "processamentos_erro": processamentos_erro,
+                "municipio_ausente": 0,
+                "nao_mapeados_recorrentes": [],
+                "inconsistencias": ["Relatório gerado a partir do consolidado gerencial do banco de dados."],
+            },
+            "conclusao": conclusao,
+            "top_n": top_n,
+            "filters_applied": {
+                "obra_from": str(filters.get("obra_from", "") or ""),
+                "obra_to": str(filters.get("obra_to", "") or ""),
+                "processed_from": str(filters.get("processed_from", "") or ""),
+                "processed_to": str(filters.get("processed_to", "") or ""),
+                "nucleo": str(filters.get("nucleo", "") or ""),
+                "municipio": str(filters.get("municipio", "") or ""),
+                "equipe": str(filters.get("equipe", "") or ""),
+                "status": str(filters.get("status", "") or ""),
+                "alertas": str(filters.get("alertas", "") or ""),
+            },
+        }
+
+        return {
+            **final_payload,
+            "relatorio_final": dict(final_payload),
+            "previa_tecnica": {
+                "runs_analisadas": int(kpis.get("total_processamentos", 0) or 0),
+                "analise_por_nucleo_tecnica": [],
+                "alertas_internos": ["Fallback aplicado com base no consolidado gerencial."],
+                "totais": {
+                    "multiplos_nucleos": 0,
+                    "multiplos_logradouros": 0,
+                    "multiplas_equipes": 0,
+                    "nao_mapeados": total_nao_mapeados,
+                    "processamentos_erro": processamentos_erro,
+                },
+            },
+        }
+
+    def _build_institutional_report_with_fallback(filters: Dict[str, object]) -> dict:
+        report = service.build_institutional_report(
+            {
+                **filters,
+                "history_limit": 3000,
+            }
+        )
+        if bool((report or {}).get("has_data")):
+            return report
+
+        management_repo = app.config.get("MANAGEMENT_REPOSITORY")
+        build_dashboard = getattr(management_repo, "build_gerencial_dashboard", None)
+        if not callable(build_dashboard):
+            return report
+
+        try:
+            dashboard = build_dashboard(filters)
+        except Exception as exc:
+            app.logger.warning("Falha no fallback do institucional via gerencial: %s", exc)
+            return report
+
+        if not bool((dashboard or {}).get("has_data")):
+            return report
+
+        app.logger.info("Institucional: aplicando fallback com consolidado gerencial (management_*).")
+        return _build_institutional_report_from_dashboard_fallback(dashboard, filters)
+
     def _resolve_contract_context(contract_id_raw: object) -> tuple[str, dict[str, object] | None]:
         raw = str(contract_id_raw or "").strip()
         if not raw:
@@ -1365,12 +1605,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     @app.get("/institucional")
     def institucional():
         filters = _collect_management_filters(request.args)
-        report = service.build_institutional_report(
-            {
-                **filters,
-                "history_limit": 3000,
-            }
-        )
+        report = _build_institutional_report_with_fallback(filters)
 
         return render_template(
             "institucional.html",
@@ -1391,12 +1626,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     def institucional_export():
         filters = _collect_management_filters(request.args)
         formato = str(request.args.get("formato", "html") or "html").strip().lower()
-        report = service.build_institutional_report(
-            {
-                **filters,
-                "history_limit": 3000,
-            }
-        )
+        report = _build_institutional_report_with_fallback(filters)
 
         if formato == "docx":
             content, filename = service.export_institutional_docx(report)
