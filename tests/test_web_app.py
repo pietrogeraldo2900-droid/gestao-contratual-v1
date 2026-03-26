@@ -77,6 +77,39 @@ class WebAppTests(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
+    def test_index_renderiza_copy_da_etapa_de_analise(self):
+        resp = self.client.get("/")
+        self.assertEqual(resp.status_code, 200)
+        html = resp.data.decode("utf-8")
+        self.assertIn("Analisar mensagem", html)
+        self.assertIn("Ir para revisao", html)
+        self.assertIn("Nesta etapa voce apenas analisa a mensagem", html)
+
+    def test_review_renderiza_stepper_com_revisao_ativa(self):
+        mensagem = """
+RDO - 11/03/2026
+
+EXECUCAO:
+- 1 un hidrometro
+""".strip()
+
+        preview_resp = self.client.post(
+            "/preview",
+            data={
+                "data": "11/03/2026",
+                "nucleo": "Mississipi",
+                "logradouro": "Viela 04",
+                "municipio": "Carapicuiba",
+                "equipe": "Equipe 03",
+                "mensagem": mensagem,
+            },
+        )
+        self.assertEqual(preview_resp.status_code, 200)
+        html = preview_resp.data.decode("utf-8")
+        self.assertIn('class="entry-stepper"', html)
+        self.assertIn('data-entry-step="2"', html)
+        self.assertIn("Etapa ativa", html)
+
     def test_web_flow_process_preview_generate_and_history(self):
         mensagem = """
 RDO - 11/03/2026
@@ -674,6 +707,93 @@ EXECUCAO:
         self.assertIn("alerta especifico alvo", html)
         self.assertIn("Abrir pasta de saida", html)
         self.assertIn("Abrir base gerencial", html)
+
+    def test_history_exibe_linhas_antigas_e_erros_sem_arquivo(self):
+        service = self.app.config["PIPELINE_SERVICE"]
+        service._append_history(
+            {
+                "processed_at": "10/03/2026 09:00:00",
+                "obra_data": "10/03/2026",
+                "nucleo": "NUCLEO_HIST_OLD_OK",
+                "logradouro": "LOG_OLD_OK",
+                "municipio": "MUNICIPIO_OLD_OK",
+                "equipe": "EQUIPE_OLD_OK",
+                "status": "sucesso",
+                "output_dir": "",
+                "base_gerencial_path": "",
+                "master_dir": str(self.master_dir),
+                "nao_mapeados": "0",
+                "alertas": "",
+                "mensagem": "registro antigo sem arquivo",
+            }
+        )
+        service._append_history(
+            {
+                "processed_at": "11/03/2026 10:00:00",
+                "obra_data": "11/03/2026",
+                "nucleo": "NUCLEO_HIST_OLD_ERRO",
+                "logradouro": "LOG_OLD_ERRO",
+                "municipio": "MUNICIPIO_OLD_ERRO",
+                "equipe": "EQUIPE_OLD_ERRO",
+                "status": "erro: falha de validacao",
+                "output_dir": "",
+                "base_gerencial_path": "",
+                "master_dir": str(self.master_dir),
+                "nao_mapeados": "0",
+                "alertas": "erro de parse",
+                "mensagem": "registro antigo com erro sem arquivo",
+            }
+        )
+
+        resp = self.client.get("/history")
+        self.assertEqual(resp.status_code, 200)
+        html = resp.data.decode("utf-8")
+        self.assertIn("NUCLEO_HIST_OLD_OK", html)
+        self.assertIn("NUCLEO_HIST_OLD_ERRO", html)
+        self.assertIn("Sem caminhos dispon", html)
+
+    def test_history_filtro_status_erro_funciona_com_base_completa(self):
+        service = self.app.config["PIPELINE_SERVICE"]
+        service._append_history(
+            {
+                "processed_at": "10/03/2026 09:00:00",
+                "obra_data": "10/03/2026",
+                "nucleo": "NUCLEO_OK_STATUS",
+                "logradouro": "LOG_OK_STATUS",
+                "municipio": "MUNICIPIO_OK_STATUS",
+                "equipe": "EQUIPE_OK_STATUS",
+                "status": "sucesso",
+                "output_dir": "",
+                "base_gerencial_path": "",
+                "master_dir": str(self.master_dir),
+                "nao_mapeados": "0",
+                "alertas": "",
+                "mensagem": "ok",
+            }
+        )
+        service._append_history(
+            {
+                "processed_at": "11/03/2026 10:00:00",
+                "obra_data": "11/03/2026",
+                "nucleo": "NUCLEO_ERRO_STATUS",
+                "logradouro": "LOG_ERRO_STATUS",
+                "municipio": "MUNICIPIO_ERRO_STATUS",
+                "equipe": "EQUIPE_ERRO_STATUS",
+                "status": "erro: falha no parser",
+                "output_dir": "",
+                "base_gerencial_path": "",
+                "master_dir": str(self.master_dir),
+                "nao_mapeados": "1",
+                "alertas": "falha",
+                "mensagem": "erro",
+            }
+        )
+
+        resp = self.client.get("/history?status=erro")
+        self.assertEqual(resp.status_code, 200)
+        html = resp.data.decode("utf-8")
+        self.assertIn("NUCLEO_ERRO_STATUS", html)
+        self.assertNotIn("NUCLEO_OK_STATUS", html)
 
     def test_history_persiste_apenas_primeira_equipe(self):
         service = self.app.config["PIPELINE_SERVICE"]

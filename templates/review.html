@@ -11,6 +11,30 @@
 {% set info_alerts = alert_groups.get('info', []) %}
 {% set municipio_status = municipio_profile_status or {} %}
 {% set service_options = (service_catalog.get('options', []) if service_catalog else []) %}
+<div class="review-page-shell">
+<section class="entry-stepper" aria-label="Etapas da entrada">
+  <article class="entry-step is-complete" data-entry-step="1">
+    <span class="entry-step-index">1</span>
+    <div>
+      <strong>Mensagem</strong>
+      <small>Analisada</small>
+    </div>
+  </article>
+  <article class="entry-step is-current" data-entry-step="2">
+    <span class="entry-step-index">2</span>
+    <div>
+      <strong>Revisao</strong>
+      <small>Etapa ativa</small>
+    </div>
+  </article>
+  <article class="entry-step" data-entry-step="3">
+    <span class="entry-step-index">3</span>
+    <div>
+      <strong>Geracao</strong>
+      <small>Finalizacao</small>
+    </div>
+  </article>
+</section>
 <h2>Revisao / previa</h2>
 <p class="muted">Etapa 2 de 3: confira os dados, ajuste o que for necessario e confirme a geracao.</p>
 <p class="muted">Parser identificado: <strong>{{ parser_mode }}</strong></p>
@@ -212,7 +236,7 @@
 
 <form method="post" action="{{ url_for('generate') }}">
   <input type="hidden" name="draft_id" value="{{ draft_id }}">
-  <input type="hidden" name="contract_id" value="{{ contract_id or '' }}">
+  <input type="hidden" name="contract_id" id="review-contract-id" value="{{ contract_id or '' }}">
 
   <div class="section" id="campos-principais">
     <h3>Campos principais (preenchem campos vazios; nao sobrescrevem multi-nucleo por padrao)</h3>
@@ -243,6 +267,24 @@
         <div class="field">
           <label for="main-equipe">Equipe</label>
           <input id="main-equipe" data-main-field="equipe" name="equipe" value="{{ main_fields.equipe }}" class="{% if 'equipe' in missing_main_fields %}input-missing{% endif %}">
+        </div>
+        <div class="field">
+          <label for="{% if contract_options %}review-contract-select{% else %}review-contract-manual{% endif %}">Contrato (opcional)</label>
+          {% if contract_options %}
+            <select id="review-contract-select" data-contract-field="1">
+              <option value="">Selecionar contrato</option>
+              {% if contract_id and not (contract_options | selectattr('id', 'equalto', contract_id) | list) %}
+                <option value="{{ contract_id }}" selected>Contrato manual ID {{ contract_id }}</option>
+              {% endif %}
+              {% for item in contract_options %}
+                <option value="{{ item.id }}" {% if contract_id == item.id %}selected{% endif %}>{{ item.label }}</option>
+              {% endfor %}
+            </select>
+            <p class="muted">Selecione o contrato para manter o vinculo com relatorios e resultados.</p>
+          {% else %}
+            <input id="review-contract-manual" data-contract-field="1" type="number" min="1" value="{{ contract_id or '' }}" placeholder="Ex.: 1">
+            <p class="muted">Fallback manual: informe o ID quando a lista de contratos nao estiver disponivel.</p>
+          {% endif %}
         </div>
       </div>
 
@@ -739,6 +781,7 @@
 </div>
 
 </form>
+</div>
 
 <script>
 (function () {
@@ -828,7 +871,14 @@
   const origemManualCount = document.getElementById('origem-manual-count');
   const origemFixCount = document.getElementById('origem-fix-count');
   const origemReadyState = document.getElementById('origem-ready-state');
+  const contractHiddenInput = document.getElementById('review-contract-id');
+  const contractSourceInput = document.querySelector('[data-contract-field="1"]');
   const fixSelects = Array.from(document.querySelectorAll('select[name^="unmapped_fix_"][name$="_servico"]'));
+
+  const syncContractField = () => {
+    if (!contractHiddenInput) return;
+    contractHiddenInput.value = String(contractSourceInput ? contractSourceInput.value : '').trim();
+  };
 
   const normalizeKey = (value) => {
     return String(value || '')
@@ -1050,6 +1100,12 @@
     applyAllToggle.addEventListener('change', refreshConfirmation);
   }
 
+  if (contractSourceInput) {
+    contractSourceInput.addEventListener('input', syncContractField);
+    contractSourceInput.addEventListener('change', syncContractField);
+  }
+
+  syncContractField();
   applyNucleoProfileDefaults();
   refreshConfirmation();
 })();

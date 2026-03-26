@@ -553,6 +553,39 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             return numero, context
         return raw, context
 
+    def _build_contract_options(limit: int = 300) -> list[dict[str, str]]:
+        contracts_service = _active_contract_service()
+        if contracts_service is None:
+            return []
+        try:
+            contracts = contracts_service.list_contracts(limit=max(1, int(limit)))
+        except Exception as exc:
+            app.logger.warning("Falha ao carregar opcoes de contrato para o fluxo web: %s", exc)
+            return []
+
+        options: list[dict[str, str]] = []
+        for contract in contracts:
+            to_dict = getattr(contract, "to_dict", None)
+            if not callable(to_dict):
+                continue
+            payload = dict(to_dict() or {})
+            contract_id = str(payload.get("id", "") or "").strip()
+            if not contract_id:
+                continue
+            numero = str(payload.get("numero_contrato", "") or "").strip()
+            nome = str(payload.get("nome_contrato", "") or "").strip()
+            if numero and nome:
+                label = f"{numero} - {nome}"
+            elif nome:
+                label = nome
+            elif numero:
+                label = numero
+            else:
+                label = f"Contrato {contract_id}"
+            options.append({"id": contract_id, "label": label})
+
+        return options
+
     def _clear_web_auth_session() -> None:
         session.pop(SESSION_USER_ID_KEY, None)
         session.pop(SESSION_USER_EMAIL_KEY, None)
@@ -609,6 +642,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             error_message=str(error_message or ""),
             nucleo_reference=service.get_nucleo_reference_ui(),
             autofill_info=autofill_info or {"matched": False, "applied": {}, "profile": {}},
+            contract_options=_build_contract_options(),
         )
 
     def _read_workspace_snapshot(report_limit: int = 5) -> Dict[str, object]:
@@ -1265,12 +1299,10 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         form_data, autofill_info = service.apply_nucleo_defaults(form_data)
 
         if not mensagem:
-            return render_template(
-                "index.html",
+            return _render_entry_page(
                 form_data=form_data,
                 mensagem=mensagem,
                 error_message="Cole a mensagem completa do WhatsApp para iniciar a revisao.",
-                nucleo_reference=service.get_nucleo_reference_ui(),
                 autofill_info=autofill_info,
             )
 
@@ -1306,6 +1338,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             autofill_info=autofill_info,
             apply_all=form_data.get("aplicar_todos") == "1",
             contract_id=str(form_data.get("contract_id", "") or "").strip(),
+            contract_options=_build_contract_options(),
             raw_message=preview_data["raw_message"],
             error_message="",
         )
@@ -1320,34 +1353,28 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         contract_label, contract_context = _resolve_contract_context(contract_id_raw)
 
         if not draft_id:
-            return render_template(
-                "index.html",
+            return _render_entry_page(
                 form_data=form_data,
                 mensagem=str(request.form.get("mensagem", "") or ""),
                 error_message="Previa nao localizada. Volte para Nova entrada e processe novamente.",
-                nucleo_reference=service.get_nucleo_reference_ui(),
                 autofill_info=autofill_info,
             )
 
         try:
             draft = service.load_draft(draft_id)
         except Exception as exc:
-            return render_template(
-                "index.html",
+            return _render_entry_page(
                 form_data=form_data,
                 mensagem=str(request.form.get("mensagem", "") or ""),
                 error_message=f"Nao foi possivel abrir a previa salva. Refaca o processamento da mensagem. Detalhe: {exc}",
-                nucleo_reference=service.get_nucleo_reference_ui(),
                 autofill_info=autofill_info,
             )
 
         if action == "back":
-            return render_template(
-                "index.html",
+            return _render_entry_page(
                 form_data=form_data,
                 mensagem=str(draft.get("raw_message", "") or ""),
                 error_message="",
-                nucleo_reference=service.get_nucleo_reference_ui(),
                 autofill_info=autofill_info,
             )
 
@@ -1405,6 +1432,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                 autofill_info=autofill_info,
                 apply_all=form_data.get("aplicar_todos") == "1",
                 contract_id=str(form_data.get("contract_id", "") or "").strip(),
+                contract_options=_build_contract_options(),
                 raw_message=str(draft.get("raw_message", "") or ""),
                 error_message=f"Nao foi possivel gerar os arquivos agora. Revise os alertas abaixo e tente novamente. Detalhe: {exc}",
             )
@@ -1499,15 +1527,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         processed_from = _parse_date(processed_from_raw)
         processed_to = _parse_date(processed_to_raw)
 
-        today = datetime.now().date()
-        all_rows = []
-        for row in service.read_history(limit=1000):
-            processed_dt = service._parse_history_datetime(row.get("processed_at", ""))
-            if not processed_dt or processed_dt.date() != today:
-                continue
-            if not bool(row.get("generated_files")):
-                continue
-            all_rows.append(row)
+        all_rows = list(service.read_history(limit=1000))
         rows = list(all_rows)
 
         if status_filter in {"sucesso", "erro"}:

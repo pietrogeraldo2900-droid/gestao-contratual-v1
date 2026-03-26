@@ -1187,6 +1187,26 @@ body.auth-shell-mode .quick-links.compact {
   margin-bottom: 12px;
 }
 
+body.auth-shell-mode .review-page-shell {
+  display: grid;
+  gap: 12px;
+}
+
+body.auth-shell-mode .review-page-shell .quick-links.compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+body.auth-shell-mode .review-page-shell .quick-links.compact a {
+  flex: 0 0 auto;
+}
+
+body.auth-shell-mode .review-page-shell .table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 body.auth-shell-mode .entry-stepper {
   margin-top: 10px;
   margin-bottom: 8px;
@@ -1599,6 +1619,20 @@ body.auth-shell-mode .gerencial-page .premium-table tbody tr:hover td {
 
   body.auth-shell-mode .entry-actions {
     gap: 6px;
+  }
+
+  body.auth-shell-mode .review-page-shell .quick-links.compact {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  body.auth-shell-mode .review-page-shell .quick-links.compact::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  body.auth-shell-mode .review-page-shell .table-wrap table {
+    min-width: 560px;
   }
 
   body.auth-shell-mode .entry-sticky-actions {

@@ -6,6 +6,35 @@
 {% set correcoes = result.correcoes_manuais or [] %}
 <h2>Geracao final</h2>
 
+<section class="entry-stepper" aria-label="Etapas da entrada">
+  <article class="entry-step is-complete" data-entry-step="1">
+    <span class="entry-step-index">1</span>
+    <div>
+      <strong>Mensagem</strong>
+      <small>Analisada</small>
+    </div>
+  </article>
+  <article class="entry-step is-complete" data-entry-step="2">
+    <span class="entry-step-index">2</span>
+    <div>
+      <strong>Revisao</strong>
+      <small>Concluida</small>
+    </div>
+  </article>
+  <article class="entry-step is-complete" data-entry-step="3">
+    <span class="entry-step-index">3</span>
+    <div>
+      <strong>Geracao</strong>
+      <small>Concluida</small>
+    </div>
+  </article>
+</section>
+
+<div class="notice info">
+  <strong>Fluxo 3 de 3 finalizado.</strong>
+  Revise o resumo abaixo e siga para historico ou resultados para rastrear os artefatos.
+</div>
+
 <div class="notice success">
   <strong>Processamento concluido com sucesso.</strong>
   Arquivos gerados e base mestra atualizada no mesmo fluxo.
