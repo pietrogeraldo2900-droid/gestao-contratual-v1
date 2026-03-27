@@ -513,6 +513,21 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             return None
 
     def _build_institutional_report_with_fallback(filters: Dict[str, object]) -> dict:
+        management_repo = app.config.get("MANAGEMENT_REPOSITORY")
+        build_dashboard = getattr(management_repo, "build_gerencial_dashboard", None)
+        if callable(build_dashboard):
+            _sync_management_tables_best_effort()
+            try:
+                dashboard = build_dashboard(filters)
+            except Exception as exc:
+                app.logger.warning("Falha ao carregar institucional via consolidado gerencial: %s", exc)
+            else:
+                if bool((dashboard or {}).get("has_data")):
+                    app.logger.info(
+                        "Institucional: usando consolidado gerencial (management_*) como fonte principal."
+                    )
+                    return _build_institutional_report_from_dashboard_fallback(dashboard, filters)
+
         report = service.build_institutional_report(
             {
                 **filters,
@@ -520,26 +535,8 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             }
         )
         if bool((report or {}).get("has_data")):
-            return report
-
-        management_repo = app.config.get("MANAGEMENT_REPOSITORY")
-        build_dashboard = getattr(management_repo, "build_gerencial_dashboard", None)
-        if not callable(build_dashboard):
-            return report
-
-        _sync_management_tables_best_effort()
-
-        try:
-            dashboard = build_dashboard(filters)
-        except Exception as exc:
-            app.logger.warning("Falha no fallback do institucional via gerencial: %s", exc)
-            return report
-
-        if not bool((dashboard or {}).get("has_data")):
-            return report
-
-        app.logger.info("Institucional: aplicando fallback com consolidado gerencial (management_*).")
-        return _build_institutional_report_from_dashboard_fallback(dashboard, filters)
+            app.logger.info("Institucional: fallback legado aplicado (build_institutional_report).")
+        return report
 
     def _resolve_contract_context(contract_id_raw: object) -> tuple[str, dict[str, object] | None]:
         raw = str(contract_id_raw or "").strip()

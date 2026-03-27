@@ -46,6 +46,22 @@
       font-size: 13px;
       min-width: 650px;
     }
+    .indicator-table {
+      min-width: 0;
+      table-layout: fixed;
+    }
+    .indicator-table th:first-child,
+    .indicator-table td:first-child {
+      width: 74%;
+      white-space: normal;
+      word-break: break-word;
+    }
+    .indicator-table th:last-child,
+    .indicator-table td:last-child {
+      width: 26%;
+      min-width: 140px;
+      white-space: nowrap;
+    }
     th, td {
       border: 1px solid #d7dde5;
       padding: 6px;
