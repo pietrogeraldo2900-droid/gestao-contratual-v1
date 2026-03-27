@@ -11,6 +11,8 @@
 {% set servicos_items = graficos.get('servicos', {}).get('items', []) %}
 {% set municipios_items = graficos.get('municipios', {}).get('items', []) %}
 {% set ocorrencias_tipo_items = graficos.get('tipos_ocorrencia', {}).get('items', []) %}
+{% set radar = dashboard.get('radar_risco_contratos', {}) %}
+{% set radar_items = radar.get('items', []) %}
 {% set nucleos_small_mode = (nucleos_items|length <= 4) %}
 {% set ocorrencias_small_mode = (ocorrencias_tipo_items|length <= 4) %}
 {% set categorias_total = categorias_items | map(attribute='value') | sum %}
@@ -173,6 +175,45 @@
       <strong>{{ kpi.get('total_equipes', 0) }}</strong>
       <small>equipes com producao</small>
     </article>
+  </section>
+
+  <section class="pgm3-panel pgm3-panel-rank pgm3-risk-panel">
+    <header class="pgm3-panel-header">
+      <h3>Radar de risco por contrato</h3>
+      <p>Score 0-100 baseado em ocorrencias, nao mapeados, volume e tendencia recente.</p>
+    </header>
+
+    <div class="pgm3-risk-summary">
+      <span class="pgm3-risk-chip">Monitorados: {{ radar.get('monitorados', 0) }}</span>
+      <span class="pgm3-risk-chip is-critical">Critico: {{ radar.get('critico', 0) }}</span>
+      <span class="pgm3-risk-chip is-high">Alto: {{ radar.get('alto', 0) }}</span>
+      <span class="pgm3-risk-chip is-moderate">Moderado: {{ radar.get('moderado', 0) }}</span>
+      <span class="pgm3-risk-chip is-low">Baixo: {{ radar.get('baixo', 0) }}</span>
+    </div>
+
+    {% if radar_items %}
+      <div class="pgm3-risk-list">
+        {% for item in radar_items %}
+        <article class="pgm3-risk-row">
+          <div class="pgm3-risk-main">
+            <p class="pgm3-risk-name">{{ item.get('contract_label', 'Sem contrato') }}</p>
+            <p class="pgm3-risk-meta">{{ item.get('summary', '-') }}</p>
+            <p class="pgm3-risk-reasons">{{ item.get('reasons', []) | join(' • ') }}</p>
+          </div>
+          <div class="pgm3-risk-score">
+            <span class="pgm3-risk-badge is-{{ item.get('level_key', 'baixo') }}">{{ item.get('level_label', 'Baixo') }}</span>
+            <div class="pgm3-risk-score-value">{{ item.get('score', 0) }}</div>
+            <div class="pgm3-risk-score-max">/100</div>
+          </div>
+          <div class="pgm3-risk-track">
+            <span style="width: {{ item.get('bar_width_pct', 0) }}%;"></span>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="pgm3-empty">Sem contratos suficientes para calcular risco no recorte atual.</div>
+    {% endif %}
   </section>
 
   <section class="pgm3-analytics-grid">

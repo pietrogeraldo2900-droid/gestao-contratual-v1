@@ -5,7 +5,7 @@ import hashlib
 import re
 import unicodedata
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Iterable, List, Optional
 
@@ -216,6 +216,7 @@ class ManagementRepository:
                     "id_item": _safe_text(row.get("id_item")),
                     "id_frente": _safe_text(row.get("id_frente")),
                     "data_referencia": _parse_date(row.get("data_referencia") or row.get("data")),
+                    "contrato": _safe_text(row.get("contrato")),
                     "nucleo": _safe_text(row.get("nucleo")),
                     "nucleo_oficial": _safe_text(row.get("nucleo_oficial")),
                     "municipio": _safe_text(row.get("municipio")),
@@ -239,6 +240,7 @@ class ManagementRepository:
                 {
                     "id_frente": _safe_text(row.get("id_frente")),
                     "data_referencia": _parse_date(row.get("data_referencia") or row.get("data")),
+                    "contrato": _safe_text(row.get("contrato")),
                     "nucleo": _safe_text(row.get("nucleo")),
                     "nucleo_oficial": _safe_text(row.get("nucleo_oficial")),
                     "municipio": _safe_text(row.get("municipio")),
@@ -255,6 +257,7 @@ class ManagementRepository:
                     "id_ocorrencia": _safe_text(row.get("id_ocorrencia")),
                     "id_frente": _safe_text(row.get("id_frente")),
                     "data_referencia": _parse_date(row.get("data_referencia") or row.get("data")),
+                    "contrato": _safe_text(row.get("contrato")),
                     "nucleo": _safe_text(row.get("nucleo")),
                     "nucleo_oficial": _safe_text(row.get("nucleo_oficial")),
                     "municipio": _safe_text(row.get("municipio")),
@@ -488,6 +491,7 @@ class ManagementRepository:
                         id_item,
                         id_frente,
                         data_referencia,
+                        contrato,
                         nucleo,
                         nucleo_oficial,
                         municipio,
@@ -511,6 +515,7 @@ class ManagementRepository:
                     SELECT
                         id_frente,
                         data_referencia,
+                        contrato,
                         nucleo,
                         nucleo_oficial,
                         municipio,
@@ -527,6 +532,7 @@ class ManagementRepository:
                         id_ocorrencia,
                         id_frente,
                         data_referencia,
+                        contrato,
                         nucleo,
                         nucleo_oficial,
                         municipio,
@@ -708,6 +714,186 @@ class ManagementRepository:
             ocorrencia_tipo_values[tipo] = ocorrencia_tipo_values.get(tipo, 0) + 1
 
         top_n = filters.top_n
+        contract_stats: dict[str, dict[str, Any]] = {}
+
+        def _contract_bucket(value: object) -> str:
+            label = _safe_text(value)
+            return label if label else "Sem contrato"
+
+        def _ensure_contract_stat(contract_label: str) -> dict[str, Any]:
+            item = contract_stats.get(contract_label)
+            if item is None:
+                item = {
+                    "contract": contract_label,
+                    "execucoes": 0,
+                    "volume": 0.0,
+                    "nao_mapeados": 0,
+                    "ocorrencias": 0,
+                    "frentes": 0,
+                    "frentes_sem_producao": 0,
+                    "volume_by_date": {},
+                }
+                contract_stats[contract_label] = item
+            return item
+
+        for row in exec_filtered:
+            contract_label = _contract_bucket(row.get("contrato"))
+            stat = _ensure_contract_stat(contract_label)
+            quantidade = float(row.get("quantidade", 0) or 0)
+            peso = quantidade if quantidade > 0 else 1.0
+            stat["execucoes"] += 1
+            stat["volume"] += peso
+            mapped_service = _safe_text(row.get("servico_oficial"))
+            if not mapped_service or _normalize(mapped_service) in {"servico_nao_mapeado", "-", "nao_mapeado"}:
+                stat["nao_mapeados"] += 1
+            dt = row.get("data_referencia")
+            if isinstance(dt, date):
+                by_date = stat["volume_by_date"]
+                by_date[dt] = float(by_date.get(dt, 0.0) or 0.0) + peso
+
+        for row in ocorr_filtered:
+            contract_label = _contract_bucket(row.get("contrato"))
+            stat = _ensure_contract_stat(contract_label)
+            stat["ocorrencias"] += 1
+
+        for row in frentes_filtered:
+            contract_label = _contract_bucket(row.get("contrato"))
+            stat = _ensure_contract_stat(contract_label)
+            stat["frentes"] += 1
+            status_frente = _normalize(row.get("status_frente"))
+            if "sem_producao" in status_frente or "sem producao" in status_frente:
+                stat["frentes_sem_producao"] += 1
+
+        all_refs = [r.get("data_referencia") for r in exec_filtered if isinstance(r.get("data_referencia"), date)]
+        latest_ref = max(all_refs) if all_refs else None
+
+        max_volume_contract = max((float(item.get("volume", 0) or 0) for item in contract_stats.values()), default=0.0)
+        occ_rates = []
+        unmapped_rates = []
+        for item in contract_stats.values():
+            exec_count = max(int(item.get("execucoes", 0) or 0), 1)
+            occ_rates.append((float(item.get("ocorrencias", 0) or 0) / exec_count) * 100.0)
+            unmapped_rates.append((float(item.get("nao_mapeados", 0) or 0) / exec_count) * 100.0)
+        max_occ_rate = max(occ_rates) if occ_rates else 0.0
+        max_unmapped_rate = max(unmapped_rates) if unmapped_rates else 0.0
+
+        risk_items: list[dict[str, Any]] = []
+        for item in contract_stats.values():
+            exec_count = int(item.get("execucoes", 0) or 0)
+            occ_count = int(item.get("ocorrencias", 0) or 0)
+            unmapped_count = int(item.get("nao_mapeados", 0) or 0)
+            volume_total_contract = float(item.get("volume", 0) or 0.0)
+            frentes_sem_producao_contract = int(item.get("frentes_sem_producao", 0) or 0)
+
+            occ_rate = (occ_count / max(exec_count, 1)) * 100.0
+            unmapped_rate = (unmapped_count / max(exec_count, 1)) * 100.0
+
+            trend_drop_pct = 0.0
+            if latest_ref is not None:
+                recent_start = latest_ref - timedelta(days=6)
+                previous_end = recent_start - timedelta(days=1)
+                previous_start = previous_end - timedelta(days=6)
+                by_date = item.get("volume_by_date", {}) or {}
+                recent_volume = sum(
+                    float(v or 0.0)
+                    for dt, v in by_date.items()
+                    if isinstance(dt, date) and recent_start <= dt <= latest_ref
+                )
+                previous_volume = sum(
+                    float(v or 0.0)
+                    for dt, v in by_date.items()
+                    if isinstance(dt, date) and previous_start <= dt <= previous_end
+                )
+                if previous_volume > 0 and recent_volume < previous_volume:
+                    trend_drop_pct = ((previous_volume - recent_volume) / previous_volume) * 100.0
+
+            occ_component = (occ_rate / max_occ_rate) if max_occ_rate > 0 else 0.0
+            unmapped_component = (unmapped_rate / max_unmapped_rate) if max_unmapped_rate > 0 else 0.0
+            trend_component = min(max(trend_drop_pct / 100.0, 0.0), 1.0)
+            volume_component = 0.0
+            if max_volume_contract > 0:
+                volume_component = max(0.0, min(1.0, 1.0 - (volume_total_contract / max_volume_contract)))
+
+            score = int(
+                round(
+                    (
+                        (0.35 * occ_component)
+                        + (0.25 * unmapped_component)
+                        + (0.20 * trend_component)
+                        + (0.20 * volume_component)
+                    )
+                    * 100.0
+                )
+            )
+            if score < 0:
+                score = 0
+            if score > 100:
+                score = 100
+
+            if score >= 75:
+                level_key = "critico"
+                level_label = "Critico"
+            elif score >= 55:
+                level_key = "alto"
+                level_label = "Alto"
+            elif score >= 35:
+                level_key = "moderado"
+                level_label = "Moderado"
+            else:
+                level_key = "baixo"
+                level_label = "Baixo"
+
+            reasons: list[str] = []
+            if occ_count > 0 and occ_component >= 0.45:
+                reasons.append(f"{occ_count} ocorrencia(s) no recorte")
+            if unmapped_count > 0 and unmapped_component >= 0.35:
+                reasons.append(f"{unmapped_count} item(ns) nao mapeado(s)")
+            if trend_drop_pct >= 15:
+                reasons.append(f"queda de {round(trend_drop_pct, 1)}% no volume (7d)")
+            if frentes_sem_producao_contract > 0:
+                reasons.append(f"{frentes_sem_producao_contract} frente(s) sem producao")
+            if not reasons:
+                reasons.append("operacao estavel no recorte atual")
+
+            risk_items.append(
+                {
+                    "contract_label": str(item.get("contract", "") or "Sem contrato"),
+                    "score": score,
+                    "level_key": level_key,
+                    "level_label": level_label,
+                    "execucoes": exec_count,
+                    "ocorrencias": occ_count,
+                    "nao_mapeados": unmapped_count,
+                    "volume_total": volume_total_contract,
+                    "volume_total_fmt": _display_number(volume_total_contract),
+                    "occ_rate_fmt": _display_number(occ_rate),
+                    "unmapped_rate_fmt": _display_number(unmapped_rate),
+                    "trend_drop_pct_fmt": _display_number(trend_drop_pct),
+                    "bar_width_pct": max(8, score),
+                    "summary": (
+                        f"Volume { _display_number(volume_total_contract) } | "
+                        f"Execucoes {exec_count} | Ocorrencias {occ_count}"
+                    ),
+                    "reasons": reasons,
+                }
+            )
+
+        risk_items.sort(
+            key=lambda item: (
+                -int(item.get("score", 0) or 0),
+                -int(item.get("ocorrencias", 0) or 0),
+                -float(item.get("volume_total", 0) or 0.0),
+                str(item.get("contract_label", "") or ""),
+            )
+        )
+        radar_limit = max(5, min(top_n, 12))
+        risk_items_limited = risk_items[:radar_limit]
+        risk_monitorados = len(risk_items)
+        risk_critico = sum(1 for item in risk_items if item.get("level_key") == "critico")
+        risk_alto = sum(1 for item in risk_items if item.get("level_key") == "alto")
+        risk_moderado = sum(1 for item in risk_items if item.get("level_key") == "moderado")
+        risk_baixo = sum(1 for item in risk_items if item.get("level_key") == "baixo")
+
         nucleo_rows = [
             {"label": label, "value": value}
             for label, value in sorted(nucleo_values.items(), key=lambda item: item[1], reverse=True)[:top_n]
@@ -830,5 +1016,15 @@ class ManagementRepository:
                     "has_data": bool(ocorrencia_tipo_rows),
                     "max_value_fmt": _display_number(max((row["value"] for row in ocorrencia_tipo_rows), default=0)),
                 },
+            },
+            "radar_risco_contratos": {
+                "items": risk_items_limited,
+                "has_data": bool(risk_items_limited),
+                "monitorados": risk_monitorados,
+                "critico": risk_critico,
+                "alto": risk_alto,
+                "moderado": risk_moderado,
+                "baixo": risk_baixo,
+                "window": "ultimos 7 dias x 7 dias anteriores",
             },
         }
