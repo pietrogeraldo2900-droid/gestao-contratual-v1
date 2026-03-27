@@ -501,6 +501,17 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             },
         }
 
+    def _sync_management_tables_best_effort() -> dict | None:
+        management_repo = app.config.get("MANAGEMENT_REPOSITORY")
+        sync_tables = getattr(management_repo, "sync_master_tables", None)
+        if not callable(sync_tables):
+            return None
+        try:
+            return dict(sync_tables() or {})
+        except Exception as exc:
+            app.logger.warning("Falha ao sincronizar tabelas gerenciais: %s", exc)
+            return None
+
     def _build_institutional_report_with_fallback(filters: Dict[str, object]) -> dict:
         report = service.build_institutional_report(
             {
@@ -515,6 +526,8 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         build_dashboard = getattr(management_repo, "build_gerencial_dashboard", None)
         if not callable(build_dashboard):
             return report
+
+        _sync_management_tables_best_effort()
 
         try:
             dashboard = build_dashboard(filters)
@@ -1481,6 +1494,11 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                         "error": str(exc),
                     }
         result["report_sync"] = report_sync
+        management_sync = _sync_management_tables_best_effort()
+        result["management_sync"] = {
+            "success": management_sync is not None,
+            "data": management_sync or {},
+        }
 
         return render_template("result.html", result=result)
 
@@ -1610,6 +1628,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     def gerencial():
         filters = _collect_management_filters(request.args)
         dashboard = None
+        _sync_management_tables_best_effort()
         management_repo = app.config.get("MANAGEMENT_REPOSITORY")
         build_dashboard = getattr(management_repo, "build_gerencial_dashboard", None)
         if callable(build_dashboard):

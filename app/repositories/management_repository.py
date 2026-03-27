@@ -279,6 +279,15 @@ class ManagementRepository:
         frentes_rows = self._read_csv(frentes_csv)
         ocorr_rows = self._read_csv(ocorr_csv)
 
+        # Evita truncar as tabelas quando ainda nao ha base mestre consolidada.
+        if not exec_rows and not frentes_rows and not ocorr_rows:
+            return {
+                "execucao": 0,
+                "frentes": 0,
+                "ocorrencias": 0,
+                "skipped": 1,
+            }
+
         exec_values: list[tuple[Any, ...]] = []
         for row in exec_rows:
             source_uid = hashlib.sha1(
@@ -452,6 +461,9 @@ class ManagementRepository:
             "frentes": len(frentes_values),
             "ocorrencias": len(ocorr_values),
         }
+
+    def sync_master_tables(self) -> dict[str, int]:
+        return self._sync_master_tables()
 
     def _load_rows_from_database(self) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
         if self._db is None:
