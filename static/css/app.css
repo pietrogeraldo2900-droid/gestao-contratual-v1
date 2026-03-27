@@ -1160,6 +1160,35 @@
       border-color: rgba(96, 165, 250, 0.34);
       color: var(--info);
     }
+    .notice-sequence-source[hidden] {
+      display: none !important;
+    }
+    .notice-sequence-host {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      z-index: 2100;
+      width: min(520px, calc(100vw - 30px));
+      display: grid;
+      gap: 10px;
+      pointer-events: none;
+    }
+    .notice-toast {
+      margin: 0;
+      opacity: 0;
+      transform: translateY(-8px);
+      transition: opacity 220ms ease, transform 220ms ease;
+      pointer-events: auto;
+      cursor: pointer;
+    }
+    .notice-toast.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .notice-toast.is-hiding {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
     .badge {
       display: inline-flex;
       align-items: center;
@@ -1534,6 +1563,15 @@
       background: rgba(28, 94, 173, 0.12);
       border-color: rgba(59, 130, 246, 0.22);
       color: #d6e5f7;
+    }
+    body.auth-shell-mode .notice-sequence-host {
+      top: 14px;
+      right: 16px;
+      width: min(560px, calc(100vw - 34px));
+    }
+    body.auth-shell-mode .notice-toast {
+      box-shadow: 0 16px 34px rgba(0, 0, 0, 0.32);
+      backdrop-filter: blur(4px);
     }
     body.auth-shell-mode .notice.success {
       background: rgba(22, 78, 64, 0.22);

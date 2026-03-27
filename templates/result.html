@@ -30,21 +30,39 @@
   </article>
 </section>
 
-<div class="notice info">
-  <strong>Fluxo 3 de 3 finalizado.</strong>
-  Revise o resumo abaixo e siga para historico ou resultados para rastrear os artefatos.
-</div>
-
-<div class="notice success">
-  <strong>Processamento concluido com sucesso.</strong>
-  Arquivos gerados e base mestra atualizada no mesmo fluxo.
-</div>
-
-{% if result.alert_items %}
-  <div class="notice warning">
-    Este processamento foi concluido com alerta(s). Revise os detalhes abaixo para acompanhamento operacional.
+<div id="result-notice-sequence-source" class="notice-sequence-source" hidden>
+  <div class="notice info" data-duration="3600">
+    <strong>Fluxo 3 de 3 finalizado.</strong>
+    Revise o resumo abaixo e siga para historico ou resultados para rastrear os artefatos.
   </div>
-{% endif %}
+
+  <div class="notice success" data-duration="3800">
+    <strong>Processamento concluido com sucesso.</strong>
+    Arquivos gerados e base mestra atualizada no mesmo fluxo.
+  </div>
+
+  {% if result.alert_items %}
+    <div class="notice warning" data-duration="4200">
+      Este processamento foi concluido com alerta(s). Revise os detalhes abaixo para acompanhamento operacional.
+    </div>
+  {% endif %}
+</div>
+
+<noscript>
+  <div class="notice info">
+    <strong>Fluxo 3 de 3 finalizado.</strong>
+    Revise o resumo abaixo e siga para historico ou resultados para rastrear os artefatos.
+  </div>
+  <div class="notice success">
+    <strong>Processamento concluido com sucesso.</strong>
+    Arquivos gerados e base mestra atualizada no mesmo fluxo.
+  </div>
+  {% if result.alert_items %}
+    <div class="notice warning">
+      Este processamento foi concluido com alerta(s). Revise os detalhes abaixo para acompanhamento operacional.
+    </div>
+  {% endif %}
+</noscript>
 
 <div class="quick-links compact">
   <a href="#resumo-revisao">Resumo da revisao</a>
@@ -271,4 +289,55 @@
   <a href="{{ url_for('index') }}"><button type="button">Nova entrada</button></a>
   <a href="{{ url_for('history') }}"><button type="button" class="secondary">Ver historico</button></a>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+  const source = document.getElementById("result-notice-sequence-source");
+  if (!source) return;
+
+  const queue = Array.from(source.querySelectorAll(".notice"));
+  if (!queue.length) return;
+
+  const host = document.createElement("div");
+  host.className = "notice-sequence-host";
+  document.body.appendChild(host);
+
+  let idx = 0;
+
+  const showNext = () => {
+    if (idx >= queue.length) return;
+
+    const original = queue[idx++];
+    const toast = original.cloneNode(true);
+    toast.classList.add("notice-toast");
+    host.appendChild(toast);
+
+    requestAnimationFrame(() => toast.classList.add("is-visible"));
+
+    const duration = Number(original.dataset.duration || 3600);
+    let closed = false;
+
+    const closeToast = () => {
+      if (closed) return;
+      closed = true;
+      toast.classList.remove("is-visible");
+      toast.classList.add("is-hiding");
+      window.setTimeout(() => {
+        toast.remove();
+        window.setTimeout(showNext, 140);
+      }, 260);
+    };
+
+    const timer = window.setTimeout(closeToast, duration);
+    toast.addEventListener("click", () => {
+      window.clearTimeout(timer);
+      closeToast();
+    }, { once: true });
+  };
+
+  showNext();
+})();
+</script>
 {% endblock %}
