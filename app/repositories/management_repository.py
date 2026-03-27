@@ -603,15 +603,18 @@ class ManagementRepository:
         exec_rows: list[dict[str, Any]] = []
         frentes_rows: list[dict[str, Any]] = []
         ocorr_rows: list[dict[str, Any]] = []
-        use_csv_fallback = False
+        source_kind = "master_csv"
 
-        if self._db is None:
-            use_csv_fallback = True
-            exec_rows, frentes_rows, ocorr_rows = self._load_rows_from_master_csv()
-        else:
-            # Com banco habilitado, o painel deve refletir somente o que existe no banco.
-            # Se as tabelas estiverem vazias, devolvemos painel vazio (sem fallback CSV).
-            exec_rows, frentes_rows, ocorr_rows = self._load_rows_from_database()
+        # Fonte preferencial unica: BASE_MESTRA (CSV consolidado).
+        exec_rows, frentes_rows, ocorr_rows = self._load_rows_from_master_csv()
+
+        # Fallback apenas quando a base mestre estiver vazia/inexistente.
+        if not exec_rows and not frentes_rows and not ocorr_rows:
+            if self._db is not None:
+                source_kind = "database"
+                exec_rows, frentes_rows, ocorr_rows = self._load_rows_from_database()
+            else:
+                source_kind = "master_csv"
 
         exec_filtered = [row for row in exec_rows if self._filter_row(row, filters)]
         frentes_filtered = [row for row in frentes_rows if self._filter_row(row, filters)]
@@ -756,7 +759,7 @@ class ManagementRepository:
 
         return {
             "has_data": has_data,
-            "source": "master_csv" if use_csv_fallback else "database",
+            "source": source_kind,
             "kpis_principais": {
                 "total_processamentos": total_execucao,
                 "total_execucoes": total_execucao,
