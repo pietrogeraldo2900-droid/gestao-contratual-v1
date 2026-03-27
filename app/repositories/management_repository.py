@@ -405,7 +405,6 @@ class ManagementRepository:
         with self._db.connection() as conn:
             try:
                 with conn.cursor() as cur:
-                    cur.execute("TRUNCATE TABLE management_execucao, management_frentes, management_ocorrencias")
                     if exec_values:
                         cur.executemany(
                             """
@@ -420,6 +419,7 @@ class ManagementRepository:
                                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
                                 %s, %s, %s
                             )
+                            ON CONFLICT (source_uid) DO NOTHING
                             """,
                             exec_values,
                         )
@@ -433,6 +433,7 @@ class ManagementRepository:
                             ) VALUES (
                                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                             )
+                            ON CONFLICT (source_uid) DO NOTHING
                             """,
                             frentes_values,
                         )
@@ -448,6 +449,7 @@ class ManagementRepository:
                                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
                                 %s, %s, %s, %s, %s, %s, %s
                             )
+                            ON CONFLICT (source_uid) DO NOTHING
                             """,
                             ocorr_values,
                         )
@@ -603,18 +605,20 @@ class ManagementRepository:
         exec_rows: list[dict[str, Any]] = []
         frentes_rows: list[dict[str, Any]] = []
         ocorr_rows: list[dict[str, Any]] = []
-        source_kind = "master_csv"
+        source_kind = "database"
 
-        # Fonte preferencial unica: BASE_MESTRA (CSV consolidado).
-        exec_rows, frentes_rows, ocorr_rows = self._load_rows_from_master_csv()
-
-        # Fallback apenas quando a base mestre estiver vazia/inexistente.
-        if not exec_rows and not frentes_rows and not ocorr_rows:
-            if self._db is not None:
-                source_kind = "database"
-                exec_rows, frentes_rows, ocorr_rows = self._load_rows_from_database()
-            else:
-                source_kind = "master_csv"
+        # Fonte canônica no ambiente com banco: tabelas management_* acumuladas.
+        if self._db is not None:
+            exec_rows, frentes_rows, ocorr_rows = self._load_rows_from_database()
+            # Fallback de segurança para CSV quando banco estiver vazio.
+            if not exec_rows and not frentes_rows and not ocorr_rows:
+                csv_exec, csv_frentes, csv_ocorr = self._load_rows_from_master_csv()
+                if csv_exec or csv_frentes or csv_ocorr:
+                    source_kind = "master_csv"
+                    exec_rows, frentes_rows, ocorr_rows = csv_exec, csv_frentes, csv_ocorr
+        else:
+            source_kind = "master_csv"
+            exec_rows, frentes_rows, ocorr_rows = self._load_rows_from_master_csv()
 
         exec_filtered = [row for row in exec_rows if self._filter_row(row, filters)]
         frentes_filtered = [row for row in frentes_rows if self._filter_row(row, filters)]
