@@ -96,6 +96,14 @@ def init_db(db: DatabaseManager) -> None:
         )
         """,
         """
+        CREATE TABLE IF NOT EXISTS nucleo_registry_state (
+            id SMALLINT PRIMARY KEY CHECK (id = 1),
+            version VARCHAR(20) NOT NULL DEFAULT '2.0',
+            payload_json JSONB NOT NULL DEFAULT '{"version":"2.0","nucleos":[]}'::jsonb,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        """,
+        """
         CREATE TABLE IF NOT EXISTS management_execucao (
             id BIGSERIAL PRIMARY KEY,
             source_uid VARCHAR(180) NOT NULL UNIQUE,

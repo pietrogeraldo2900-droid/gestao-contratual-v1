@@ -39,11 +39,55 @@
     <div class="kpi-subtitle">Execucoes com falha registradas no historico.</div>
   </div>
   <div class="kpi-card executive">
-    <div class="kpi-title">Arquivos</div>
-    <div class="kpi-value">{{ summary.with_files }}</div>
-    <div class="kpi-subtitle">Resultados com algum arquivo disponivel.</div>
+    <div class="kpi-title">Relatorios PDF/DOCX</div>
+    <div class="kpi-value">{{ summary.doc_reports or 0 }}</div>
+    <div class="kpi-subtitle">Arquivos executivos gerados pelo processamento.</div>
   </div>
 </div>
+
+<section class="section">
+  <h3>Relatorios gerados (PDF/DOCX)</h3>
+  <div class="body">
+    {% if report_artifacts %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Nucleo</th>
+              <th>Contrato</th>
+              <th>Arquivo</th>
+              <th>Formato</th>
+              <th>Acoes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in report_artifacts %}
+              <tr>
+                <td>{{ item.processed_at or '-' }}</td>
+                <td>{{ item.nucleo or 'Nao informado' }}</td>
+                <td>{{ item.contract_label or '-' }}</td>
+                <td>{{ item.file_name }}</td>
+                <td>{{ (item.file_ext or '-').upper() }}</td>
+                <td>
+                  <div class="actions" style="margin-top:0;">
+                    <a href="{{ url_for('result_file', relative_path=item.file_relative_path) }}"><button type="button" class="secondary small">Abrir</button></a>
+                    <a href="{{ url_for('result_file', relative_path=item.file_relative_path, download=1) }}"><button type="button" class="small">Baixar</button></a>
+                    {% if item.result_id %}
+                      <a href="{{ url_for('result_detail', output_name=item.result_id) }}"><button type="button" class="secondary small">Ver processamento</button></a>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="dashboard-empty">Ainda nao existem relatorios em PDF/DOCX registrados. Gere uma nova entrada para popular esta lista automaticamente.</div>
+    {% endif %}
+  </div>
+</section>
 
 <section class="section">
   <h3>Filtros para consulta</h3>
@@ -130,12 +174,12 @@
                   <div class="muted">{{ row.status }}</div>
                 </td>
                 <td>
-                  {% if row.report_files %}
-                    {% for file in row.report_files[:2] %}
+                  {% if row.report_doc_files %}
+                    {% for file in row.report_doc_files[:2] %}
                       <div>{{ file.name }}</div>
                     {% endfor %}
-                    {% if row.report_files|length > 2 %}
-                      <div class="muted">+{{ row.report_files|length - 2 }} arquivo(s)</div>
+                    {% if row.report_doc_files|length > 2 %}
+                      <div class="muted">+{{ row.report_doc_files|length - 2 }} arquivo(s)</div>
                     {% endif %}
                   {% else %}
                     -

@@ -211,7 +211,6 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     management_repository: ManagementRepository | None = None
     app.config["CONTRACTS_DB_ENABLED"] = settings.db_enabled
     db_manager = build_database_manager(settings)
-    service.set_database_manager(db_manager)
     management_repository = ManagementRepository(db_manager, settings.master_dir)
     if db_manager is not None:
         user_repository = UserRepository(db_manager)
@@ -227,6 +226,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                 app.logger.warning("Falha ao inicializar schema de contratos: %s", exc)
                 if settings.db_strict_startup:
                     raise
+        service.set_database_manager(db_manager)
     else:
         app.logger.info(
             "Banco/auth web local desabilitados (DB_ENABLED=0). "
@@ -1015,12 +1015,43 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     @app.get("/resultados")
     def results_list():
         rows = [row for row in service.list_processing_results(limit=200) if bool(row.get("has_files"))]
+        report_artifacts = []
+
+        def _is_doc_report(file_row: dict) -> bool:
+            name = str((file_row or {}).get("name", "") or "").strip().lower()
+            return name.endswith(".pdf") or name.endswith(".docx") or name.endswith(".doc")
+
         for row in rows:
             if row.get("contract_label"):
-                continue
-            resolved_label, _ = _resolve_contract_context(row.get("contract_id", ""))
-            if resolved_label and resolved_label != str(row.get("contract_id", "") or "").strip():
-                row["contract_label"] = resolved_label
+                pass
+            else:
+                resolved_label, _ = _resolve_contract_context(row.get("contract_id", ""))
+                if resolved_label and resolved_label != str(row.get("contract_id", "") or "").strip():
+                    row["contract_label"] = resolved_label
+
+            report_doc_files = [
+                dict(item)
+                for item in list(row.get("report_files", []) or [])
+                if isinstance(item, dict) and _is_doc_report(item)
+            ]
+            row["report_doc_files"] = report_doc_files
+
+            for file_item in report_doc_files:
+                relative_path = str(file_item.get("relative_path", "") or "").strip()
+                if not relative_path:
+                    continue
+                report_artifacts.append(
+                    {
+                        "processed_at": str(row.get("processed_at", "") or "").strip(),
+                        "nucleo": str(row.get("nucleo", "") or "").strip(),
+                        "contract_label": str(row.get("contract_label", "") or "").strip(),
+                        "status_level": str(row.get("status_level", "") or "").strip(),
+                        "result_id": str(row.get("result_id", "") or "").strip(),
+                        "file_name": str(file_item.get("name", "") or "").strip(),
+                        "file_relative_path": relative_path,
+                        "file_ext": str(Path(relative_path).suffix or "").strip().lower().replace(".", ""),
+                    }
+                )
 
         nucleo_registry_rows = service.list_nucleo_registry(search="", status="")
         nucleo_options = sorted(
@@ -1037,6 +1068,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             "success": sum(1 for row in rows if row.get("status_level") == "sucesso"),
             "error": sum(1 for row in rows if row.get("status_level") == "erro"),
             "with_files": sum(1 for row in rows if row.get("has_files")),
+            "doc_reports": len(report_artifacts),
         }
         return render_template(
             "results.html",
@@ -1044,6 +1076,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             rows=rows,
             summary=summary,
             nucleo_options=nucleo_options,
+            report_artifacts=report_artifacts,
         )
 
     @app.get("/resultados/<output_name>")

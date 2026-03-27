@@ -83,6 +83,7 @@ class WebPipelineService:
 
     def set_database_manager(self, db_manager: DatabaseManager | None) -> None:
         self.db_manager = db_manager
+        self.nucleo_reference = self._load_nucleo_reference()
 
     def parse_message(self, raw_message: str, source_name: str | None = None) -> Tuple[dict, str]:
         source_name = source_name or f"mensagem_web_{datetime.now():%Y%m%d_%H%M%S}.txt"
@@ -135,8 +136,92 @@ class WebPipelineService:
             out.append(clean)
         return out
 
+    def _read_nucleo_reference_payload_from_db(self) -> dict | None:
+        if self.db_manager is None:
+            return None
+
+        try:
+            with self.db_manager.connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT payload_json FROM nucleo_registry_state WHERE id = 1"
+                    )
+                    row = cur.fetchone()
+            if not row:
+                return None
+            payload = row[0]
+            if isinstance(payload, str):
+                payload = json.loads(payload)
+            if not isinstance(payload, dict):
+                return None
+            version = str(payload.get("version", "2.0") or "2.0")
+            raw_entries = payload.get("nucleos", [])
+            if not isinstance(raw_entries, list):
+                raw_entries = []
+            return {"version": version, "nucleos": raw_entries}
+        except Exception:
+            return None
+
+    def _write_nucleo_reference_payload_to_file(self, payload: dict) -> None:
+        if not isinstance(payload, dict):
+            return
+
+        version = str(payload.get("version", "2.0") or "2.0")
+        raw_entries = payload.get("nucleos", [])
+        if not isinstance(raw_entries, list):
+            raw_entries = []
+
+        file_payload = {
+            "version": version,
+            "nucleos": raw_entries,
+        }
+
+        self.nucleo_reference_file.parent.mkdir(parents=True, exist_ok=True)
+        with self.nucleo_reference_file.open("w", encoding="utf-8") as f:
+            json.dump(file_payload, f, ensure_ascii=False, indent=2)
+
+    def _sync_nucleo_reference_to_db(self, registry: dict) -> None:
+        if self.db_manager is None:
+            return
+
+        entries = list((registry or {}).get("entries", []))
+        version = str((registry or {}).get("version", "2.0") or "2.0")
+        payload = {
+            "version": version,
+            "nucleos": entries,
+        }
+
+        try:
+            with self.db_manager.connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        INSERT INTO nucleo_registry_state (id, version, payload_json, updated_at)
+                        VALUES (1, %s, %s::jsonb, NOW())
+                        ON CONFLICT (id)
+                        DO UPDATE SET
+                            version = EXCLUDED.version,
+                            payload_json = EXCLUDED.payload_json,
+                            updated_at = NOW()
+                        """,
+                        (version, json.dumps(payload, ensure_ascii=False)),
+                    )
+                conn.commit()
+        except Exception:
+            return
+
     def _load_nucleo_reference(self) -> dict:
-        return load_nucleo_registry(self.nucleo_reference_file)
+        db_payload = self._read_nucleo_reference_payload_from_db()
+        if db_payload is not None:
+            try:
+                self._write_nucleo_reference_payload_to_file(db_payload)
+            except Exception:
+                pass
+            return load_nucleo_registry(self.nucleo_reference_file)
+
+        registry = load_nucleo_registry(self.nucleo_reference_file)
+        self._sync_nucleo_reference_to_db(registry)
+        return registry
 
     def _get_nucleo_profile(self, nucleo: object) -> dict | None:
         return get_nucleo_profile(self.nucleo_reference, nucleo)
@@ -338,6 +423,7 @@ class WebPipelineService:
             )
 
         self.nucleo_reference = save_nucleo_registry(self.nucleo_reference_file, merged_entries)
+        self._sync_nucleo_reference_to_db(self.nucleo_reference)
         saved_entry = None
         for entry in self.nucleo_reference.get("entries", []):
             if self._normalize_nucleo_key(entry.get("nucleo", "")) == new_key:
