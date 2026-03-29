@@ -9,7 +9,7 @@ from flask import Flask, abort, flash, g, make_response, redirect, render_templa
 
 from config.settings import AppSettings, load_settings
 from app.database import build_database_manager, init_db
-from app.repositories import ContractRepository, ManagementRepository, ReportRepository, UserRepository
+from app.repositories import AdminAuditRepository, ContractRepository, ManagementRepository, ReportRepository, UserRepository
 from app.repositories.contract_repository import ContractConflictError
 from app.repositories.user_repository import UserAlreadyExistsError
 from app.routes.auth_api import register_auth_routes
@@ -18,12 +18,15 @@ from app.services.contract_service import ContractService, ContractValidationErr
 from app.services.report_service import ReportService, create_report_service
 from app.services.user_service import UserAuthError, UserService, UserValidationError
 from app.utils.jwt_utils import generate_jwt_token
+from app.utils.access_control import ROLE_ADMIN, ROLE_LEITOR, ROLE_OPERADOR, ROLE_SUPERADMIN, can_access, normalize_role
 from app.services.web_service import WebPipelineService
 
 
 SESSION_USER_ID_KEY = "web_user_id"
 SESSION_USER_EMAIL_KEY = "web_user_email"
 SESSION_AUTH_TOKEN_KEY = "web_auth_token"
+SESSION_USER_ROLE_KEY = "web_user_role"
+SESSION_USER_STATUS_KEY = "web_user_status"
 
 
 def _collect_form_fields(form) -> Dict[str, object]:
@@ -173,6 +176,30 @@ def _is_safe_internal_next(next_url: str) -> bool:
     return not parsed.scheme and not parsed.netloc
 
 
+def _resolve_permission_for_endpoint(endpoint: str) -> str | None:
+    if endpoint in {"dashboard"}:
+        return "dashboard"
+    if endpoint in {"index", "nova_entrada_redirect", "preview", "generate"}:
+        return "entradas"
+    if endpoint in {"history"}:
+        return "historico"
+    if endpoint in {"results_list", "result_detail", "result_file"}:
+        return "resultados"
+    if endpoint in {"web_contracts_list", "web_contracts_new", "web_contracts_create"}:
+        return "contratos"
+    if endpoint in {"nucleos", "nucleos_save"}:
+        return "nucleos"
+    if endpoint in {"gerencial"}:
+        return "gerencial"
+    if endpoint in {"institucional", "institucional_export"}:
+        return "institucional"
+    if endpoint in {"admin_users", "admin_users_update"}:
+        return "usuarios_admin"
+    if endpoint in {"web_settings"}:
+        return "configuracoes"
+    return None
+
+
 def create_app(test_config: dict | None = None, settings: AppSettings | None = None) -> Flask:
     settings = settings or load_settings(Path(__file__).resolve().parents[2])
     base_dir = settings.base_dir
@@ -209,6 +236,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     report_service: ReportService | None = None
     user_service: UserService | None = None
     management_repository: ManagementRepository | None = None
+    admin_audit_repository: AdminAuditRepository | None = None
     app.config["CONTRACTS_DB_ENABLED"] = settings.db_enabled
     db_manager = build_database_manager(settings)
     management_repository = ManagementRepository(db_manager, settings.master_dir)
@@ -216,6 +244,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         user_repository = UserRepository(db_manager)
         contract_repository = ContractRepository(db_manager)
         report_repository = ReportRepository(db_manager)
+        admin_audit_repository = AdminAuditRepository(db_manager)
         user_service = UserService(user_repository)
         contract_service = ContractService(contract_repository)
         report_service = ReportService(report_repository, contract_repository)
@@ -235,12 +264,16 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     app.config["CONTRACTS_SERVICE"] = contract_service
     app.config["REPORT_SERVICE"] = report_service
     app.config["USER_SERVICE"] = user_service
+    app.config["USER_REPOSITORY"] = user_repository if db_manager is not None else None
     app.config["MANAGEMENT_REPOSITORY"] = management_repository
+    app.config["ADMIN_AUDIT_REPOSITORY"] = admin_audit_repository
 
     protected_web_endpoints = {
         "dashboard",
         "web_profile",
         "web_settings",
+        "admin_users",
+        "admin_users_update",
         "results_list",
         "result_detail",
         "result_file",
@@ -263,6 +296,13 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     def _active_user_service() -> UserService | None:
         candidate = app.config.get("USER_SERVICE")
         required = ("authenticate_user", "register_user", "get_user_by_id")
+        if candidate is not None and all(callable(getattr(candidate, name, None)) for name in required):
+            return candidate  # type: ignore[return-value]
+        return None
+
+    def _active_user_repository() -> UserRepository | None:
+        candidate = app.config.get("USER_REPOSITORY")
+        required = ("list_users", "update_user_status", "update_user_role")
         if candidate is not None and all(callable(getattr(candidate, name, None)) for name in required):
             return candidate  # type: ignore[return-value]
         return None
@@ -600,10 +640,14 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         session.pop(SESSION_USER_ID_KEY, None)
         session.pop(SESSION_USER_EMAIL_KEY, None)
         session.pop(SESSION_AUTH_TOKEN_KEY, None)
+        session.pop(SESSION_USER_ROLE_KEY, None)
+        session.pop(SESSION_USER_STATUS_KEY, None)
 
     def _set_web_auth_session(user: Dict[str, object]) -> None:
         session[SESSION_USER_ID_KEY] = int(user.get("id", 0) or 0)
         session[SESSION_USER_EMAIL_KEY] = str(user.get("email", "") or "").strip().lower()
+        session[SESSION_USER_ROLE_KEY] = normalize_role(user.get("role", ""))
+        session[SESSION_USER_STATUS_KEY] = str(user.get("status", "") or "").strip().lower()
         try:
             session[SESSION_AUTH_TOKEN_KEY] = generate_jwt_token(
                 user_id=int(user.get("id", 0) or 0),
@@ -681,12 +725,24 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
 
         return snapshot
 
+    def _active_audit_repository() -> AdminAuditRepository | None:
+        candidate = app.config.get("ADMIN_AUDIT_REPOSITORY")
+        required = ("log_action",)
+        if candidate is not None and all(callable(getattr(candidate, name, None)) for name in required):
+            return candidate  # type: ignore[return-value]
+        return None
+
     @app.context_processor
     def _inject_web_auth_context():
         user_email = str(session.get(SESSION_USER_EMAIL_KEY, "") or "").strip()
+        user_role = normalize_role(session.get(SESSION_USER_ROLE_KEY, ""))
+        user_status = str(session.get(SESSION_USER_STATUS_KEY, "") or "").strip().lower()
         return {
             "web_user_authenticated": bool(session.get(SESSION_USER_ID_KEY)),
             "web_user_email": user_email,
+            "web_user_role": user_role,
+            "web_user_status": user_status,
+            "can_access": lambda perm: can_access(user_role, perm),
         }
 
     @app.before_request
@@ -709,6 +765,8 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                 current_user = None
         if current_user:
             g.current_web_user = current_user
+            session[SESSION_USER_ROLE_KEY] = normalize_role(current_user.get("role", ""))
+            session[SESSION_USER_STATUS_KEY] = str(current_user.get("status", "") or "").strip().lower()
             return None
         if raw_user_id is not None:
             _clear_web_auth_session()
@@ -718,6 +776,13 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             return None
         if endpoint not in protected_web_endpoints:
             return None
+
+        permission = _resolve_permission_for_endpoint(endpoint)
+        if permission:
+            role = normalize_role(session.get(SESSION_USER_ROLE_KEY, ""))
+            if not can_access(role, permission):
+                flash("Acesso restrito para o seu perfil.", "warning")
+                return redirect(url_for("dashboard"))
 
         next_value = request.path
         if request.query_string:
@@ -768,14 +833,14 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
 
         try:
             user = auth_service.authenticate_user(email=email, password=password)
-        except (UserValidationError, UserAuthError):
+        except (UserValidationError, UserAuthError) as exc:
             return (
                 render_template(
                     "login.html",
                     title="Login",
                     next_url=next_url,
                     form_data={"email": email},
-                    error_message="Login invalido. Confira email e senha.",
+                    error_message=str(exc) or "Login invalido. Confira email e senha.",
                 ),
                 401,
             )
@@ -888,9 +953,8 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                 500,
             )
 
-        _set_web_auth_session(user)
-        flash("Cadastro realizado com sucesso.", "success")
-        return redirect(next_url)
+        flash("Seu cadastro foi recebido e esta aguardando aprovacao.", "info")
+        return redirect(url_for("web_login", next=next_url))
 
     @app.get("/register")
     def web_register_redirect():
@@ -1008,6 +1072,88 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             total_reports=int(snapshot.get("total_reports", 0) or 0),
             recent_reports_count=int(snapshot.get("recent_reports_count", 0) or 0),
         )
+
+    @app.get("/admin/usuarios")
+    def admin_users():
+        role = normalize_role(session.get(SESSION_USER_ROLE_KEY, ""))
+        if not can_access(role, "usuarios_admin"):
+            abort(403)
+        repo = _active_user_repository()
+        if repo is None:
+            return (
+                render_template(
+                    "admin_users.html",
+                    title="Usuarios",
+                    users=[],
+                    status_filter="",
+                    error_message=_auth_unavailable_message("Gestao de usuarios"),
+                ),
+                503,
+            )
+        status_filter = str(request.args.get("status", "") or "").strip().lower()
+        users = repo.list_users(status_filter if status_filter else None)
+        return render_template(
+            "admin_users.html",
+            title="Usuarios",
+            users=users,
+            status_filter=status_filter,
+            error_message="",
+            roles=[ROLE_SUPERADMIN, ROLE_ADMIN, ROLE_OPERADOR, ROLE_LEITOR],
+            statuses=["pending", "active", "rejected", "disabled"],
+        )
+
+    @app.post("/admin/usuarios/<int:user_id>/update")
+    def admin_users_update(user_id: int):
+        role = normalize_role(session.get(SESSION_USER_ROLE_KEY, ""))
+        if not can_access(role, "usuarios_admin"):
+            abort(403)
+        repo = _active_user_repository()
+        if repo is None:
+            flash(_auth_unavailable_message("Gestao de usuarios"), "error")
+            return redirect(url_for("admin_users"))
+
+        action = str(request.form.get("action", "") or "").strip().lower()
+        role_value = normalize_role(request.form.get("role", ""))
+        actor = dict(getattr(g, "current_web_user", None) or {})
+        actor_id = int(actor.get("id", 0) or 0)
+        audit_repo = _active_audit_repository()
+
+        try:
+            if action == "approve":
+                if role_value not in {ROLE_SUPERADMIN, ROLE_ADMIN, ROLE_OPERADOR, ROLE_LEITOR}:
+                    raise ValueError("Informe um papel valido para aprovar.")
+                repo.update_user_role(user_id, role_value)
+                repo.update_user_status(user_id, "active", approved_by=actor_id, set_approved=True)
+                if audit_repo is not None:
+                    audit_repo.log_action(actor_id, user_id, "user_approved", {"role": role_value})
+                flash("Usuario aprovado com sucesso.", "success")
+            elif action == "reject":
+                repo.update_user_status(user_id, "rejected", approved_by=actor_id, set_approved=False)
+                if audit_repo is not None:
+                    audit_repo.log_action(actor_id, user_id, "user_rejected", {})
+                flash("Usuario rejeitado.", "info")
+            elif action == "disable":
+                repo.update_user_status(user_id, "disabled", approved_by=actor_id, set_approved=False)
+                if audit_repo is not None:
+                    audit_repo.log_action(actor_id, user_id, "user_disabled", {})
+                flash("Usuario desativado.", "info")
+            elif action == "activate":
+                repo.update_user_status(user_id, "active", approved_by=actor_id, set_approved=True)
+                if audit_repo is not None:
+                    audit_repo.log_action(actor_id, user_id, "user_reactivated", {})
+                flash("Usuario reativado.", "success")
+            elif action == "set_role":
+                if role_value not in {ROLE_SUPERADMIN, ROLE_ADMIN, ROLE_OPERADOR, ROLE_LEITOR}:
+                    raise ValueError("Informe um papel valido.")
+                repo.update_user_role(user_id, role_value)
+                if audit_repo is not None:
+                    audit_repo.log_action(actor_id, user_id, "role_changed", {"role": role_value})
+                flash("Papel atualizado.", "success")
+            else:
+                flash("Acao invalida.", "error")
+        except Exception as exc:
+            flash(f"Nao foi possivel atualizar o usuario: {exc}", "error")
+        return redirect(url_for("admin_users"))
 
     @app.get("/resultados")
     def results_list():

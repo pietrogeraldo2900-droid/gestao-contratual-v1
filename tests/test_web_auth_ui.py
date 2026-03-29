@@ -30,6 +30,8 @@ class FakeUserService:
         user = {
             "id": self._next_id,
             "email": clean_email,
+            "status": "pending",
+            "role": "operador",
             "created_at": "2026-01-01T00:00:00+00:00",
         }
         self._users_by_email[clean_email] = {"user": user, "password": str(password or "")}
@@ -41,6 +43,15 @@ class FakeUserService:
         row = self._users_by_email.get(clean_email)
         if not row:
             raise UserAuthError("Credenciais invalidas.")
+        status = str(row["user"].get("status", "") or "").strip().lower()
+        if status != "active":
+            if status == "pending":
+                raise UserAuthError("Seu cadastro foi recebido e esta aguardando aprovacao.")
+            if status == "rejected":
+                raise UserAuthError("Seu cadastro nao foi aprovado. Entre em contato com o administrador.")
+            if status == "disabled":
+                raise UserAuthError("Sua conta esta desativada no momento. Entre em contato com o administrador.")
+            raise UserAuthError("Sua conta nao esta ativa. Entre em contato com o administrador.")
         if str(row.get("password", "") or "") != str(password or ""):
             raise UserAuthError("Credenciais invalidas.")
         return dict(row["user"])  # type: ignore[index]
@@ -55,6 +66,16 @@ class FakeUserService:
             if isinstance(user, dict) and int(user.get("id", 0) or 0) == uid:
                 return dict(user)
         return None
+
+    def set_status(self, email: str, status: str) -> None:
+        clean_email = self._normalize_email(email)
+        if clean_email in self._users_by_email:
+            self._users_by_email[clean_email]["user"]["status"] = status
+
+    def set_role(self, email: str, role: str) -> None:
+        clean_email = self._normalize_email(email)
+        if clean_email in self._users_by_email:
+            self._users_by_email[clean_email]["user"]["role"] = role
 
 
 class WebAuthUITests(unittest.TestCase):
@@ -105,7 +126,16 @@ class WebAuthUITests(unittest.TestCase):
             follow_redirects=False,
         )
         self.assertEqual(register_response.status_code, 302)
-        self.assertEqual("/dashboard", str(register_response.headers.get("Location", "") or ""))
+        self.assertIn("/login", str(register_response.headers.get("Location", "") or ""))
+
+        self.fake_user_service.set_status("usuario@empresa.com", "active")
+        login_response = self.client.post(
+            "/login",
+            data={"email": "usuario@empresa.com", "password": "12345678"},
+            follow_redirects=False,
+        )
+        self.assertEqual(login_response.status_code, 302)
+        self.assertEqual("/dashboard", str(login_response.headers.get("Location", "") or ""))
 
         home_response = self.client.get("/dashboard")
         self.assertEqual(home_response.status_code, 200)
@@ -125,6 +155,7 @@ class WebAuthUITests(unittest.TestCase):
 
     def test_login_invalid_shows_friendly_message(self) -> None:
         self.fake_user_service.register_user("admin@empresa.com", "12345678")
+        self.fake_user_service.set_status("admin@empresa.com", "active")
 
         response = self.client.post(
             "/login",
@@ -133,7 +164,7 @@ class WebAuthUITests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 401)
         html = response.data.decode("utf-8")
-        self.assertIn("Login invalido. Confira email e senha.", html)
+        self.assertIn("Credenciais invalidas.", html)
 
     def test_register_existing_user_shows_friendly_message(self) -> None:
         self.fake_user_service.register_user("admin@empresa.com", "12345678")
@@ -154,6 +185,7 @@ class WebAuthUITests(unittest.TestCase):
 
     def test_login_respects_next_parameter(self) -> None:
         self.fake_user_service.register_user("admin@empresa.com", "12345678")
+        self.fake_user_service.set_status("admin@empresa.com", "active")
 
         response = self.client.post(
             "/login",
@@ -165,6 +197,7 @@ class WebAuthUITests(unittest.TestCase):
 
     def test_login_default_redirects_to_dashboard(self) -> None:
         self.fake_user_service.register_user("admin@empresa.com", "12345678")
+        self.fake_user_service.set_status("admin@empresa.com", "active")
 
         response = self.client.post(
             "/login",
@@ -173,6 +206,18 @@ class WebAuthUITests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 302)
         self.assertEqual("/dashboard", str(response.headers.get("Location", "") or ""))
+
+    def test_login_pending_shows_pending_message(self) -> None:
+        self.fake_user_service.register_user("pendente@empresa.com", "12345678")
+
+        response = self.client.post(
+            "/login",
+            data={"email": "pendente@empresa.com", "password": "12345678"},
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 401)
+        html = response.data.decode("utf-8")
+        self.assertIn("aguardando aprovacao", html.lower())
 
 
 if __name__ == "__main__":

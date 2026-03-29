@@ -45,9 +45,18 @@ class UserService:
 
     def _public_user(self, user_row: dict[str, Any]) -> dict[str, Any]:
         created_at = user_row.get("created_at")
+        approved_at = user_row.get("approved_at")
+        last_login_at = user_row.get("last_login_at")
         return {
             "id": int(user_row.get("id", 0) or 0),
             "email": str(user_row.get("email", "") or ""),
+            "role": str(user_row.get("role", "") or ""),
+            "status": str(user_row.get("status", "") or ""),
+            "approved_by": user_row.get("approved_by"),
+            "approved_at": approved_at.isoformat() if isinstance(approved_at, datetime) else str(approved_at or ""),
+            "last_login_at": last_login_at.isoformat()
+            if isinstance(last_login_at, datetime)
+            else str(last_login_at or ""),
             "created_at": created_at.isoformat() if isinstance(created_at, datetime) else str(created_at or ""),
         }
 
@@ -59,7 +68,7 @@ class UserService:
             raise RuntimeError("Dependencia bcrypt nao instalada no ambiente.")
 
         password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-        created = self._repository.create_user(clean_email, password_hash)
+        created = self._repository.create_user(clean_email, password_hash, status="pending", role=None)
         return self._public_user(created)
 
     def authenticate_user(self, email: str, password: str) -> dict[str, Any]:
@@ -71,6 +80,16 @@ class UserService:
         user = self._repository.get_user_by_email(clean_email)
         if not user:
             raise UserAuthError("Credenciais invalidas.")
+
+        status = str(user.get("status", "") or "").strip().lower()
+        if status != "active":
+            if status == "pending":
+                raise UserAuthError("Seu cadastro foi recebido e esta aguardando aprovacao.")
+            if status == "rejected":
+                raise UserAuthError("Seu cadastro nao foi aprovado. Entre em contato com o administrador.")
+            if status == "disabled":
+                raise UserAuthError("Sua conta esta desativada no momento. Entre em contato com o administrador.")
+            raise UserAuthError("Sua conta nao esta ativa. Entre em contato com o administrador.")
 
         password_hash = str(user.get("password", "") or "")
         if not password_hash:
@@ -85,6 +104,10 @@ class UserService:
             valid = False
         if not valid:
             raise UserAuthError("Credenciais invalidas.")
+        try:
+            self._repository.update_last_login(int(user.get("id", 0) or 0))
+        except Exception:
+            pass
         return self._public_user(user)
 
     def get_user_by_id(self, user_id: int) -> dict[str, Any] | None:
@@ -96,6 +119,9 @@ class UserService:
             return None
         user = self._repository.get_user_by_id(uid)
         if not user:
+            return None
+        status = str(user.get("status", "") or "").strip().lower()
+        if status != "active":
             return None
         return self._public_user(user)
 

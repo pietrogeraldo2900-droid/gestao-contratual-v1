@@ -10,8 +10,28 @@ def init_db(db: DatabaseManager) -> None:
             id BIGSERIAL PRIMARY KEY,
             email VARCHAR(255) NOT NULL UNIQUE,
             password VARCHAR(255) NOT NULL,
+            role VARCHAR(40),
+            status VARCHAR(30) NOT NULL DEFAULT 'pending',
+            approved_by BIGINT,
+            approved_at TIMESTAMPTZ,
+            last_login_at TIMESTAMPTZ,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
+        """,
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(40)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(30) NOT NULL DEFAULT 'pending'",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS approved_by BIGINT",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ",
+        "UPDATE users SET status = 'active' WHERE status IS NULL OR status = ''",
+        "UPDATE users SET role = 'admin_operacional' WHERE role IS NULL OR role = ''",
+        """
+        UPDATE users
+        SET role = 'superadmin'
+        WHERE id = (
+            SELECT id FROM users ORDER BY created_at ASC LIMIT 1
+        )
+        AND NOT EXISTS (SELECT 1 FROM users WHERE role = 'superadmin')
         """,
         """
         CREATE TABLE IF NOT EXISTS contracts (
@@ -92,6 +112,16 @@ def init_db(db: DatabaseManager) -> None:
             alertas TEXT,
             mensagem TEXT,
             generated_files_json JSONB NOT NULL DEFAULT '[]'::jsonb,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS admin_audit_log (
+            id BIGSERIAL PRIMARY KEY,
+            actor_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            target_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+            action VARCHAR(120) NOT NULL,
+            metadata_json JSONB NOT NULL DEFAULT '{}'::jsonb,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
         """,
@@ -184,6 +214,11 @@ def init_db(db: DatabaseManager) -> None:
         "CREATE INDEX IF NOT EXISTS idx_reports_contract_id ON reports(contract_id)",
         "CREATE INDEX IF NOT EXISTS idx_reports_created_at ON reports(created_at DESC)",
         "CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_users_status ON users(status)",
+        "CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)",
+        "CREATE INDEX IF NOT EXISTS idx_admin_audit_created_at ON admin_audit_log(created_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_admin_audit_actor ON admin_audit_log(actor_user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_admin_audit_target ON admin_audit_log(target_user_id)",
         "CREATE INDEX IF NOT EXISTS idx_processing_history_created_at ON processing_history(created_at DESC)",
         "CREATE INDEX IF NOT EXISTS idx_processing_history_processed_at ON processing_history(processed_at DESC)",
         "CREATE INDEX IF NOT EXISTS idx_mgmt_exec_data ON management_execucao(data_referencia DESC)",
