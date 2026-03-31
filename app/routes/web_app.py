@@ -191,7 +191,7 @@ def _resolve_permission_for_endpoint(endpoint: str) -> str | None:
         return "entradas"
     if endpoint in {"history"}:
         return "historico"
-    if endpoint in {"results_list", "result_detail", "result_file"}:
+    if endpoint in {"results_list", "result_detail", "result_file", "base_mestra_list", "base_mestra_file"}:
         return "resultados"
     if endpoint in {"web_contracts_list", "web_contracts_new", "web_contracts_create"}:
         return "contratos"
@@ -292,6 +292,8 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         "results_list",
         "result_detail",
         "result_file",
+        "base_mestra_list",
+        "base_mestra_file",
         "web_contracts_list",
         "web_contracts_new",
         "web_contracts_create",
@@ -1518,6 +1520,69 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             file_path,
             as_attachment=download,
             download_name=file_path.name,
+        )
+
+    @app.get("/base-mestra")
+    def base_mestra_list():
+        master_root = Path(service.master_dir).resolve()
+        files = []
+
+        if master_root.exists() and master_root.is_dir():
+            for file_path in sorted(master_root.rglob("*"), key=lambda item: item.stat().st_mtime, reverse=True):
+                if not file_path.is_file():
+                    continue
+                rel_path = file_path.relative_to(master_root).as_posix()
+                suffix = str(file_path.suffix or "").strip().lower()
+                if suffix in {".xlsx", ".xls"}:
+                    kind = "Planilha"
+                elif suffix == ".csv":
+                    kind = "CSV"
+                else:
+                    kind = suffix.replace(".", "").upper() or "Arquivo"
+                modified_at = datetime.fromtimestamp(file_path.stat().st_mtime).strftime("%d/%m/%Y %H:%M")
+                files.append(
+                    {
+                        "name": file_path.name,
+                        "relative_path": rel_path,
+                        "kind": kind,
+                        "size_bytes": int(file_path.stat().st_size),
+                        "modified_at": modified_at,
+                    }
+                )
+
+        total_size = sum(int(item.get("size_bytes", 0) or 0) for item in files)
+        summary = {
+            "total_files": len(files),
+            "csv_files": sum(1 for item in files if item.get("kind") == "CSV"),
+            "spreadsheet_files": sum(1 for item in files if item.get("kind") == "Planilha"),
+            "total_size_mb": round(total_size / (1024 * 1024), 2) if total_size else 0,
+        }
+
+        return render_template(
+            "base_mestra.html",
+            title="Base Mestra",
+            files=files,
+            summary=summary,
+        )
+
+    @app.get("/base-mestra/arquivo/<path:relative_path>")
+    def base_mestra_file(relative_path: str):
+        master_root = Path(service.master_dir).resolve()
+        safe_relative = str(relative_path or "").strip().replace("\\", "/").lstrip("/")
+        if not safe_relative:
+            abort(404)
+
+        candidate = (master_root / safe_relative).resolve()
+        if candidate != master_root and master_root not in candidate.parents:
+            abort(404)
+        if not candidate.exists() or not candidate.is_file():
+            abort(404)
+
+        download = str(request.args.get("download", "") or "").strip().lower() in {"1", "true", "on", "sim"}
+        return send_file(
+            candidate,
+            as_attachment=download,
+            download_name=candidate.name,
         )
 
     def _render_contract_form(

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-hero compact">
+  <div class="page-hero-grid">
+    <div>
+      <div class="hero-eyebrow">Dados oficiais</div>
+      <h2 class="hero-title">Base Mestra</h2>
+      <p class="hero-subtitle">Acesse os arquivos consolidados da Base Mestra para auditoria, filtros externos e conciliacao com as medicoes recebidas.</p>
+      <div class="hero-chip-row">
+        <span class="hero-chip">Acesso protegido</span>
+        <span class="hero-chip">Download direto</span>
+        <span class="hero-chip">Fonte oficial</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="kpi-grid">
+  <div class="kpi-card executive">
+    <div class="kpi-title">Arquivos</div>
+    <div class="kpi-value">{{ summary.total_files }}</div>
+    <div class="kpi-subtitle">Total encontrado na Base Mestra.</div>
+  </div>
+  <div class="kpi-card executive">
+    <div class="kpi-title">CSV</div>
+    <div class="kpi-value">{{ summary.csv_files }}</div>
+    <div class="kpi-subtitle">Arquivos tabulares para consolidacao.</div>
+  </div>
+  <div class="kpi-card executive">
+    <div class="kpi-title">Planilhas</div>
+    <div class="kpi-value">{{ summary.spreadsheet_files }}</div>
+    <div class="kpi-subtitle">Arquivos XLS/XLSX disponiveis.</div>
+  </div>
+  <div class="kpi-card executive">
+    <div class="kpi-title">Tamanho total</div>
+    <div class="kpi-value">{{ summary.total_size_mb }} MB</div>
+    <div class="kpi-subtitle">Volume aproximado para download.</div>
+  </div>
+</div>
+
+<section class="section">
+  <h3>Arquivos da Base Mestra</h3>
+  <div class="body">
+    {% if files %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Arquivo</th>
+              <th>Tipo</th>
+              <th>Modificado em</th>
+              <th>Tamanho</th>
+              <th>Acoes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in files %}
+              <tr>
+                <td>
+                  <strong>{{ item.name }}</strong>
+                  <div class="muted mono">{{ item.relative_path }}</div>
+                </td>
+                <td>{{ item.kind }}</td>
+                <td>{{ item.modified_at }}</td>
+                <td>
+                  {% if item.size_bytes >= 1048576 %}
+                    {{ '%.2f'|format(item.size_bytes / 1048576) }} MB
+                  {% elif item.size_bytes >= 1024 %}
+                    {{ '%.1f'|format(item.size_bytes / 1024) }} KB
+                  {% else %}
+                    {{ item.size_bytes }} B
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="actions" style="margin-top:0;">
+                    <a href="{{ url_for('base_mestra_file', relative_path=item.relative_path) }}"><button type="button" class="secondary small">Abrir</button></a>
+                    <a href="{{ url_for('base_mestra_file', relative_path=item.relative_path, download=1) }}"><button type="button" class="small">Baixar</button></a>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="dashboard-empty">Nenhum arquivo encontrado na pasta da Base Mestra neste ambiente.</div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

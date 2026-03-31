@@ -15,6 +15,7 @@
 {% set dashboard_endpoints = ['dashboard'] %}
 {% set entries_endpoints = ['index', 'nova_entrada_redirect', 'preview', 'generate'] %}
 {% set results_endpoints = ['results_list', 'result_detail', 'result_file'] %}
+{% set base_mestra_endpoints = ['base_mestra_list', 'base_mestra_file'] %}
 {% set history_endpoints = ['history'] %}
 {% set gerencial_endpoints = ['gerencial'] %}
 {% set institucional_endpoints = ['institucional', 'institucional_export'] %}
@@ -36,6 +37,8 @@
   'generate': 'Entradas',
   'history': 'Historico',
   'results_list': 'Resultados gerados',
+  'base_mestra_list': 'Base Mestra',
+  'base_mestra_file': 'Base Mestra',
   'result_detail': 'Resultado do processamento',
   'gerencial': 'Painel Gerencial',
   'institucional': 'Institucional',
@@ -57,6 +60,7 @@
   'nova_entrada_redirect': 'Entrada operacional para processamento de mensagens e geracao de documentos.',
   'history': 'Historico de processamentos com filtros e acompanhamento operacional.',
   'results_list': 'Saidas geradas pelo pipeline para visualizacao e download dentro da plataforma.',
+  'base_mestra_list': 'Acesso central aos arquivos oficiais da Base Mestra para auditoria e conciliacao externa.',
   'result_detail': 'Detalhes do processamento selecionado e acesso aos arquivos gerados.',
   'gerencial': 'Leitura analitica com indicadores consolidados do sistema.',
   'institucional': 'Resumo institucional para apresentacao executiva.',
@@ -201,6 +205,12 @@
                 <svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"></path><path d="M15 3v4h4"></path></svg>
               </span>
               <span class="nav-link-label">Relatorios</span>
+            </a>
+            <a href="{{ url_for('base_mestra_list') }}" class="sidebar-link nav-link {% if endpoint in base_mestra_endpoints %}active is-active{% endif %}" {% if endpoint in base_mestra_endpoints %}aria-current="page"{% endif %}>
+              <span class="nav-link-icon">
+                <svg viewBox="0 0 24 24"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path><path d="M9 3v18"></path></svg>
+              </span>
+              <span class="nav-link-label">Base Mestra</span>
             </a>
             {% endif %}
             <a href="{{ url_for('web_profile') }}" class="sidebar-link nav-link {% if endpoint in profile_endpoints %}active is-active{% endif %}" {% if endpoint in profile_endpoints %}aria-current="page"{% endif %}>
