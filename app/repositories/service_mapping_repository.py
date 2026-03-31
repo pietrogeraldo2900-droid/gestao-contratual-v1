@@ -27,6 +27,25 @@ def _normalize_alias(value: object) -> str:
     return normalizar_texto(str(value or "")).strip()
 
 
+def _candidate_terms_from_row(row: dict[str, Any]) -> list[str]:
+    values = [
+        row.get("servico_oficial", ""),
+        row.get("servico_normalizado", ""),
+        row.get("servico_bruto", ""),
+        row.get("item_normalizado", ""),
+        row.get("item_original", ""),
+    ]
+    out: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        norm = _normalize_alias(value)
+        if not norm or norm in seen:
+            continue
+        seen.add(norm)
+        out.append(norm)
+    return out
+
+
 class ServiceMappingRepository:
     def __init__(self, db: DatabaseManager):
         self._db = db
@@ -250,3 +269,155 @@ class ServiceMappingRepository:
                 "categoria": str(item.get("categoria", "") or "").strip() or "servico_nao_mapeado",
             }
         return alias_map
+
+    def list_unmapped_terms_from_management(
+        self,
+        *,
+        limit: int = 1000,
+        min_count: int = 1,
+    ) -> list[dict[str, Any]]:
+        limit_value = max(1, min(int(limit or 1000), 20000))
+        min_count_value = max(1, int(min_count or 1))
+        sql = """
+        SELECT
+            termo,
+            COUNT(*)::BIGINT AS ocorrencias
+        FROM (
+            SELECT
+                TRIM(
+                    COALESCE(
+                        NULLIF(servico_normalizado, ''),
+                        NULLIF(servico_bruto, ''),
+                        NULLIF(item_normalizado, ''),
+                        NULLIF(item_original, '')
+                    )
+                ) AS termo
+            FROM management_execucao
+            WHERE COALESCE(NULLIF(TRIM(servico_oficial), ''), 'servico_nao_mapeado') IN (
+                'servico_nao_mapeado',
+                'nao_mapeado',
+                '-'
+            )
+        ) src
+        WHERE termo IS NOT NULL AND termo <> ''
+        GROUP BY termo
+        HAVING COUNT(*) >= %s
+        ORDER BY ocorrencias DESC, termo ASC
+        LIMIT %s
+        """
+        with self._db.connection() as conn:
+            cursor_kwargs = {}
+            dict_factory = _dict_row_factory()
+            if dict_factory is not None:
+                cursor_kwargs["row_factory"] = dict_factory
+            with conn.cursor(**cursor_kwargs) as cur:
+                cur.execute(sql, (min_count_value, limit_value))
+                rows = cur.fetchall()
+        return [_row_to_dict(row) for row in rows]
+
+    def remap_management_execucao_by_aliases(
+        self,
+        *,
+        only_unmapped: bool = False,
+        limit: int = 200000,
+    ) -> dict[str, int]:
+        alias_map = self.list_alias_map()
+        if not alias_map:
+            return {"aliases_loaded": 0, "rows_scanned": 0, "rows_updated": 0}
+
+        where_sql = ""
+        if only_unmapped:
+            where_sql = """
+            WHERE COALESCE(NULLIF(TRIM(servico_oficial), ''), 'servico_nao_mapeado') IN (
+                'servico_nao_mapeado',
+                'nao_mapeado',
+                '-'
+            )
+            """
+
+        sql = f"""
+        SELECT
+            id,
+            servico_oficial,
+            categoria,
+            categoria_item,
+            servico_normalizado,
+            servico_bruto,
+            item_normalizado,
+            item_original
+        FROM management_execucao
+        {where_sql}
+        ORDER BY id
+        LIMIT %s
+        """
+        limit_value = max(1, min(int(limit or 200000), 2000000))
+
+        with self._db.connection() as conn:
+            cursor_kwargs = {}
+            dict_factory = _dict_row_factory()
+            if dict_factory is not None:
+                cursor_kwargs["row_factory"] = dict_factory
+            with conn.cursor(**cursor_kwargs) as cur:
+                cur.execute(sql, (limit_value,))
+                rows = [_row_to_dict(row) for row in (cur.fetchall() or [])]
+
+        updates: list[tuple[str, str, str, int]] = []
+        for row in rows:
+            row_id = int(row.get("id", 0) or 0)
+            if row_id <= 0:
+                continue
+
+            match = None
+            for term in _candidate_terms_from_row(row):
+                candidate = alias_map.get(term)
+                if candidate:
+                    match = candidate
+                    break
+            if not match:
+                continue
+
+            target_service = str(match.get("servico_oficial", "") or "").strip()
+            target_category = str(match.get("categoria", "") or "").strip() or "servico_nao_mapeado"
+            if not target_service:
+                continue
+
+            current_service = str(row.get("servico_oficial", "") or "").strip()
+            current_category = str(row.get("categoria", "") or "").strip()
+            current_category_item = str(row.get("categoria_item", "") or "").strip()
+
+            if (
+                current_service == target_service
+                and current_category == target_category
+                and current_category_item == target_category
+            ):
+                continue
+
+            updates.append((target_service, target_category, target_category, row_id))
+
+        if not updates:
+            return {
+                "aliases_loaded": len(alias_map),
+                "rows_scanned": len(rows),
+                "rows_updated": 0,
+            }
+
+        with self._db.connection() as conn:
+            with conn.cursor() as cur:
+                cur.executemany(
+                    """
+                    UPDATE management_execucao
+                    SET
+                        servico_oficial = %s,
+                        categoria = %s,
+                        categoria_item = %s
+                    WHERE id = %s
+                    """,
+                    updates,
+                )
+            conn.commit()
+
+        return {
+            "aliases_loaded": len(alias_map),
+            "rows_scanned": len(rows),
+            "rows_updated": len(updates),
+        }

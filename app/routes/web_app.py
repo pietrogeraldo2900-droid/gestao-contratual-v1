@@ -197,7 +197,7 @@ def _resolve_permission_for_endpoint(endpoint: str) -> str | None:
         return "contratos"
     if endpoint in {"nucleos", "nucleos_save"}:
         return "nucleos"
-    if endpoint in {"servicos", "servicos_create", "servicos_alias_upsert"}:
+    if endpoint in {"servicos", "servicos_create", "servicos_alias_upsert", "servicos_bootstrap"}:
         return "servicos"
     if endpoint in {"gerencial"}:
         return "gerencial"
@@ -298,6 +298,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         "servicos",
         "servicos_create",
         "servicos_alias_upsert",
+        "servicos_bootstrap",
         "index",
         "nucleos",
         "nucleos_save",
@@ -1866,6 +1867,42 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             flash(
                 f"Alias '{result_map.get('alias', {}).get('alias_text', alias_text)}' mapeado para "
                 f"{result_map.get('service', {}).get('servico_oficial', servico_oficial)}.",
+                "success",
+            )
+            rows_updated = int((result_map.get("remap", {}) or {}).get("rows_updated", 0) or 0)
+            if rows_updated > 0:
+                flash(
+                    f"Base historica atualizada: {rows_updated} linha(s) remapeada(s) em management_execucao.",
+                    "info",
+                )
+        except Exception as exc:
+            flash(str(exc), "error")
+        return redirect(url_for("servicos", q=search, nm_days=nm_days, nm_runs=nm_runs))
+
+    @app.post("/servicos/bootstrap")
+    def servicos_bootstrap():
+        if _active_service_mapping_repository() is None:
+            flash(_auth_unavailable_message("Cadastro de servicos"), "error")
+            return redirect(url_for("servicos"))
+
+        search = str(request.form.get("q", "") or "").strip()
+        nm_days_raw = str(request.form.get("nm_days", "365") or "365").strip()
+        nm_runs_raw = str(request.form.get("nm_runs", "1000") or "1000").strip()
+        try:
+            nm_days = max(1, min(int(nm_days_raw), 3650))
+        except Exception:
+            nm_days = 365
+        try:
+            nm_runs = max(10, min(int(nm_runs_raw), 5000))
+        except Exception:
+            nm_runs = 1000
+
+        try:
+            stats = service.bootstrap_service_aliases(max_terms=2000, min_count=1)
+            flash(
+                "Mapeamento automatico concluido: "
+                f"{int(stats.get('unmapped_terms_auto_mapped', 0) or 0)} termo(s) mapeado(s) e "
+                f"{int(stats.get('rows_updated', 0) or 0)} linha(s) retroativamente corrigida(s).",
                 "success",
             )
         except Exception as exc:

@@ -21,6 +21,7 @@
       </div>
       <div class="actions" style="align-items:flex-end;">
         <button type="submit">Filtrar</button>
+        <button type="submit" formaction="{{ url_for('servicos_bootstrap') }}" formmethod="post">Mapear automatico</button>
         <a href="{{ url_for('servicos') }}"><button type="button" class="secondary">Limpar</button></a>
       </div>
     </form>

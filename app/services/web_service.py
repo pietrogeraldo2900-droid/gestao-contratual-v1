@@ -37,6 +37,185 @@ from app.services.master_builder import update_master_from_output
 from app.services.report_system import ReportGenerator, ServiceDictionary, WhatsAppReportParser, save_parsed_outputs
 
 
+SERVICE_ALIAS_BOOTSTRAP: dict[str, dict[str, object]] = {
+    "rede_agua": {
+        "categoria": "rede",
+        "unidade_padrao": "m",
+        "aliases": [
+            "Prolongamento de rede de agua",
+            "Prolongamento de rede",
+            "Prolongamento rede agua",
+            "Prolongamento rede",
+        ],
+    },
+    "ramal_agua": {
+        "categoria": "ligacao",
+        "unidade_padrao": "un",
+        "aliases": [
+            "Execucao de ramais de agua",
+            "Ramais de agua",
+            "Ramal de agua",
+        ],
+    },
+    "ramal_esgoto": {
+        "categoria": "ligacao",
+        "unidade_padrao": "un",
+        "aliases": [
+            "Execucao de ramais de esgoto",
+            "Ramais de esgoto",
+            "Ramal de esgoto",
+        ],
+    },
+    "rede_esgoto": {
+        "categoria": "esgoto",
+        "unidade_padrao": "m",
+        "aliases": [
+            "Execucao de rede de esgoto",
+            "Rede de esgoto",
+        ],
+    },
+    "intradomiciliar": {
+        "categoria": "ligacao",
+        "unidade_padrao": "un",
+        "aliases": [
+            "Ligacoes intradomiciliares",
+            "Ligacao intradomiciliar",
+            "Intradomiciliar",
+        ],
+    },
+    "hidrometro": {
+        "categoria": "hidrometro",
+        "unidade_padrao": "un",
+        "aliases": [
+            "Instalacao de hidrometros",
+            "Instalacao de hidrometro",
+            "Hidrometro",
+        ],
+    },
+    "caixa_uma": {
+        "categoria": "ligacao",
+        "unidade_padrao": "un",
+        "aliases": [
+            "Instalacao de caixas UMA",
+            "Instalacao de caixa UMA",
+            "Instalacao de caixas uma",
+        ],
+    },
+    "interligacao": {
+        "categoria": "rede",
+        "unidade_padrao": "un",
+        "aliases": [
+            "Execucao de interligacao de rede",
+            "Execucao de interligacao de rede de agua",
+            "Interligacao de rede",
+            "Interligacao",
+        ],
+    },
+    "furo_direcional": {
+        "categoria": "rede",
+        "unidade_padrao": "m",
+        "aliases": [
+            "Execucao de furo direcional",
+            "Furo direcional",
+        ],
+    },
+    "adesao_agua": {
+        "categoria": "ligacao",
+        "unidade_padrao": "un",
+        "aliases": [
+            "Adesoes realizadas",
+            "Adesao de agua",
+            "Adesao agua",
+        ],
+    },
+    "caixa_dagua": {
+        "categoria": "ligacao",
+        "unidade_padrao": "un",
+        "aliases": [
+            "Instalacao de caixa dagua",
+            "Instalacao de caixa de agua",
+            "Caixa dagua",
+            "Caixa dagua instalada",
+            "Caixas dagua instaladas",
+            "Caixas d'agua instaladas",
+            "Caixa dgua instalada",
+            "Caixa d agua instalada",
+        ],
+    },
+    "caixa_inspecao": {
+        "categoria": "esgoto",
+        "unidade_padrao": "un",
+        "aliases": [
+            "Instalacao de caixa de inspecao",
+            "Caixa de inspecao",
+        ],
+    },
+    "recomposicao_passeio": {
+        "categoria": "recomposicao",
+        "unidade_padrao": "m",
+        "aliases": [
+            "Recomposicao de valas",
+            "Recomposicao de vala",
+            "Recomposicao",
+        ],
+    },
+    "concretagem_vala": {
+        "categoria": "recomposicao",
+        "unidade_padrao": "m",
+        "aliases": [
+            "Concretagem de vala realizada",
+            "Concretagem de vala",
+        ],
+    },
+    "caps": {
+        "categoria": "insumo",
+        "unidade_padrao": "un",
+        "aliases": [
+            "Caps utilizados",
+            "Capeamento de rede",
+            "Capeamento",
+        ],
+    },
+    "corte_pavimento": {
+        "categoria": "escavacao",
+        "unidade_padrao": "m",
+        "aliases": [
+            "Corte de pavimento com serra clip",
+            "Corte de pavimento",
+            "Serra clip",
+        ],
+    },
+    "retirada_entulho": {
+        "categoria": "apoio",
+        "unidade_padrao": "un",
+        "aliases": [
+            "Retirada de Big Bag",
+            "Retirada de entulho",
+            "Big Bag",
+        ],
+    },
+    "luvas": {
+        "categoria": "insumo",
+        "unidade_padrao": "un",
+        "aliases": [
+            "Luvas executadas",
+            "Luvas",
+        ],
+    },
+    "servico_complementar": {
+        "categoria": "apoio",
+        "unidade_padrao": "un",
+        "aliases": [
+            "Economias",
+            "Execucao de e degraus",
+            "Manutencao de pocos de inspecao",
+            "Retrabalhos em ramais",
+            "Retrabalho em ramais",
+        ],
+    },
+}
+
+
 class WebPipelineService:
     def __init__(
         self,
@@ -570,6 +749,124 @@ class WebPipelineService:
         except Exception:
             return []
 
+    def _suggest_service_for_unmapped_term(self, term: object) -> str:
+        raw = str(term or "").strip()
+        if not raw:
+            return ""
+        norm = normalizar_texto(raw)
+        norm = re.sub(r"[^a-z0-9]+", " ", norm).strip()
+        if not norm:
+            return ""
+
+        if "prolongamento" in norm and "rede" in norm:
+            return "rede_agua"
+        if "ramal" in norm and "esgoto" in norm:
+            return "ramal_esgoto"
+        if "ramal" in norm and "agua" in norm:
+            return "ramal_agua"
+        if "rede" in norm and "esgoto" in norm:
+            return "rede_esgoto"
+        if "intradomiciliar" in norm or ("ligacao" in norm and "domic" in norm):
+            return "intradomiciliar"
+        if "hidrometr" in norm:
+            return "hidrometro"
+        if "caixa" in norm and "uma" in norm:
+            return "caixa_uma"
+        if "interlig" in norm and "rede" in norm:
+            return "interligacao"
+        if "furo" in norm and "direcional" in norm:
+            return "furo_direcional"
+        if "ades" in norm:
+            return "adesao_agua"
+        if "caixa" in norm and "inspec" in norm:
+            return "caixa_inspecao"
+        if "caixa" in norm and (
+            "dagua" in norm
+            or ("de" in norm and "agua" in norm)
+            or bool(re.search(r"\bd\s+agua\b", norm))
+        ):
+            return "caixa_dagua"
+        if "caps" in norm or "capeamento" in norm:
+            return "caps"
+        if "serra clip" in norm or ("corte" in norm and "pavimento" in norm):
+            return "corte_pavimento"
+        if "big bag" in norm or ("retirada" in norm and "entulho" in norm):
+            return "retirada_entulho"
+        if "luvas" in norm:
+            return "luvas"
+        if "economias" in norm or "degraus" in norm or ("retrabalho" in norm and "ramal" in norm):
+            return "servico_complementar"
+        if "pocos de inspec" in norm or "manutencao de pocos" in norm:
+            return "servico_complementar"
+        if "recompos" in norm:
+            return "recomposicao_passeio"
+        if "concretagem" in norm and "vala" in norm:
+            return "concretagem_vala"
+        return ""
+
+    def bootstrap_service_aliases(
+        self,
+        *,
+        max_terms: int = 2000,
+        min_count: int = 1,
+    ) -> dict:
+        if self.service_mapping_repository is None:
+            raise RuntimeError("Cadastro de aliases indisponivel no momento.")
+
+        repo = self.service_mapping_repository
+        created_services = 0
+        upserted_aliases = 0
+
+        service_ids: Dict[str, int] = {}
+        for servico_oficial, meta in SERVICE_ALIAS_BOOTSTRAP.items():
+            row = repo.upsert_service(
+                servico_oficial=servico_oficial,
+                categoria=str(meta.get("categoria", "") or "").strip() or "servico_nao_mapeado",
+                unidade_padrao=str(meta.get("unidade_padrao", "") or "").strip(),
+                ativo=True,
+            )
+            if int(row.get("id", 0) or 0):
+                service_ids[servico_oficial] = int(row.get("id", 0) or 0)
+                created_services += 1
+
+        for servico_oficial, meta in SERVICE_ALIAS_BOOTSTRAP.items():
+            service_id = service_ids.get(servico_oficial, 0)
+            if service_id <= 0:
+                continue
+            for alias in list(meta.get("aliases", []) or []):
+                alias_clean = str(alias or "").strip()
+                if not alias_clean:
+                    continue
+                repo.upsert_alias(alias_clean, service_id, source="bootstrap_catalog", ativo=True)
+                upserted_aliases += 1
+
+        unmapped_terms = repo.list_unmapped_terms_from_management(limit=max_terms, min_count=min_count)
+        auto_mapped_terms = 0
+        for item in unmapped_terms:
+            term = str(item.get("termo", "") or "").strip()
+            if not term:
+                continue
+            suggested = self._suggest_service_for_unmapped_term(term)
+            if not suggested:
+                continue
+            service_id = service_ids.get(suggested, 0)
+            if service_id <= 0:
+                continue
+            repo.upsert_alias(term, service_id, source="bootstrap_unmapped", ativo=True)
+            auto_mapped_terms += 1
+
+        remap_stats = repo.remap_management_execucao_by_aliases(only_unmapped=False)
+        self.refresh_service_catalog()
+        return {
+            "services_upserted": created_services,
+            "aliases_upserted": upserted_aliases,
+            "unmapped_terms_seen": len(unmapped_terms),
+            "unmapped_terms_auto_mapped": auto_mapped_terms,
+            "rows_updated": int(remap_stats.get("rows_updated", 0) or 0),
+            "rows_scanned": int(remap_stats.get("rows_scanned", 0) or 0),
+            "aliases_loaded": int(remap_stats.get("aliases_loaded", 0) or 0),
+        }
+
     def ensure_registered_service(self, servico: object, categoria: object = "", unidade_padrao: object = "") -> dict:
         if self.service_mapping_repository is None:
             raise RuntimeError("Cadastro de servicos indisponivel no momento.")
@@ -607,7 +904,10 @@ class WebPipelineService:
             source=str(source or "manual").strip() or "manual",
             ativo=True,
         )
-        return {"service": service_row, "alias": alias_row}
+        remap_stats = self.service_mapping_repository.remap_management_execucao_by_aliases(
+            only_unmapped=False
+        )
+        return {"service": service_row, "alias": alias_row, "remap": remap_stats}
 
     def apply_registered_service_aliases(self, parsed: dict) -> dict:
         if self.service_mapping_repository is None:
