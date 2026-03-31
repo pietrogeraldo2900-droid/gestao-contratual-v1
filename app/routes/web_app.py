@@ -1,5 +1,6 @@
 ﻿from __future__ import annotations
 
+from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Dict
@@ -328,6 +329,247 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             return candidate  # type: ignore[return-value]
         return None
 
+    def _build_institutional_nucleo_analysis_from_management(
+        filters: Dict[str, object],
+        top_n: int,
+    ) -> list[dict]:
+        management_repo = app.config.get("MANAGEMENT_REPOSITORY")
+        if management_repo is None:
+            return []
+
+        parse_filters = getattr(management_repo, "_parse_filters", None)
+        filter_row = getattr(management_repo, "_filter_row", None)
+        load_db_rows = getattr(management_repo, "_load_rows_from_database", None)
+        load_csv_rows = getattr(management_repo, "_load_rows_from_master_csv", None)
+
+        if not callable(parse_filters) or not callable(filter_row):
+            return []
+
+        try:
+            repo_filters = parse_filters(filters)
+        except Exception:
+            return []
+
+        exec_rows = []
+        ocorr_rows = []
+
+        if callable(load_db_rows):
+            try:
+                db_exec, _, db_ocorr = load_db_rows()
+                exec_rows = list(db_exec or [])
+                ocorr_rows = list(db_ocorr or [])
+            except Exception:
+                exec_rows = []
+                ocorr_rows = []
+
+        if not exec_rows and not ocorr_rows and callable(load_csv_rows):
+            try:
+                csv_exec, _, csv_ocorr = load_csv_rows()
+                exec_rows = list(csv_exec or [])
+                ocorr_rows = list(csv_ocorr or [])
+            except Exception:
+                exec_rows = []
+                ocorr_rows = []
+
+        def _passes(row: dict) -> bool:
+            try:
+                return bool(filter_row(row, repo_filters))
+            except Exception:
+                return False
+
+        nucleo_map: dict[str, dict] = {}
+
+        def _ensure_nucleo(name: object) -> dict:
+            nucleo = (
+                service._canonicalize_nucleo_for_aggregation(name)
+                or service._institutional_text_or_fallback(name)
+            )
+            key = service._normalize_nucleo_key(nucleo) or "__sem_nucleo__"
+            item = nucleo_map.get(key)
+            if item is not None:
+                return item
+
+            item = {
+                "nucleo": nucleo,
+                "processamentos": 0,
+                "sucesso": 0,
+                "erro": 0,
+                "processamentos_alerta": 0,
+                "volume_total": 0.0,
+                "municipio_counter": Counter(),
+                "equipes": set(),
+                "logradouros": set(),
+                "service_counter": Counter(),
+                "service_volume_map": defaultdict(float),
+                "service_unit_map": {},
+                "occurrence_counter": Counter(),
+                "frente_counter": Counter(),
+                "alert_frentes": set(),
+            }
+            nucleo_map[key] = item
+            return item
+
+        for row in ocorr_rows:
+            if not isinstance(row, dict) or not _passes(row):
+                continue
+            item = _ensure_nucleo(row.get("nucleo_oficial") or row.get("nucleo"))
+            tipo_raw = str(row.get("tipo_ocorrencia", "") or "").strip() or "Não informado"
+            tipo = service._institutional_label(tipo_raw, domain="ocorrencia")
+            item["occurrence_counter"][tipo] += 1
+            frente_id = str(row.get("id_frente", "") or "").strip()
+            if frente_id:
+                item["alert_frentes"].add(frente_id)
+
+        for row in exec_rows:
+            if not isinstance(row, dict) or not _passes(row):
+                continue
+
+            item = _ensure_nucleo(row.get("nucleo_oficial") or row.get("nucleo"))
+            item["processamentos"] += 1
+            item["sucesso"] += 1
+
+            quantidade = service._parse_quantity(row.get("quantidade", ""))
+            item["volume_total"] += quantidade
+
+            municipio = service._canonicalize_municipio_for_aggregation(
+                row.get("municipio_oficial", "") or row.get("municipio", "")
+            )
+            if municipio:
+                item["municipio_counter"][municipio] += 1
+
+            equipe = service._canonicalize_equipe_for_aggregation(row.get("equipe", ""))
+            if equipe:
+                item["equipes"].add(equipe)
+
+            logradouro = str(row.get("logradouro", "") or "").strip()
+            if logradouro:
+                item["logradouros"].add(logradouro)
+
+            servico_raw = (
+                str(row.get("servico_oficial", "") or "").strip()
+                or str(row.get("servico_normalizado", "") or "").strip()
+                or str(row.get("servico_bruto", "") or "").strip()
+                or str(row.get("item_normalizado", "") or "").strip()
+                or str(row.get("item_original", "") or "").strip()
+                or "Não informado"
+            )
+            servico = service._institutional_label(servico_raw, domain="servico")
+            item["service_counter"][servico] += 1
+            item["service_volume_map"][servico] += quantidade
+
+            unidade = str(row.get("unidade", "") or "").strip()
+            if unidade and not item["service_unit_map"].get(servico):
+                item["service_unit_map"][servico] = unidade
+
+            frente_id = str(row.get("id_frente", "") or "").strip()
+            if frente_id:
+                item["frente_counter"][frente_id] += 1
+
+        output: list[dict] = []
+        for item in nucleo_map.values():
+            volume_total = float(item.get("volume_total", 0.0) or 0.0)
+            volume_total_fmt = service._display_number(volume_total)
+
+            municipio = "-"
+            if item["municipio_counter"]:
+                municipio = item["municipio_counter"].most_common(1)[0][0]
+
+            equipes = sorted(item["equipes"], key=lambda v: service._normalize_nucleo_key(v))
+            logradouros = sorted(item["logradouros"], key=lambda v: service._normalize_nucleo_key(v))
+            logradouro_texto = service._summarize_values(logradouros, limit=3)
+
+            principais_servicos = []
+            for nome, volume in sorted(
+                item["service_volume_map"].items(),
+                key=lambda kv: float(kv[1] or 0.0),
+                reverse=True,
+            )[:5]:
+                ocorrencias = int(item["service_counter"].get(nome, 0) or 0)
+                unidade = str(item["service_unit_map"].get(nome, "") or "").strip()
+                volume_fmt = service._display_number(float(volume or 0.0))
+                unidade_suffix = f" {unidade}" if unidade else ""
+                descricao = (
+                    f"{nome}, com quantitativo consolidado de {volume_fmt}{unidade_suffix} no período "
+                    f"({service._count_label(ocorrencias, 'registro', 'registros')})."
+                )
+                principais_servicos.append(
+                    {
+                        "nome": nome,
+                        "ocorrencias": ocorrencias,
+                        "volume_total": float(volume or 0.0),
+                        "volume_total_fmt": volume_fmt,
+                        "unidade": unidade,
+                        "descricao_institucional": descricao,
+                    }
+                )
+
+            principais_ocorrencias = []
+            for nome, qtd in item["occurrence_counter"].most_common(5):
+                principais_ocorrencias.append(
+                    {
+                        "nome": nome,
+                        "ocorrencias": int(qtd or 0),
+                        "descricao_institucional": (
+                            f"{nome}, com {service._count_label(int(qtd or 0), 'ocorrência', 'ocorrências')} no período."
+                        ),
+                    }
+                )
+
+            processamentos_alerta = 0
+            if item["frente_counter"] and item["alert_frentes"]:
+                processamentos_alerta = sum(
+                    count
+                    for frente_id, count in item["frente_counter"].items()
+                    if frente_id in item["alert_frentes"]
+                )
+
+            top_servico = principais_servicos[0]["nome"] if principais_servicos else "atividade operacional"
+            top_ocorrencia = principais_ocorrencias[0]["nome"] if principais_ocorrencias else "-"
+            processamentos = int(item.get("processamentos", 0) or 0)
+
+            if top_ocorrencia != "-":
+                observacao_analitica = (
+                    f"No período, o núcleo consolidou quantitativo de {volume_total_fmt}, com destaque para "
+                    f"{str(top_servico).lower()} e recorrência de {str(top_ocorrencia).lower()} "
+                    f"(apoio: {service._count_label(processamentos, 'registro operacional', 'registros operacionais')})."
+                )
+            else:
+                observacao_analitica = (
+                    f"No período, o núcleo consolidou quantitativo de {volume_total_fmt}, com destaque para "
+                    f"{str(top_servico).lower()} e sem recorrência relevante de ocorrências "
+                    f"(apoio: {service._count_label(processamentos, 'registro operacional', 'registros operacionais')})."
+                )
+
+            output.append(
+                {
+                    "nucleo": item["nucleo"],
+                    "processamentos": processamentos,
+                    "volume_total": volume_total,
+                    "volume_total_fmt": volume_total_fmt,
+                    "sucesso": processamentos,
+                    "erro": 0,
+                    "processamentos_alerta": int(processamentos_alerta),
+                    "municipio": municipio,
+                    "equipes": equipes,
+                    "logradouro": logradouro_texto,
+                    "logradouros": logradouros,
+                    "principais_servicos": principais_servicos,
+                    "principais_ocorrencias": principais_ocorrencias,
+                    "observacoes_relevantes": [],
+                    "observacao_analitica": observacao_analitica,
+                }
+            )
+
+        output.sort(
+            key=lambda row: (
+                float(row.get("volume_total", 0.0) or 0.0),
+                int(row.get("processamentos", 0) or 0),
+                int(row.get("processamentos_alerta", 0) or 0),
+            ),
+            reverse=True,
+        )
+        return output[:top_n]
+
     def _build_institutional_report_from_dashboard_fallback(
         dashboard: dict,
         filters: Dict[str, object],
@@ -407,31 +649,32 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                 }
             )
 
-        analise_por_nucleo = []
-        for row in _chart_items("nucleos"):
-            nucleo = service._institutional_label(row.get("label", ""), domain="nucleo")
-            qtd = int(float(row.get("value", 0) or 0))
-            analise_por_nucleo.append(
-                {
-                    "nucleo": nucleo,
-                    "processamentos": qtd,
-                    "volume_total": float(row.get("value", 0) or 0.0),
-                    "volume_total_fmt": str(row.get("value_fmt", "0") or "0"),
-                    "sucesso": qtd,
-                    "erro": 0,
-                    "processamentos_alerta": 0,
-                    "municipio": "-",
-                    "equipes": [],
-                    "logradouro": "-",
-                    "logradouros": [],
-                    "principais_servicos": ranking_servicos[:3],
-                    "principais_ocorrencias": ranking_ocorrencias[:3],
-                    "observacoes_relevantes": [],
-                    "observacao_analitica": (
-                        f"{nucleo} consolidou quantitativo de {row.get('value_fmt', '0')} no recorte aplicado."
-                    ),
-                }
-            )
+        analise_por_nucleo = _build_institutional_nucleo_analysis_from_management(filters, top_n)
+        if not analise_por_nucleo:
+            for row in _chart_items("nucleos"):
+                nucleo = service._institutional_label(row.get("label", ""), domain="nucleo")
+                qtd = int(float(row.get("value", 0) or 0))
+                analise_por_nucleo.append(
+                    {
+                        "nucleo": nucleo,
+                        "processamentos": qtd,
+                        "volume_total": float(row.get("value", 0) or 0.0),
+                        "volume_total_fmt": str(row.get("value_fmt", "0") or "0"),
+                        "sucesso": qtd,
+                        "erro": 0,
+                        "processamentos_alerta": 0,
+                        "municipio": "-",
+                        "equipes": [],
+                        "logradouro": "-",
+                        "logradouros": [],
+                        "principais_servicos": ranking_servicos[:3],
+                        "principais_ocorrencias": ranking_ocorrencias[:3],
+                        "observacoes_relevantes": [],
+                        "observacao_analitica": (
+                            f"{nucleo} consolidou quantitativo de {row.get('value_fmt', '0')} no recorte aplicado."
+                        ),
+                    }
+                )
 
         filtros_aplicados = [
             {"label": "Período da obra (de)", "valor": _render_filter_value(filters.get("obra_from", ""), "-")},
