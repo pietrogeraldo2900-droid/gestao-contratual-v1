@@ -1028,3 +1028,164 @@ class ManagementRepository:
                 "window": "ultimos 7 dias x 7 dias anteriores",
             },
         }
+
+    def list_master_execucao_rows(
+        self,
+        raw_filters: dict[str, object] | None = None,
+        limit: int = 5000,
+    ) -> list[dict[str, Any]]:
+        if self._db is None:
+            return []
+
+        filters = raw_filters or {}
+        where_parts: list[str] = []
+        params: list[Any] = []
+
+        contrato = _safe_text(filters.get("contrato"))
+        if contrato:
+            where_parts.append("contrato ILIKE %s")
+            params.append(f"%{contrato}%")
+
+        nucleo = _safe_text(filters.get("nucleo"))
+        if nucleo:
+            where_parts.append("COALESCE(NULLIF(nucleo_oficial, ''), nucleo, '') ILIKE %s")
+            params.append(f"%{nucleo}%")
+
+        municipio = _safe_text(filters.get("municipio"))
+        if municipio:
+            where_parts.append("COALESCE(NULLIF(municipio_oficial, ''), municipio, '') ILIKE %s")
+            params.append(f"%{municipio}%")
+
+        equipe = _safe_text(filters.get("equipe"))
+        if equipe:
+            where_parts.append("equipe ILIKE %s")
+            params.append(f"%{equipe}%")
+
+        servico = _safe_text(filters.get("servico"))
+        if servico:
+            where_parts.append(
+                "("
+                "servico_oficial ILIKE %s OR "
+                "servico_normalizado ILIKE %s OR "
+                "servico_bruto ILIKE %s OR "
+                "item_original ILIKE %s"
+                ")"
+            )
+            probe = f"%{servico}%"
+            params.extend([probe, probe, probe, probe])
+
+        data_from = _parse_date(filters.get("data_from"))
+        if data_from is not None:
+            where_parts.append("data_referencia >= %s")
+            params.append(data_from)
+
+        data_to = _parse_date(filters.get("data_to"))
+        if data_to is not None:
+            where_parts.append("data_referencia <= %s")
+            params.append(data_to)
+
+        base_sql = """
+            SELECT
+                data_referencia,
+                contrato,
+                COALESCE(NULLIF(nucleo_oficial, ''), nucleo, '-') AS nucleo_view,
+                COALESCE(NULLIF(municipio_oficial, ''), municipio, '-') AS municipio_view,
+                equipe,
+                servico_oficial,
+                servico_normalizado,
+                servico_bruto,
+                item_original,
+                categoria,
+                categoria_item,
+                quantidade,
+                unidade
+            FROM management_execucao
+        """
+        if where_parts:
+            base_sql += " WHERE " + " AND ".join(where_parts)
+        base_sql += " ORDER BY data_referencia DESC NULLS LAST, id DESC LIMIT %s"
+        params.append(max(100, min(int(limit or 5000), 50000)))
+
+        cursor_kwargs = {}
+        dict_factory = _dict_row_factory()
+        if dict_factory is not None:
+            cursor_kwargs["row_factory"] = dict_factory
+
+        with self._db.connection() as conn:
+            with conn.cursor(**cursor_kwargs) as cur:
+                cur.execute(base_sql, params)
+                rows = cur.fetchall() or []
+
+        parsed_rows: list[dict[str, Any]] = []
+        for row in rows:
+            dt = row.get("data_referencia")
+            if isinstance(dt, date):
+                data_label = dt.strftime("%d/%m/%Y")
+                data_input = dt.strftime("%Y-%m-%d")
+            else:
+                raw_dt = _safe_text(dt)
+                parsed_dt = _parse_date(raw_dt)
+                data_label = parsed_dt.strftime("%d/%m/%Y") if parsed_dt else raw_dt
+                data_input = parsed_dt.strftime("%Y-%m-%d") if parsed_dt else ""
+
+            quantidade = float(row.get("quantidade", 0) or 0.0)
+            quantidade_fmt = _display_number(quantidade)
+
+            parsed_rows.append(
+                {
+                    "data_referencia": data_label,
+                    "data_referencia_iso": data_input,
+                    "contrato": _safe_text(row.get("contrato")) or "-",
+                    "nucleo": _safe_text(row.get("nucleo_view")) or "-",
+                    "municipio": _safe_text(row.get("municipio_view")) or "-",
+                    "equipe": _safe_text(row.get("equipe")) or "-",
+                    "servico_oficial": _safe_text(row.get("servico_oficial")) or "-",
+                    "servico_normalizado": _safe_text(row.get("servico_normalizado")) or "-",
+                    "servico_bruto": _safe_text(row.get("servico_bruto")) or "-",
+                    "item_original": _safe_text(row.get("item_original")) or "-",
+                    "categoria": _pick_first_text(row.get("categoria"), row.get("categoria_item")) or "-",
+                    "quantidade": quantidade,
+                    "quantidade_fmt": quantidade_fmt,
+                    "unidade": _safe_text(row.get("unidade")) or "",
+                }
+            )
+
+        return parsed_rows
+
+    def list_master_execucao_filter_options(self) -> dict[str, list[str]]:
+        options = {
+            "contratos": [],
+            "nucleos": [],
+            "municipios": [],
+            "equipes": [],
+            "servicos": [],
+        }
+        if self._db is None:
+            return options
+
+        cursor_kwargs = {}
+        dict_factory = _dict_row_factory()
+        if dict_factory is not None:
+            cursor_kwargs["row_factory"] = dict_factory
+
+        queries = {
+            "contratos": "SELECT DISTINCT contrato AS value FROM management_execucao WHERE contrato IS NOT NULL AND contrato <> '' ORDER BY contrato LIMIT 500",
+            "nucleos": "SELECT DISTINCT COALESCE(NULLIF(nucleo_oficial, ''), nucleo) AS value FROM management_execucao WHERE COALESCE(NULLIF(nucleo_oficial, ''), nucleo) IS NOT NULL AND COALESCE(NULLIF(nucleo_oficial, ''), nucleo) <> '' ORDER BY value LIMIT 500",
+            "municipios": "SELECT DISTINCT COALESCE(NULLIF(municipio_oficial, ''), municipio) AS value FROM management_execucao WHERE COALESCE(NULLIF(municipio_oficial, ''), municipio) IS NOT NULL AND COALESCE(NULLIF(municipio_oficial, ''), municipio) <> '' ORDER BY value LIMIT 500",
+            "equipes": "SELECT DISTINCT equipe AS value FROM management_execucao WHERE equipe IS NOT NULL AND equipe <> '' ORDER BY equipe LIMIT 500",
+            "servicos": "SELECT DISTINCT COALESCE(NULLIF(servico_oficial, ''), NULLIF(servico_normalizado, ''), NULLIF(servico_bruto, ''), NULLIF(item_original, '')) AS value FROM management_execucao WHERE COALESCE(NULLIF(servico_oficial, ''), NULLIF(servico_normalizado, ''), NULLIF(servico_bruto, ''), NULLIF(item_original, '')) IS NOT NULL ORDER BY value LIMIT 800",
+        }
+
+        with self._db.connection() as conn:
+            with conn.cursor(**cursor_kwargs) as cur:
+                for key, sql in queries.items():
+                    cur.execute(sql)
+                    rows = cur.fetchall() or []
+                    clean_values = []
+                    for row in rows:
+                        value = _safe_text(row.get("value"))
+                        if value:
+                            clean_values.append(value)
+                    options[key] = clean_values
+
+        return options

@@ -4,86 +4,157 @@
   <div class="page-hero-grid">
     <div>
       <div class="hero-eyebrow">Dados oficiais</div>
-      <h2 class="hero-title">Base Mestra</h2>
-      <p class="hero-subtitle">Acesse os arquivos consolidados da Base Mestra para auditoria, filtros externos e conciliacao com as medicoes recebidas.</p>
+      <h2 class="hero-title">Base Mestra (Banco)</h2>
+      <p class="hero-subtitle">Consulta direta da base consolidada no Postgres, com filtros e exportacao para comparacao externa de medicao.</p>
       <div class="hero-chip-row">
-        <span class="hero-chip">Acesso protegido</span>
-        <span class="hero-chip">Download direto</span>
-        <span class="hero-chip">Fonte oficial</span>
+        <span class="hero-chip">DB-first</span>
+        <span class="hero-chip">Filtros reais</span>
+        <span class="hero-chip">Exportacao CSV</span>
       </div>
     </div>
   </div>
 </section>
 
+{% if db_error %}
+<section class="section">
+  <h3>Status da consulta</h3>
+  <div class="body">
+    <div class="dashboard-empty" style="border-color:rgba(255,107,129,.35); color:#ffd6dc;">{{ db_error }}</div>
+  </div>
+</section>
+{% endif %}
+
 <div class="kpi-grid">
   <div class="kpi-card executive">
-    <div class="kpi-title">Arquivos</div>
-    <div class="kpi-value">{{ summary.total_files }}</div>
-    <div class="kpi-subtitle">Total encontrado na Base Mestra.</div>
+    <div class="kpi-title">Registros</div>
+    <div class="kpi-value">{{ summary.total_rows }}</div>
+    <div class="kpi-subtitle">Linhas retornadas no recorte.</div>
   </div>
   <div class="kpi-card executive">
-    <div class="kpi-title">CSV</div>
-    <div class="kpi-value">{{ summary.csv_files }}</div>
-    <div class="kpi-subtitle">Arquivos tabulares para consolidacao.</div>
+    <div class="kpi-title">Volume total</div>
+    <div class="kpi-value">{{ summary.volume_total_fmt }}</div>
+    <div class="kpi-subtitle">Soma de quantidade no recorte.</div>
   </div>
   <div class="kpi-card executive">
-    <div class="kpi-title">Planilhas</div>
-    <div class="kpi-value">{{ summary.spreadsheet_files }}</div>
-    <div class="kpi-subtitle">Arquivos XLS/XLSX disponiveis.</div>
+    <div class="kpi-title">Servicos</div>
+    <div class="kpi-value">{{ summary.servicos_distintos }}</div>
+    <div class="kpi-subtitle">Servicos oficiais distintos.</div>
   </div>
   <div class="kpi-card executive">
-    <div class="kpi-title">Tamanho total</div>
-    <div class="kpi-value">{{ summary.total_size_mb }} MB</div>
-    <div class="kpi-subtitle">Volume aproximado para download.</div>
+    <div class="kpi-title">Nucleos</div>
+    <div class="kpi-value">{{ summary.nucleos_distintos }}</div>
+    <div class="kpi-subtitle">Nucleos no recorte filtrado.</div>
   </div>
 </div>
 
 <section class="section">
-  <h3>Arquivos da Base Mestra</h3>
+  <h3>Filtros da Base Mestra</h3>
   <div class="body">
-    {% if files %}
+    <form method="get" action="{{ url_for('base_mestra_list') }}">
+      <div class="grid-two">
+        <div class="field">
+          <label for="base-contrato">Contrato</label>
+          <select id="base-contrato" name="contrato">
+            <option value="">Todos</option>
+            {% for value in options.contratos %}
+              <option value="{{ value }}" {% if filters.contrato == value %}selected{% endif %}>{{ value }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="base-nucleo">Nucleo</label>
+          <select id="base-nucleo" name="nucleo">
+            <option value="">Todos</option>
+            {% for value in options.nucleos %}
+              <option value="{{ value }}" {% if filters.nucleo == value %}selected{% endif %}>{{ value }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="base-municipio">Municipio</label>
+          <select id="base-municipio" name="municipio">
+            <option value="">Todos</option>
+            {% for value in options.municipios %}
+              <option value="{{ value }}" {% if filters.municipio == value %}selected{% endif %}>{{ value }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="base-equipe">Equipe</label>
+          <select id="base-equipe" name="equipe">
+            <option value="">Todas</option>
+            {% for value in options.equipes %}
+              <option value="{{ value }}" {% if filters.equipe == value %}selected{% endif %}>{{ value }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="base-servico">Servico</label>
+          <select id="base-servico" name="servico">
+            <option value="">Todos</option>
+            {% for value in options.servicos %}
+              <option value="{{ value }}" {% if filters.servico == value %}selected{% endif %}>{{ value }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="base-data-from">Data (de)</label>
+          <input id="base-data-from" type="date" name="data_from" value="{{ filters.data_from }}">
+        </div>
+        <div class="field">
+          <label for="base-data-to">Data (ate)</label>
+          <input id="base-data-to" type="date" name="data_to" value="{{ filters.data_to }}">
+        </div>
+      </div>
+      <div class="actions">
+        <button type="submit">Aplicar filtros</button>
+        <a href="{{ url_for('base_mestra_list') }}"><button type="button" class="secondary">Limpar</button></a>
+        {% if rows %}
+          <a href="{{ url_for('base_mestra_list', contrato=filters.contrato, nucleo=filters.nucleo, municipio=filters.municipio, equipe=filters.equipe, servico=filters.servico, data_from=filters.data_from, data_to=filters.data_to, export='csv') }}"><button type="button" class="secondary">Exportar CSV</button></a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="section">
+  <h3>Registros da Base Mestra</h3>
+  <div class="body">
+    {% if rows %}
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Arquivo</th>
-              <th>Tipo</th>
-              <th>Modificado em</th>
-              <th>Tamanho</th>
-              <th>Acoes</th>
+              <th>Data</th>
+              <th>Contrato</th>
+              <th>Nucleo</th>
+              <th>Municipio</th>
+              <th>Equipe</th>
+              <th>Servico oficial</th>
+              <th>Item original</th>
+              <th>Quantidade</th>
+              <th>Unidade</th>
             </tr>
           </thead>
           <tbody>
-            {% for item in files %}
+            {% for row in rows %}
               <tr>
-                <td>
-                  <strong>{{ item.name }}</strong>
-                  <div class="muted mono">{{ item.relative_path }}</div>
-                </td>
-                <td>{{ item.kind }}</td>
-                <td>{{ item.modified_at }}</td>
-                <td>
-                  {% if item.size_bytes >= 1048576 %}
-                    {{ '%.2f'|format(item.size_bytes / 1048576) }} MB
-                  {% elif item.size_bytes >= 1024 %}
-                    {{ '%.1f'|format(item.size_bytes / 1024) }} KB
-                  {% else %}
-                    {{ item.size_bytes }} B
-                  {% endif %}
-                </td>
-                <td>
-                  <div class="actions" style="margin-top:0;">
-                    <a href="{{ url_for('base_mestra_file', relative_path=item.relative_path) }}"><button type="button" class="secondary small">Abrir</button></a>
-                    <a href="{{ url_for('base_mestra_file', relative_path=item.relative_path, download=1) }}"><button type="button" class="small">Baixar</button></a>
-                  </div>
-                </td>
+                <td>{{ row.data_referencia or '-' }}</td>
+                <td>{{ row.contrato }}</td>
+                <td>{{ row.nucleo }}</td>
+                <td>{{ row.municipio }}</td>
+                <td>{{ row.equipe }}</td>
+                <td>{{ row.servico_oficial }}</td>
+                <td>{{ row.item_original }}</td>
+                <td>{{ row.quantidade_fmt }}</td>
+                <td>{{ row.unidade or '-' }}</td>
               </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
     {% else %}
-      <div class="dashboard-empty">Nenhum arquivo encontrado na pasta da Base Mestra neste ambiente.</div>
+      <div class="dashboard-empty">Nenhum registro encontrado para o filtro atual na Base Mestra do banco.</div>
     {% endif %}
   </div>
 </section>

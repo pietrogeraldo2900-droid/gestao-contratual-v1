@@ -1,5 +1,7 @@
 ﻿from __future__ import annotations
 
+import csv
+import io
 from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -1524,45 +1526,120 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
 
     @app.get("/base-mestra")
     def base_mestra_list():
-        master_root = Path(service.master_dir).resolve()
-        files = []
+        filters = {
+            "contrato": str(request.args.get("contrato", "") or "").strip(),
+            "nucleo": str(request.args.get("nucleo", "") or "").strip(),
+            "municipio": str(request.args.get("municipio", "") or "").strip(),
+            "equipe": str(request.args.get("equipe", "") or "").strip(),
+            "servico": str(request.args.get("servico", "") or "").strip(),
+            "data_from": str(request.args.get("data_from", "") or "").strip(),
+            "data_to": str(request.args.get("data_to", "") or "").strip(),
+        }
 
-        if master_root.exists() and master_root.is_dir():
-            for file_path in sorted(master_root.rglob("*"), key=lambda item: item.stat().st_mtime, reverse=True):
-                if not file_path.is_file():
-                    continue
-                rel_path = file_path.relative_to(master_root).as_posix()
-                suffix = str(file_path.suffix or "").strip().lower()
-                if suffix in {".xlsx", ".xls"}:
-                    kind = "Planilha"
-                elif suffix == ".csv":
-                    kind = "CSV"
-                else:
-                    kind = suffix.replace(".", "").upper() or "Arquivo"
-                modified_at = datetime.fromtimestamp(file_path.stat().st_mtime).strftime("%d/%m/%Y %H:%M")
-                files.append(
-                    {
-                        "name": file_path.name,
-                        "relative_path": rel_path,
-                        "kind": kind,
-                        "size_bytes": int(file_path.stat().st_size),
-                        "modified_at": modified_at,
-                    }
+        management_repo = app.config.get("MANAGEMENT_REPOSITORY")
+        list_rows = getattr(management_repo, "list_master_execucao_rows", None)
+        list_options = getattr(management_repo, "list_master_execucao_filter_options", None)
+
+        rows = []
+        options = {
+            "contratos": [],
+            "nucleos": [],
+            "municipios": [],
+            "equipes": [],
+            "servicos": [],
+        }
+        db_error = ""
+
+        if callable(list_rows):
+            try:
+                rows = list_rows(filters, limit=8000)
+            except Exception as exc:
+                db_error = f"Nao foi possivel consultar a Base Mestra no banco: {exc}"
+                rows = []
+        else:
+            db_error = "Repositorio gerencial indisponivel neste ambiente."
+
+        if callable(list_options):
+            try:
+                options = list_options()
+            except Exception:
+                pass
+
+        export = str(request.args.get("export", "") or "").strip().lower()
+        if export == "csv":
+            buffer = io.StringIO()
+            writer = csv.writer(buffer)
+            writer.writerow(
+                [
+                    "data_referencia",
+                    "contrato",
+                    "nucleo",
+                    "municipio",
+                    "equipe",
+                    "servico_oficial",
+                    "servico_normalizado",
+                    "servico_bruto",
+                    "item_original",
+                    "categoria",
+                    "quantidade",
+                    "unidade",
+                ]
+            )
+            for row in rows:
+                writer.writerow(
+                    [
+                        row.get("data_referencia", ""),
+                        row.get("contrato", ""),
+                        row.get("nucleo", ""),
+                        row.get("municipio", ""),
+                        row.get("equipe", ""),
+                        row.get("servico_oficial", ""),
+                        row.get("servico_normalizado", ""),
+                        row.get("servico_bruto", ""),
+                        row.get("item_original", ""),
+                        row.get("categoria", ""),
+                        row.get("quantidade_fmt", ""),
+                        row.get("unidade", ""),
+                    ]
                 )
+            content = buffer.getvalue()
+            filename = f"base_mestra_filtrada_{datetime.now():%Y%m%d_%H%M%S}.csv"
+            response = make_response(content)
+            response.headers["Content-Type"] = "text/csv; charset=utf-8"
+            response.headers["Content-Disposition"] = f"attachment; filename={filename}"
+            return response
 
-        total_size = sum(int(item.get("size_bytes", 0) or 0) for item in files)
+        volume_total = sum(float(row.get("quantidade", 0) or 0.0) for row in rows)
+        servicos_distintos = len(
+            {
+                str(row.get("servico_oficial", "") or "").strip()
+                for row in rows
+                if str(row.get("servico_oficial", "") or "").strip()
+                and str(row.get("servico_oficial", "") or "").strip() != "-"
+            }
+        )
+        nucleos_distintos = len(
+            {
+                str(row.get("nucleo", "") or "").strip()
+                for row in rows
+                if str(row.get("nucleo", "") or "").strip() and str(row.get("nucleo", "") or "").strip() != "-"
+            }
+        )
         summary = {
-            "total_files": len(files),
-            "csv_files": sum(1 for item in files if item.get("kind") == "CSV"),
-            "spreadsheet_files": sum(1 for item in files if item.get("kind") == "Planilha"),
-            "total_size_mb": round(total_size / (1024 * 1024), 2) if total_size else 0,
+            "total_rows": len(rows),
+            "volume_total_fmt": f"{volume_total:.2f}".rstrip("0").rstrip("."),
+            "servicos_distintos": servicos_distintos,
+            "nucleos_distintos": nucleos_distintos,
         }
 
         return render_template(
             "base_mestra.html",
             title="Base Mestra",
-            files=files,
+            rows=rows,
+            filters=filters,
+            options=options,
             summary=summary,
+            db_error=db_error,
         )
 
     @app.get("/base-mestra/arquivo/<path:relative_path>")
