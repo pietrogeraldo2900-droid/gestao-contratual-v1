@@ -12,6 +12,13 @@
         <label>Busca</label>
         <input name="q" value="{{ q }}" placeholder="Servico, alias ou categoria">
       </div>
+      <div class="field">
+        <label>Janela (dias) / Runs</label>
+        <div class="grid-2" style="gap:8px;">
+          <input type="number" min="1" max="3650" name="nm_days" value="{{ nm_days }}" placeholder="Dias">
+          <input type="number" min="10" max="5000" name="nm_runs" value="{{ nm_runs }}" placeholder="Runs">
+        </div>
+      </div>
       <div class="actions" style="align-items:flex-end;">
         <button type="submit">Filtrar</button>
         <a href="{{ url_for('servicos') }}"><button type="button" class="secondary">Limpar</button></a>
@@ -25,6 +32,8 @@
   <div class="body">
     <form method="post" action="{{ url_for('servicos_create') }}" class="grid-2">
       <input type="hidden" name="q" value="{{ q }}">
+      <input type="hidden" name="nm_days" value="{{ nm_days }}">
+      <input type="hidden" name="nm_runs" value="{{ nm_runs }}">
       <div class="field">
         <label>Servico oficial</label>
         <input name="servico_oficial" required placeholder="Ex.: prolongamento_rede_agua">
@@ -49,6 +58,8 @@
   <div class="body">
     <form method="post" action="{{ url_for('servicos_alias_upsert') }}" class="grid-2">
       <input type="hidden" name="q" value="{{ q }}">
+      <input type="hidden" name="nm_days" value="{{ nm_days }}">
+      <input type="hidden" name="nm_runs" value="{{ nm_runs }}">
       <input type="hidden" name="source" value="manual">
       <div class="field">
         <label>Termo/alias</label>
@@ -102,6 +113,8 @@
                 <td>
                   <form method="post" action="{{ url_for('servicos_alias_upsert') }}" class="actions" style="gap:8px; margin:0;">
                     <input type="hidden" name="q" value="{{ q }}">
+                    <input type="hidden" name="nm_days" value="{{ nm_days }}">
+                    <input type="hidden" name="nm_runs" value="{{ nm_runs }}">
                     <input type="hidden" name="source" value="history_unmapped">
                     <input type="hidden" name="alias_text" value="{{ row.termo }}">
                     <select name="servico_oficial" required>
@@ -121,6 +134,56 @@
       </div>
     {% else %}
       <div class="notice success">Nenhum termo nao mapeado na janela atual.</div>
+    {% endif %}
+  </div>
+</section>
+
+<section class="section">
+  <h3>Itens nao mapeados recentes</h3>
+  <div class="body">
+    <p class="muted">Itens reais mais recentes detectados como nao mapeados. Use o remapeamento rapido para corrigir.</p>
+    {% if unmapped_dashboard.recent_items %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Quando</th>
+              <th>Nucleo</th>
+              <th>Termo</th>
+              <th>Contexto</th>
+              <th>Remapear</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in unmapped_dashboard.recent_items %}
+              <tr class="row-warning">
+                <td>{{ row.processed_at or '-' }}</td>
+                <td>{{ row.nucleo or '-' }}</td>
+                <td><strong>{{ row.servico_normalizado or row.servico_bruto or row.termo }}</strong></td>
+                <td>{{ row.contexto or '-' }}</td>
+                <td>
+                  <form method="post" action="{{ url_for('servicos_alias_upsert') }}" class="actions" style="gap:8px; margin:0;">
+                    <input type="hidden" name="q" value="{{ q }}">
+                    <input type="hidden" name="nm_days" value="{{ nm_days }}">
+                    <input type="hidden" name="nm_runs" value="{{ nm_runs }}">
+                    <input type="hidden" name="source" value="history_recent">
+                    <input type="hidden" name="alias_text" value="{{ row.servico_normalizado or row.servico_bruto or row.termo }}">
+                    <select name="servico_oficial" required>
+                      <option value="">Servico</option>
+                      {% for option in catalog_options %}
+                        <option value="{{ option.servico }}">{{ option.label }}</option>
+                      {% endfor %}
+                    </select>
+                    <button type="submit">Salvar</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="notice success">Nenhum item nao mapeado recente encontrado na janela atual.</div>
     {% endif %}
   </div>
 </section>
@@ -164,6 +227,7 @@
           <th>Categoria</th>
           <th>Origem</th>
           <th>Atualizado em</th>
+          <th>Editar mapeamento</th>
         </tr>
       </thead>
       <tbody>
@@ -174,9 +238,25 @@
             <td>{{ row.categoria or '-' }}</td>
             <td>{{ row.source or '-' }}</td>
             <td>{{ row.updated_at or '-' }}</td>
+            <td>
+              <form method="post" action="{{ url_for('servicos_alias_upsert') }}" class="actions" style="gap:8px; margin:0;">
+                <input type="hidden" name="q" value="{{ q }}">
+                <input type="hidden" name="nm_days" value="{{ nm_days }}">
+                <input type="hidden" name="nm_runs" value="{{ nm_runs }}">
+                <input type="hidden" name="source" value="manual_edit">
+                <input type="hidden" name="alias_text" value="{{ row.alias_text }}">
+                <select name="servico_oficial" required>
+                  <option value="">Servico</option>
+                  {% for option in catalog_options %}
+                    <option value="{{ option.servico }}" {% if option.servico == row.servico_oficial %}selected{% endif %}>{{ option.label }}</option>
+                  {% endfor %}
+                </select>
+                <button type="submit">Atualizar</button>
+              </form>
+            </td>
           </tr>
         {% else %}
-          <tr><td colspan="5">Nenhum alias registrado.</td></tr>
+          <tr><td colspan="6">Nenhum alias registrado.</td></tr>
         {% endfor %}
       </tbody>
     </table>

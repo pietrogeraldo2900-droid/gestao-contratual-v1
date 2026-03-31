@@ -1808,6 +1808,16 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             return redirect(url_for("servicos"))
 
         search = str(request.form.get("q", "") or "").strip()
+        nm_days_raw = str(request.form.get("nm_days", "30") or "30").strip()
+        nm_runs_raw = str(request.form.get("nm_runs", "250") or "250").strip()
+        try:
+            nm_days = max(1, min(int(nm_days_raw), 3650))
+        except Exception:
+            nm_days = 30
+        try:
+            nm_runs = max(10, min(int(nm_runs_raw), 5000))
+        except Exception:
+            nm_runs = 250
         servico_oficial = str(request.form.get("servico_oficial", "") or "").strip()
         categoria = str(request.form.get("categoria", "") or "").strip()
         unidade_padrao = str(request.form.get("unidade_padrao", "") or "").strip()
@@ -1820,7 +1830,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             flash(f"Servico {created.get('servico_oficial', servico_oficial)} salvo com sucesso.", "success")
         except Exception as exc:
             flash(str(exc), "error")
-        return redirect(url_for("servicos", q=search))
+        return redirect(url_for("servicos", q=search, nm_days=nm_days, nm_runs=nm_runs))
 
     @app.post("/servicos/alias")
     def servicos_alias_upsert():
@@ -1829,6 +1839,16 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             return redirect(url_for("servicos"))
 
         search = str(request.form.get("q", "") or "").strip()
+        nm_days_raw = str(request.form.get("nm_days", "30") or "30").strip()
+        nm_runs_raw = str(request.form.get("nm_runs", "250") or "250").strip()
+        try:
+            nm_days = max(1, min(int(nm_days_raw), 3650))
+        except Exception:
+            nm_days = 30
+        try:
+            nm_runs = max(10, min(int(nm_runs_raw), 5000))
+        except Exception:
+            nm_runs = 250
         alias_text = str(request.form.get("alias_text", "") or "").strip()
         servico_oficial = str(request.form.get("servico_oficial", "") or "").strip()
         categoria = str(request.form.get("categoria", "") or "").strip()
@@ -1850,7 +1870,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             )
         except Exception as exc:
             flash(str(exc), "error")
-        return redirect(url_for("servicos", q=search))
+        return redirect(url_for("servicos", q=search, nm_days=nm_days, nm_runs=nm_runs))
 
     @app.post("/preview")
     def preview():
