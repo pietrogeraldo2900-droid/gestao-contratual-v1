@@ -1403,6 +1403,295 @@ class WebPipelineService:
             parts.append(f"Logradouro: {logradouro}")
         return " | ".join(parts)
 
+    def _write_unmapped_alias_candidates(self, alias_candidates: List[dict]) -> str:
+        candidate_headers = [
+            "termo_candidato",
+            "exemplo_servico_bruto",
+            "ocorrencias",
+            "ultima_ocorrencia",
+            "sugestao_categoria",
+            "servico_corrigido_recorrente",
+            "corrigidos_manuais",
+            "regra_recorrente",
+            "contexto_recorrente",
+            "ultimo_nucleo",
+            "ultimo_municipio",
+            "ultimo_equipe",
+            "recomendacao",
+        ]
+        self.unmapped_candidates_file.parent.mkdir(parents=True, exist_ok=True)
+        with self.unmapped_candidates_file.open("w", encoding="utf-8-sig", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=candidate_headers)
+            writer.writeheader()
+            for row in alias_candidates:
+                writer.writerow(row)
+
+        try:
+            return self.unmapped_candidates_file.resolve().as_uri()
+        except Exception:
+            return ""
+
+    def _build_unmapped_dashboard_from_db(
+        self,
+        *,
+        days: int,
+        runs_limit: int,
+        top_limit: int,
+        recent_limit: int,
+    ) -> dict | None:
+        if self.db_manager is None:
+            return None
+
+        where_sql = """
+            (data_referencia IS NULL OR data_referencia >= CURRENT_DATE - (%s * INTERVAL '1 day'))
+            AND COALESCE(NULLIF(TRIM(servico_normalizado), ''), NULLIF(TRIM(servico_bruto), ''), NULLIF(TRIM(item_normalizado), ''), NULLIF(TRIM(item_original), '')) IS NOT NULL
+            AND (
+                NULLIF(TRIM(servico_oficial), '') IS NULL
+                OR LOWER(TRIM(servico_oficial)) IN ('servico_nao_mapeado', 'nao_mapeado', '-')
+                OR LOWER(TRIM(COALESCE(categoria, ''))) = 'servico_nao_mapeado'
+                OR LOWER(TRIM(COALESCE(categoria_item, ''))) = 'servico_nao_mapeado'
+            )
+        """
+
+        top_rows: List[dict] = []
+        recent_rows: List[dict] = []
+        total_itens = 0
+        termos_distintos = 0
+        runs_com_nao_mapeado = 0
+        ultima_ocorrencia_global = "-"
+
+        try:
+            with self.db_manager.connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        f"""
+                        WITH base AS (
+                            SELECT
+                                id,
+                                data_referencia,
+                                COALESCE(NULLIF(TRIM(servico_normalizado), ''), NULLIF(TRIM(servico_bruto), ''), NULLIF(TRIM(item_normalizado), ''), NULLIF(TRIM(item_original), '')) AS termo,
+                                COALESCE(NULLIF(TRIM(servico_bruto), ''), NULLIF(TRIM(item_original), ''), '') AS servico_bruto_ex,
+                                COALESCE(NULLIF(TRIM(nucleo_oficial), ''), NULLIF(TRIM(nucleo), ''), '') AS nucleo,
+                                COALESCE(NULLIF(TRIM(municipio_oficial), ''), NULLIF(TRIM(municipio), ''), '') AS municipio,
+                                COALESCE(NULLIF(TRIM(equipe), ''), '') AS equipe,
+                                COALESCE(NULLIF(TRIM(logradouro), ''), '') AS logradouro,
+                                COALESCE(NULLIF(TRIM(categoria), ''), NULLIF(TRIM(categoria_item), ''), '') AS sugestao_categoria
+                            FROM management_execucao
+                            WHERE {where_sql}
+                        ),
+                        agg AS (
+                            SELECT
+                                termo,
+                                COUNT(*) AS ocorrencias,
+                                MAX(data_referencia) AS ultima_data
+                            FROM base
+                            GROUP BY termo
+                        ),
+                        sample AS (
+                            SELECT DISTINCT ON (termo)
+                                termo,
+                                nucleo,
+                                municipio,
+                                equipe,
+                                logradouro,
+                                servico_bruto_ex,
+                                sugestao_categoria,
+                                data_referencia
+                            FROM base
+                            ORDER BY termo, data_referencia DESC NULLS LAST, id DESC
+                        )
+                        SELECT
+                            agg.termo,
+                            agg.ocorrencias,
+                            agg.ultima_data,
+                            sample.nucleo,
+                            sample.municipio,
+                            sample.equipe,
+                            sample.logradouro,
+                            sample.servico_bruto_ex,
+                            sample.sugestao_categoria
+                        FROM agg
+                        LEFT JOIN sample ON sample.termo = agg.termo
+                        ORDER BY agg.ocorrencias DESC, agg.ultima_data DESC NULLS LAST, agg.termo ASC
+                        LIMIT %s
+                        """,
+                        (days, top_limit),
+                    )
+                    top_fetched = cur.fetchall() or []
+
+                    cur.execute(
+                        f"""
+                        SELECT
+                            COUNT(*) AS total_itens,
+                            COUNT(DISTINCT termo) AS termos_distintos,
+                            COUNT(DISTINCT data_referencia) AS runs_com_nao_mapeado,
+                            MAX(data_referencia) AS ultima_data
+                        FROM (
+                            SELECT
+                                data_referencia,
+                                COALESCE(NULLIF(TRIM(servico_normalizado), ''), NULLIF(TRIM(servico_bruto), ''), NULLIF(TRIM(item_normalizado), ''), NULLIF(TRIM(item_original), '')) AS termo
+                            FROM management_execucao
+                            WHERE {where_sql}
+                        ) t
+                        """,
+                        (days,),
+                    )
+                    summary_row = cur.fetchone()
+
+                    cur.execute(
+                        f"""
+                        SELECT
+                            data_referencia,
+                            COALESCE(NULLIF(TRIM(nucleo_oficial), ''), NULLIF(TRIM(nucleo), ''), '') AS nucleo,
+                            COALESCE(NULLIF(TRIM(municipio_oficial), ''), NULLIF(TRIM(municipio), ''), '') AS municipio,
+                            COALESCE(NULLIF(TRIM(equipe), ''), '') AS equipe,
+                            COALESCE(NULLIF(TRIM(logradouro), ''), '') AS logradouro,
+                            COALESCE(NULLIF(TRIM(servico_normalizado), ''), NULLIF(TRIM(servico_bruto), ''), NULLIF(TRIM(item_normalizado), ''), NULLIF(TRIM(item_original), '')) AS termo,
+                            COALESCE(NULLIF(TRIM(servico_bruto), ''), '') AS servico_bruto,
+                            COALESCE(NULLIF(TRIM(categoria), ''), NULLIF(TRIM(categoria_item), ''), '') AS sugestao_categoria,
+                            quantidade,
+                            unidade
+                        FROM management_execucao
+                        WHERE {where_sql}
+                        ORDER BY data_referencia DESC NULLS LAST, id DESC
+                        LIMIT %s
+                        """,
+                        (days, recent_limit),
+                    )
+                    recent_fetched = cur.fetchall() or []
+        except Exception:
+            return None
+
+        for item in top_fetched:
+            termo, ocorrencias, ultima_data, nucleo, municipio, equipe, logradouro, servico_bruto_ex, sugestao_categoria = item
+            ultima_text = "-"
+            if isinstance(ultima_data, (date, datetime)):
+                ultima_text = (
+                    ultima_data.strftime("%d/%m/%Y")
+                    if isinstance(ultima_data, date) and not isinstance(ultima_data, datetime)
+                    else ultima_data.strftime("%d/%m/%Y %H:%M")
+                )
+            context_parts = []
+            if str(nucleo or "").strip():
+                context_parts.append(f"Nucleo: {str(nucleo).strip()}")
+            if str(municipio or "").strip():
+                context_parts.append(f"Municipio: {str(municipio).strip()}")
+            if str(equipe or "").strip():
+                context_parts.append(f"Equipe: {self._first_team(equipe)}")
+            if str(logradouro or "").strip():
+                context_parts.append(f"Logradouro: {str(logradouro).strip()}")
+
+            top_rows.append(
+                {
+                    "termo": str(termo or "").strip(),
+                    "ocorrencias": int(ocorrencias or 0),
+                    "ultima_ocorrencia": ultima_text,
+                    "ultimo_nucleo": str(nucleo or "").strip(),
+                    "ultimo_municipio": str(municipio or "").strip(),
+                    "ultimo_equipe": self._first_team(equipe),
+                    "ultimo_logradouro": str(logradouro or "").strip(),
+                    "contexto_recorrente": " | ".join(context_parts),
+                    "exemplo_servico_bruto": str(servico_bruto_ex or "").strip(),
+                    "sugestao_categoria_recorrente": str(sugestao_categoria or "").strip(),
+                    "regra_recorrente": "db_master_execucao",
+                    "corrigidos_manuais": 0,
+                    "nao_corrigidos": int(ocorrencias or 0),
+                    "servico_corrigido_recorrente": "",
+                }
+            )
+
+        if summary_row:
+            total_itens = int(summary_row[0] or 0)
+            termos_distintos = int(summary_row[1] or 0)
+            runs_com_nao_mapeado = int(summary_row[2] or 0)
+            last_dt = summary_row[3]
+            if isinstance(last_dt, (date, datetime)):
+                ultima_ocorrencia_global = (
+                    last_dt.strftime("%d/%m/%Y")
+                    if isinstance(last_dt, date) and not isinstance(last_dt, datetime)
+                    else last_dt.strftime("%d/%m/%Y %H:%M")
+                )
+
+        for item in recent_fetched:
+            data_ref, nucleo, municipio, equipe, logradouro, termo, servico_bruto, sugestao_categoria, quantidade, unidade = item
+            processed_at = "-"
+            if isinstance(data_ref, (date, datetime)):
+                processed_at = (
+                    data_ref.strftime("%d/%m/%Y")
+                    if isinstance(data_ref, date) and not isinstance(data_ref, datetime)
+                    else data_ref.strftime("%d/%m/%Y %H:%M")
+                )
+            ctx = self._format_context_label(
+                {
+                    "nucleo": nucleo,
+                    "municipio": municipio,
+                    "equipe": equipe,
+                    "logradouro": logradouro,
+                }
+            )
+            recent_rows.append(
+                {
+                    "termo": str(termo or "").strip(),
+                    "servico_bruto": str(servico_bruto or "").strip(),
+                    "servico_normalizado": str(termo or "").strip(),
+                    "mensagem_original": "",
+                    "quantidade": str(quantidade or "").strip(),
+                    "unidade": str(unidade or "").strip(),
+                    "nucleo": str(nucleo or "").strip(),
+                    "municipio": str(municipio or "").strip(),
+                    "equipe": self._first_team(equipe),
+                    "logradouro": str(logradouro or "").strip(),
+                    "sugestao_categoria": str(sugestao_categoria or "").strip(),
+                    "regra_disparada": "db_master_execucao",
+                    "corrigido_manual": "nao",
+                    "servico_corrigido_manual": "",
+                    "data_obra": processed_at,
+                    "processed_at": processed_at,
+                    "contexto": ctx,
+                }
+            )
+
+        alias_candidates: List[dict] = []
+        for row in top_rows:
+            recommendation = "revisar_manual"
+            if row.get("sugestao_categoria_recorrente"):
+                recommendation = f"avaliar_categoria:{row['sugestao_categoria_recorrente']}"
+            alias_candidates.append(
+                {
+                    "termo_candidato": row.get("termo", ""),
+                    "exemplo_servico_bruto": row.get("exemplo_servico_bruto", ""),
+                    "ocorrencias": row.get("ocorrencias", 0),
+                    "ultima_ocorrencia": row.get("ultima_ocorrencia", "-"),
+                    "sugestao_categoria": row.get("sugestao_categoria_recorrente", ""),
+                    "servico_corrigido_recorrente": "",
+                    "corrigidos_manuais": 0,
+                    "regra_recorrente": "db_master_execucao",
+                    "contexto_recorrente": row.get("contexto_recorrente", ""),
+                    "ultimo_nucleo": row.get("ultimo_nucleo", ""),
+                    "ultimo_municipio": row.get("ultimo_municipio", ""),
+                    "ultimo_equipe": row.get("ultimo_equipe", ""),
+                    "recomendacao": recommendation,
+                }
+            )
+
+        candidates_uri = self._write_unmapped_alias_candidates(alias_candidates)
+
+        return {
+            "window_days": days,
+            "recent_runs": runs_limit,
+            "runs_consideradas": runs_com_nao_mapeado,
+            "runs_com_nao_mapeado": runs_com_nao_mapeado,
+            "total_itens": total_itens,
+            "termos_distintos": termos_distintos,
+            "ultima_ocorrencia_global": ultima_ocorrencia_global,
+            "top_terms": top_rows,
+            "recent_items": recent_rows,
+            "alias_candidates": alias_candidates[:top_limit],
+            "alias_candidates_count": len(alias_candidates),
+            "alias_candidates_path": str(self.unmapped_candidates_file.resolve()),
+            "alias_candidates_uri": candidates_uri,
+        }
+
     def build_unmapped_dashboard(
         self,
         window_days: int = 30,
@@ -1414,6 +1703,18 @@ class WebPipelineService:
         runs_limit = self._safe_int(recent_runs, default=120, min_value=1, max_value=5000)
         top_limit = self._safe_int(top_terms, default=20, min_value=5, max_value=100)
         recent_limit = self._safe_int(recent_items_limit, default=20, min_value=5, max_value=200)
+
+        db_dashboard = self._build_unmapped_dashboard_from_db(
+            days=days,
+            runs_limit=runs_limit,
+            top_limit=top_limit,
+            recent_limit=recent_limit,
+        )
+        if db_dashboard and (
+            int(db_dashboard.get("total_itens", 0) or 0) > 0
+            or int(db_dashboard.get("termos_distintos", 0) or 0) > 0
+        ):
+            return db_dashboard
 
         all_history = self.read_history(limit=max(runs_limit * 3, 500))
         cutoff = datetime.now() - timedelta(days=days)
@@ -1605,33 +1906,7 @@ class WebPipelineService:
                 }
             )
 
-        candidate_headers = [
-            "termo_candidato",
-            "exemplo_servico_bruto",
-            "ocorrencias",
-            "ultima_ocorrencia",
-            "sugestao_categoria",
-            "servico_corrigido_recorrente",
-            "corrigidos_manuais",
-            "regra_recorrente",
-            "contexto_recorrente",
-            "ultimo_nucleo",
-            "ultimo_municipio",
-            "ultimo_equipe",
-            "recomendacao",
-        ]
-        self.unmapped_candidates_file.parent.mkdir(parents=True, exist_ok=True)
-        with self.unmapped_candidates_file.open("w", encoding="utf-8-sig", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=candidate_headers)
-            writer.writeheader()
-            for row in alias_candidates:
-                writer.writerow(row)
-
-        candidates_uri = ""
-        try:
-            candidates_uri = self.unmapped_candidates_file.resolve().as_uri()
-        except Exception:
-            candidates_uri = ""
+        candidates_uri = self._write_unmapped_alias_candidates(alias_candidates)
 
         return {
             "window_days": days,

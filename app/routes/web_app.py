@@ -1751,16 +1751,16 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     @app.get("/servicos")
     def servicos():
         search = str(request.args.get("q", "") or "").strip()
-        nm_days_raw = str(request.args.get("nm_days", "30") or "30").strip()
-        nm_runs_raw = str(request.args.get("nm_runs", "250") or "250").strip()
+        nm_days_raw = str(request.args.get("nm_days", "365") or "365").strip()
+        nm_runs_raw = str(request.args.get("nm_runs", "1000") or "1000").strip()
         try:
             nm_days = max(1, min(int(nm_days_raw), 3650))
         except Exception:
-            nm_days = 30
+            nm_days = 365
         try:
             nm_runs = max(10, min(int(nm_runs_raw), 5000))
         except Exception:
-            nm_runs = 250
+            nm_runs = 1000
 
         repo = _active_service_mapping_repository()
         if repo is None:
@@ -1808,16 +1808,16 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             return redirect(url_for("servicos"))
 
         search = str(request.form.get("q", "") or "").strip()
-        nm_days_raw = str(request.form.get("nm_days", "30") or "30").strip()
-        nm_runs_raw = str(request.form.get("nm_runs", "250") or "250").strip()
+        nm_days_raw = str(request.form.get("nm_days", "365") or "365").strip()
+        nm_runs_raw = str(request.form.get("nm_runs", "1000") or "1000").strip()
         try:
             nm_days = max(1, min(int(nm_days_raw), 3650))
         except Exception:
-            nm_days = 30
+            nm_days = 365
         try:
             nm_runs = max(10, min(int(nm_runs_raw), 5000))
         except Exception:
-            nm_runs = 250
+            nm_runs = 1000
         servico_oficial = str(request.form.get("servico_oficial", "") or "").strip()
         categoria = str(request.form.get("categoria", "") or "").strip()
         unidade_padrao = str(request.form.get("unidade_padrao", "") or "").strip()
@@ -1839,16 +1839,16 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             return redirect(url_for("servicos"))
 
         search = str(request.form.get("q", "") or "").strip()
-        nm_days_raw = str(request.form.get("nm_days", "30") or "30").strip()
-        nm_runs_raw = str(request.form.get("nm_runs", "250") or "250").strip()
+        nm_days_raw = str(request.form.get("nm_days", "365") or "365").strip()
+        nm_runs_raw = str(request.form.get("nm_runs", "1000") or "1000").strip()
         try:
             nm_days = max(1, min(int(nm_days_raw), 3650))
         except Exception:
-            nm_days = 30
+            nm_days = 365
         try:
             nm_runs = max(10, min(int(nm_runs_raw), 5000))
         except Exception:
-            nm_runs = 250
+            nm_runs = 1000
         alias_text = str(request.form.get("alias_text", "") or "").strip()
         servico_oficial = str(request.form.get("servico_oficial", "") or "").strip()
         categoria = str(request.form.get("categoria", "") or "").strip()
