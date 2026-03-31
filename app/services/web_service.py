@@ -16,6 +16,7 @@ from docx import Document
 from docx.shared import Pt
 
 from app.database.connection import DatabaseManager
+from app.repositories.service_mapping_repository import ServiceMappingRepository
 from app.core.input_layer import (
     OfficialMessageParser,
     aplicar_regra_primeira_equipe,
@@ -69,6 +70,7 @@ class WebPipelineService:
         self.service_dictionary_v2_json = self.base_dir / "config" / "service_dictionary_v2.json"
         self.nucleo_reference_file = Path(nucleo_reference_file) if nucleo_reference_file else self.base_dir / "config" / "nucleo_reference.json"
         self.db_manager = db_manager
+        self.service_mapping_repository: ServiceMappingRepository | None = None
 
         self.legacy_dictionary = ServiceDictionary(self.dictionary_csv)
         self.legacy_parser = WhatsAppReportParser(self.legacy_dictionary)
@@ -84,6 +86,13 @@ class WebPipelineService:
     def set_database_manager(self, db_manager: DatabaseManager | None) -> None:
         self.db_manager = db_manager
         self.nucleo_reference = self._load_nucleo_reference()
+
+    def set_service_mapping_repository(self, repository: ServiceMappingRepository | None) -> None:
+        self.service_mapping_repository = repository
+        self.service_catalog = self._build_service_catalog()
+
+    def refresh_service_catalog(self) -> None:
+        self.service_catalog = self._build_service_catalog()
 
     def parse_message(self, raw_message: str, source_name: str | None = None) -> Tuple[dict, str]:
         source_name = source_name or f"mensagem_web_{datetime.now():%Y%m%d_%H%M%S}.txt"
@@ -486,6 +495,27 @@ class WebPipelineService:
                     },
                 )
 
+        if self.service_mapping_repository is not None:
+            try:
+                db_services = self.service_mapping_repository.list_services(limit=2000)
+            except Exception:
+                db_services = []
+            for row in db_services:
+                if not bool(row.get("ativo", True)):
+                    continue
+                servico = str(row.get("servico_oficial", "") or "").strip()
+                if not servico:
+                    continue
+                categoria = str(row.get("categoria", "") or "").strip() or "servico_nao_mapeado"
+                if normalizar_texto(servico) == "hidrometro":
+                    categoria = "hidrometro"
+                label = servico.replace("_", " ").strip()
+                catalog_by_servico[servico] = {
+                    "servico": servico,
+                    "categoria": categoria,
+                    "label": label,
+                }
+
         options = sorted(
             catalog_by_servico.values(),
             key=lambda x: (str(x.get("categoria", "") or "").lower(), str(x.get("label", "") or "").lower()),
@@ -523,6 +553,157 @@ class WebPipelineService:
             }
         categoria = "hidrometro" if key == "hidrometro" else "servico_nao_mapeado"
         return {"servico": key, "categoria": categoria, "label": key}
+
+    def list_registered_services(self, search: str = "", limit: int = 500) -> List[dict]:
+        if self.service_mapping_repository is None:
+            return []
+        try:
+            return list(self.service_mapping_repository.list_services(search=search, limit=limit))
+        except Exception:
+            return []
+
+    def list_registered_aliases(self, search: str = "", limit: int = 500) -> List[dict]:
+        if self.service_mapping_repository is None:
+            return []
+        try:
+            return list(self.service_mapping_repository.list_aliases(search=search, limit=limit))
+        except Exception:
+            return []
+
+    def ensure_registered_service(self, servico: object, categoria: object = "", unidade_padrao: object = "") -> dict:
+        if self.service_mapping_repository is None:
+            raise RuntimeError("Cadastro de servicos indisponivel no momento.")
+        meta = self._manual_service_meta(servico)
+        servico_oficial = str(meta.get("servico", "") or "").strip()
+        if not servico_oficial:
+            raise ValueError("Informe um servico oficial valido.")
+        categoria_final = str(categoria or "").strip() or str(meta.get("categoria", "") or "").strip() or "servico_nao_mapeado"
+        service_row = self.service_mapping_repository.upsert_service(
+            servico_oficial,
+            categoria_final,
+            str(unidade_padrao or "").strip(),
+            ativo=True,
+        )
+        self.refresh_service_catalog()
+        return service_row
+
+    def register_service_alias(
+        self,
+        alias_text: object,
+        servico_oficial: object,
+        categoria: object = "",
+        unidade_padrao: object = "",
+        source: object = "manual",
+    ) -> dict:
+        if self.service_mapping_repository is None:
+            raise RuntimeError("Cadastro de aliases indisponivel no momento.")
+        service_row = self.ensure_registered_service(servico_oficial, categoria, unidade_padrao)
+        alias_clean = str(alias_text or "").strip()
+        if not alias_clean:
+            raise ValueError("Informe um termo para mapear.")
+        alias_row = self.service_mapping_repository.upsert_alias(
+            alias_clean,
+            int(service_row.get("id", 0) or 0),
+            source=str(source or "manual").strip() or "manual",
+            ativo=True,
+        )
+        return {"service": service_row, "alias": alias_row}
+
+    def apply_registered_service_aliases(self, parsed: dict) -> dict:
+        if self.service_mapping_repository is None:
+            return parsed
+        try:
+            alias_map = self.service_mapping_repository.list_alias_map()
+        except Exception:
+            return parsed
+        if not alias_map:
+            return parsed
+
+        timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        applied = []
+
+        def _candidate_terms(row_data: dict) -> List[str]:
+            values = [
+                row_data.get("servico_normalizado", ""),
+                row_data.get("servico_bruto", ""),
+                row_data.get("item_normalizado", ""),
+                row_data.get("item_original", ""),
+            ]
+            out: List[str] = []
+            seen = set()
+            for value in values:
+                normalized = normalizar_texto(str(value or "")).strip()
+                if not normalized or normalized in seen:
+                    continue
+                seen.add(normalized)
+                out.append(normalized)
+            return out
+
+        def _is_unmapped_exec(row_data: dict) -> bool:
+            servico_oficial = normalizar_texto(str(row_data.get("servico_oficial", "") or ""))
+            categoria_item = normalizar_texto(str(row_data.get("categoria_item", "") or ""))
+            categoria = normalizar_texto(str(row_data.get("categoria", "") or ""))
+            return (
+                servico_oficial in {"", "servico_nao_mapeado"}
+                or categoria_item in {"", "servico_nao_mapeado"}
+                or categoria in {"", "servico_nao_mapeado"}
+            )
+
+        for idx, item in enumerate(parsed.get("execucao", [])):
+            if not isinstance(item, dict) or not _is_unmapped_exec(item):
+                continue
+            match = None
+            for term in _candidate_terms(item):
+                candidate = alias_map.get(term)
+                if candidate:
+                    match = candidate
+                    break
+            if not match:
+                continue
+
+            item.setdefault("servico_original_bruto", str(item.get("servico_bruto", item.get("item_original", "")) or "").strip())
+            item.setdefault("servico_original_normalizado", str(item.get("servico_normalizado", item.get("item_normalizado", "")) or "").strip())
+            item["servico_oficial"] = str(match.get("servico_oficial", "") or "").strip()
+            item["item_normalizado"] = str(match.get("servico_oficial", "") or "").strip()
+            item["categoria_item"] = str(match.get("categoria", "") or "").strip() or "servico_nao_mapeado"
+            item["categoria"] = str(match.get("categoria", "") or "").strip() or "servico_nao_mapeado"
+            item["regra_disparada"] = "alias_cadastrado"
+            item["corrigido_alias"] = "sim"
+            item["servico_corrigido_alias"] = str(match.get("servico_oficial", "") or "").strip()
+            item["categoria_corrigida_alias"] = str(match.get("categoria", "") or "").strip() or "servico_nao_mapeado"
+            item["alias_usado"] = str(match.get("alias_text", "") or "").strip()
+            item["data_correcao_alias"] = timestamp
+            applied.append(
+                {
+                    "id_item": str(item.get("id_item", "") or "").strip(),
+                    "servico": item["servico_oficial"],
+                    "categoria": item["categoria_item"],
+                    "alias": item["alias_usado"],
+                }
+            )
+
+        for row in parsed.get("servicos_nao_mapeados", []):
+            if not isinstance(row, dict):
+                continue
+            match = None
+            for term in _candidate_terms(row):
+                candidate = alias_map.get(term)
+                if candidate:
+                    match = candidate
+                    break
+            if not match:
+                continue
+            row["corrigido_alias"] = "sim"
+            row["servico_corrigido_alias"] = str(match.get("servico_oficial", "") or "").strip()
+            row["categoria_corrigida_alias"] = str(match.get("categoria", "") or "").strip() or "servico_nao_mapeado"
+            row["alias_usado"] = str(match.get("alias_text", "") or "").strip()
+            row["data_correcao_alias"] = timestamp
+
+        if applied:
+            parsed.setdefault("correcoes_aliases", [])
+            parsed["correcoes_aliases"].extend(applied)
+
+        return parsed
     def apply_nucleo_defaults(self, fields: Dict[str, object]) -> Tuple[Dict[str, object], dict]:
         raw_fields = fields or {}
         data: Dict[str, object] = {}
@@ -879,6 +1060,8 @@ class WebPipelineService:
                         if equipe:
                             row["equipe"] = equipe
 
+        self.apply_registered_service_aliases(data)
+
         if manual_corrections:
             self.apply_manual_service_corrections(data, manual_corrections)
 
@@ -1095,6 +1278,8 @@ class WebPipelineService:
             row = dict(raw)
             row["equipe"] = self._first_team(row.get("equipe", ""))
             if not include_corrigidos and self._bool_true(row.get("corrigido_manual", "")):
+                continue
+            if not include_corrigidos and self._bool_true(row.get("corrigido_alias", "")):
                 continue
             if not row.get("regra_disparada"):
                 row["regra_disparada"] = "nao_mapeado"

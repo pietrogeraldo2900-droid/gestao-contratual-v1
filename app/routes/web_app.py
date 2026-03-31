@@ -10,7 +10,14 @@ from flask import Flask, abort, flash, g, make_response, redirect, render_templa
 
 from config.settings import AppSettings, load_settings
 from app.database import build_database_manager, init_db
-from app.repositories import AdminAuditRepository, ContractRepository, ManagementRepository, ReportRepository, UserRepository
+from app.repositories import (
+    AdminAuditRepository,
+    ContractRepository,
+    ManagementRepository,
+    ReportRepository,
+    ServiceMappingRepository,
+    UserRepository,
+)
 from app.repositories.contract_repository import ContractConflictError
 from app.repositories.user_repository import UserAlreadyExistsError
 from app.routes.auth_api import register_auth_routes
@@ -190,6 +197,8 @@ def _resolve_permission_for_endpoint(endpoint: str) -> str | None:
         return "contratos"
     if endpoint in {"nucleos", "nucleos_save"}:
         return "nucleos"
+    if endpoint in {"servicos", "servicos_create", "servicos_alias_upsert"}:
+        return "servicos"
     if endpoint in {"gerencial"}:
         return "gerencial"
     if endpoint in {"institucional", "institucional_export"}:
@@ -238,6 +247,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     user_service: UserService | None = None
     management_repository: ManagementRepository | None = None
     admin_audit_repository: AdminAuditRepository | None = None
+    service_mapping_repository: ServiceMappingRepository | None = None
     app.config["CONTRACTS_DB_ENABLED"] = settings.db_enabled
     db_manager = build_database_manager(settings)
     management_repository = ManagementRepository(db_manager, settings.master_dir)
@@ -246,6 +256,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         contract_repository = ContractRepository(db_manager)
         report_repository = ReportRepository(db_manager)
         admin_audit_repository = AdminAuditRepository(db_manager)
+        service_mapping_repository = ServiceMappingRepository(db_manager)
         user_service = UserService(user_repository)
         contract_service = ContractService(contract_repository)
         report_service = ReportService(report_repository, contract_repository)
@@ -257,17 +268,20 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                 if settings.db_strict_startup:
                     raise
         service.set_database_manager(db_manager)
+        service.set_service_mapping_repository(service_mapping_repository)
     else:
         app.logger.info(
             "Banco/auth web local desabilitados (DB_ENABLED=0). "
             "As telas autenticadas exibirao modo publico ate habilitar DB_ENABLED=1."
         )
+        service.set_service_mapping_repository(None)
     app.config["CONTRACTS_SERVICE"] = contract_service
     app.config["REPORT_SERVICE"] = report_service
     app.config["USER_SERVICE"] = user_service
     app.config["USER_REPOSITORY"] = user_repository if db_manager is not None else None
     app.config["MANAGEMENT_REPOSITORY"] = management_repository
     app.config["ADMIN_AUDIT_REPOSITORY"] = admin_audit_repository
+    app.config["SERVICE_MAPPING_REPOSITORY"] = service_mapping_repository
 
     protected_web_endpoints = {
         "dashboard",
@@ -281,6 +295,9 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         "web_contracts_list",
         "web_contracts_new",
         "web_contracts_create",
+        "servicos",
+        "servicos_create",
+        "servicos_alias_upsert",
         "index",
         "nucleos",
         "nucleos_save",
@@ -971,6 +988,13 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     def _active_audit_repository() -> AdminAuditRepository | None:
         candidate = app.config.get("ADMIN_AUDIT_REPOSITORY")
         required = ("log_action",)
+        if candidate is not None and all(callable(getattr(candidate, name, None)) for name in required):
+            return candidate  # type: ignore[return-value]
+        return None
+
+    def _active_service_mapping_repository() -> ServiceMappingRepository | None:
+        candidate = app.config.get("SERVICE_MAPPING_REPOSITORY")
+        required = ("list_services", "list_aliases", "upsert_service", "upsert_alias")
         if candidate is not None and all(callable(getattr(candidate, name, None)) for name in required):
             return candidate  # type: ignore[return-value]
         return None
@@ -1723,6 +1747,110 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
 
         saved_name = str((saved_entry or {}).get("nucleo", "") or form_data.get("nucleo", "")).strip()
         return redirect(url_for("nucleos", q=search, status=status, edit=saved_name, saved="Cadastro salvo com sucesso."))
+
+    @app.get("/servicos")
+    def servicos():
+        search = str(request.args.get("q", "") or "").strip()
+        nm_days_raw = str(request.args.get("nm_days", "30") or "30").strip()
+        nm_runs_raw = str(request.args.get("nm_runs", "250") or "250").strip()
+        try:
+            nm_days = max(1, min(int(nm_days_raw), 3650))
+        except Exception:
+            nm_days = 30
+        try:
+            nm_runs = max(10, min(int(nm_runs_raw), 5000))
+        except Exception:
+            nm_runs = 250
+
+        repo = _active_service_mapping_repository()
+        if repo is None:
+            return (
+                render_template(
+                    "servicos.html",
+                    title="Servicos",
+                    q=search,
+                    services=[],
+                    aliases=[],
+                    unmapped_dashboard=service.build_unmapped_dashboard(window_days=nm_days, recent_runs=nm_runs, top_terms=20, recent_items_limit=20),
+                    nm_days=nm_days,
+                    nm_runs=nm_runs,
+                    catalog_options=list(service.get_service_catalog_ui().get("options", []) or []),
+                    error_message=_auth_unavailable_message("Cadastro de servicos"),
+                ),
+                503,
+            )
+
+        services_rows = service.list_registered_services(search=search, limit=500)
+        aliases_rows = service.list_registered_aliases(search=search, limit=500)
+        unmapped_dashboard = service.build_unmapped_dashboard(
+            window_days=nm_days,
+            recent_runs=nm_runs,
+            top_terms=30,
+            recent_items_limit=30,
+        )
+        return render_template(
+            "servicos.html",
+            title="Servicos",
+            q=search,
+            services=services_rows,
+            aliases=aliases_rows,
+            unmapped_dashboard=unmapped_dashboard,
+            nm_days=nm_days,
+            nm_runs=nm_runs,
+            catalog_options=list(service.get_service_catalog_ui().get("options", []) or []),
+            error_message="",
+        )
+
+    @app.post("/servicos/novo")
+    def servicos_create():
+        if _active_service_mapping_repository() is None:
+            flash(_auth_unavailable_message("Cadastro de servicos"), "error")
+            return redirect(url_for("servicos"))
+
+        search = str(request.form.get("q", "") or "").strip()
+        servico_oficial = str(request.form.get("servico_oficial", "") or "").strip()
+        categoria = str(request.form.get("categoria", "") or "").strip()
+        unidade_padrao = str(request.form.get("unidade_padrao", "") or "").strip()
+        try:
+            created = service.ensure_registered_service(
+                servico_oficial,
+                categoria,
+                unidade_padrao,
+            )
+            flash(f"Servico {created.get('servico_oficial', servico_oficial)} salvo com sucesso.", "success")
+        except Exception as exc:
+            flash(str(exc), "error")
+        return redirect(url_for("servicos", q=search))
+
+    @app.post("/servicos/alias")
+    def servicos_alias_upsert():
+        if _active_service_mapping_repository() is None:
+            flash(_auth_unavailable_message("Cadastro de servicos"), "error")
+            return redirect(url_for("servicos"))
+
+        search = str(request.form.get("q", "") or "").strip()
+        alias_text = str(request.form.get("alias_text", "") or "").strip()
+        servico_oficial = str(request.form.get("servico_oficial", "") or "").strip()
+        categoria = str(request.form.get("categoria", "") or "").strip()
+        unidade_padrao = str(request.form.get("unidade_padrao", "") or "").strip()
+        source = str(request.form.get("source", "manual") or "manual").strip()
+
+        try:
+            result_map = service.register_service_alias(
+                alias_text=alias_text,
+                servico_oficial=servico_oficial,
+                categoria=categoria,
+                unidade_padrao=unidade_padrao,
+                source=source,
+            )
+            flash(
+                f"Alias '{result_map.get('alias', {}).get('alias_text', alias_text)}' mapeado para "
+                f"{result_map.get('service', {}).get('servico_oficial', servico_oficial)}.",
+                "success",
+            )
+        except Exception as exc:
+            flash(str(exc), "error")
+        return redirect(url_for("servicos", q=search))
 
     @app.post("/preview")
     def preview():

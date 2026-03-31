@@ -917,6 +917,13 @@ EXECUCAO:
         self.assertIn("Historico", html)
         self.assertIn("Gestao de servicos nao mapeados", html)
 
+    def test_servicos_page_returns_controlled_message_when_db_is_unavailable(self):
+        resp = self.client.get("/servicos")
+        self.assertEqual(resp.status_code, 503)
+        html = resp.data.decode("utf-8")
+        self.assertIn("Cadastro de servicos", html)
+        self.assertIn("indisponivel", html.lower())
+
 
 
 

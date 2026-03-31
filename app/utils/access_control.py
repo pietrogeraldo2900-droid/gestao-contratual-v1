@@ -18,6 +18,7 @@ PERMISSIONS = {
     "resultados": {ROLE_SUPERADMIN, ROLE_ADMIN, ROLE_OPERADOR, ROLE_LEITOR},
     "contratos": {ROLE_SUPERADMIN, ROLE_ADMIN},
     "nucleos": {ROLE_SUPERADMIN, ROLE_ADMIN},
+    "servicos": {ROLE_SUPERADMIN, ROLE_ADMIN},
     "usuarios_admin": {ROLE_SUPERADMIN},
     "configuracoes": {ROLE_SUPERADMIN},
 }
@@ -43,4 +44,3 @@ def can_access_any(role: object, permissions: Iterable[str]) -> bool:
         if can_access(role, perm):
             return True
     return False
-

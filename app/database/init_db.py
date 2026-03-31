@@ -207,6 +207,29 @@ def init_db(db: DatabaseManager) -> None:
             nucleo_status_cadastro VARCHAR(80)
         )
         """,
+        """
+        CREATE TABLE IF NOT EXISTS service_registry (
+            id BIGSERIAL PRIMARY KEY,
+            servico_oficial VARCHAR(255) NOT NULL UNIQUE,
+            categoria VARCHAR(180) NOT NULL DEFAULT 'servico_nao_mapeado',
+            unidade_padrao VARCHAR(80),
+            ativo BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS service_aliases (
+            id BIGSERIAL PRIMARY KEY,
+            alias_text VARCHAR(255) NOT NULL,
+            alias_norm VARCHAR(255) NOT NULL UNIQUE,
+            service_id BIGINT NOT NULL REFERENCES service_registry(id) ON DELETE CASCADE,
+            source VARCHAR(40) NOT NULL DEFAULT 'manual',
+            ativo BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        """,
         "CREATE INDEX IF NOT EXISTS idx_contracts_status ON contracts(status)",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_contracts_numero_contrato ON contracts(numero_contrato)",
         "CREATE INDEX IF NOT EXISTS idx_contracts_status_contrato ON contracts(status_contrato)",
@@ -231,6 +254,10 @@ def init_db(db: DatabaseManager) -> None:
         "CREATE INDEX IF NOT EXISTS idx_mgmt_ocorr_data ON management_ocorrencias(data_referencia DESC)",
         "CREATE INDEX IF NOT EXISTS idx_mgmt_ocorr_nucleo ON management_ocorrencias(nucleo_oficial, nucleo)",
         "CREATE INDEX IF NOT EXISTS idx_mgmt_ocorr_equipe ON management_ocorrencias(equipe)",
+        "CREATE INDEX IF NOT EXISTS idx_service_registry_ativo ON service_registry(ativo)",
+        "CREATE INDEX IF NOT EXISTS idx_service_registry_categoria ON service_registry(categoria)",
+        "CREATE INDEX IF NOT EXISTS idx_service_aliases_service_id ON service_aliases(service_id)",
+        "CREATE INDEX IF NOT EXISTS idx_service_aliases_ativo ON service_aliases(ativo)",
     ]
 
     with db.connection() as conn:

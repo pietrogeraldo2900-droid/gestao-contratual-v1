@@ -19,6 +19,7 @@
 {% set gerencial_endpoints = ['gerencial'] %}
 {% set institucional_endpoints = ['institucional', 'institucional_export'] %}
 {% set nucleos_endpoints = ['nucleos', 'nucleos_save'] %}
+{% set servicos_endpoints = ['servicos', 'servicos_create', 'servicos_alias_upsert'] %}
 {% set contracts_endpoints = ['web_contracts_list', 'web_contracts_new', 'web_contracts_create'] %}
 {% set profile_endpoints = ['web_profile'] %}
 {% set settings_endpoints = ['web_settings'] %}
@@ -43,6 +44,7 @@
   'web_contracts_new': 'Novo contrato',
   'nucleos': 'Nucleos',
   'nucleos_save': 'Nucleos',
+  'servicos': 'Servicos',
   'web_profile': 'Perfil',
   'web_settings': 'Configuracoes',
   'admin_users': 'Usuarios',
@@ -61,6 +63,7 @@
   'web_contracts_list': 'Cadastros mestres de contratos para alimentar o fluxo operacional.',
   'web_contracts_new': 'Cadastro de contrato com os campos essenciais para o SaaS.',
   'nucleos': 'Cadastro mestre de nucleos para suporte ao fluxo operacional.',
+  'servicos': 'Cadastro de servicos e mapeamento de aliases para reduzir nao mapeados.',
   'web_profile': 'Dados principais da conta, seguranca e contexto operacional do usuario autenticado.',
   'web_settings': 'Preferencias de experiencia, conta e seguranca no mesmo padrao visual do sistema.',
   'admin_users': 'Gestao de usuarios com aprovacao e governanca de acesso.'
@@ -162,6 +165,14 @@
                 <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"></circle><circle cx="6" cy="18" r="2"></circle><circle cx="18" cy="18" r="2"></circle><path d="M12 7v5"></path><path d="M12 12H6"></path><path d="M12 12h6"></path></svg>
               </span>
               <span class="nav-link-label">Nucleos</span>
+            </a>
+            {% endif %}
+            {% if can_access('servicos') %}
+            <a href="{{ url_for('servicos') }}" class="sidebar-link nav-link {% if endpoint in servicos_endpoints %}active is-active{% endif %}" {% if endpoint in servicos_endpoints %}aria-current="page"{% endif %}>
+              <span class="nav-link-icon">
+                <svg viewBox="0 0 24 24"><path d="M4 7h16"></path><path d="M6 12h12"></path><path d="M9 17h6"></path><circle cx="8" cy="7" r="2"></circle><circle cx="16" cy="12" r="2"></circle><circle cx="12" cy="17" r="2"></circle></svg>
+              </span>
+              <span class="nav-link-label">Servicos</span>
             </a>
             {% endif %}
             {% if can_access('nucleos') %}
