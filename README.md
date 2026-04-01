@@ -191,6 +191,55 @@ Pastas tratadas como runtime/local (nao codigo-fonte):
 
 `.gitignore` impede versionamento de caches e dados gerados, preservando `.gitkeep` quando aplicavel.
 
+## Camada BI (MVP)
+
+O sistema agora cria automaticamente views de BI (somente leitura) no startup do schema:
+
+- `vw_bi_execucao_fato`
+- `vw_bi_kpi_diario`
+- `vw_bi_kpi_contrato`
+- `vw_bi_ranking_servico`
+- `vw_bi_qualidade_mapeamento`
+- `vw_bi_ocorrencias_tipo`
+
+Essas views usam as tabelas `management_execucao` e `management_ocorrencias` e servem como base para Metabase/Power BI sem alterar o pipeline.
+
+### Consultas rapidas (SQL)
+
+Top 10 servicos por volume:
+
+```sql
+SELECT servico, unidade, volume_total
+FROM vw_bi_ranking_servico
+ORDER BY volume_total DESC
+LIMIT 10;
+```
+
+KPI diario:
+
+```sql
+SELECT data_referencia, registros_execucao, volume_total, nucleos_distintos
+FROM vw_bi_kpi_diario
+ORDER BY data_referencia DESC;
+```
+
+Qualidade de mapeamento:
+
+```sql
+SELECT data_referencia, registros_total, registros_nao_mapeados, percentual_mapeado
+FROM vw_bi_qualidade_mapeamento
+ORDER BY data_referencia DESC;
+```
+
+### Metabase (passo a passo enxuto)
+
+1. Conectar no mesmo Postgres do sistema (Railway).
+2. Em "Models/Questions", usar as views `vw_bi_*`.
+3. Montar dashboards iniciais:
+   - Executivo: `vw_bi_kpi_diario` + `vw_bi_kpi_contrato`
+   - Operacional: `vw_bi_execucao_fato` + `vw_bi_ranking_servico`
+   - Qualidade: `vw_bi_qualidade_mapeamento` + `vw_bi_ocorrencias_tipo`
+
 ## Testes
 
 ```powershell

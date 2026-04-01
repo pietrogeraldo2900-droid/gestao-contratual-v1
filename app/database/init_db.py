@@ -258,6 +258,120 @@ def init_db(db: DatabaseManager) -> None:
         "CREATE INDEX IF NOT EXISTS idx_service_registry_categoria ON service_registry(categoria)",
         "CREATE INDEX IF NOT EXISTS idx_service_aliases_service_id ON service_aliases(service_id)",
         "CREATE INDEX IF NOT EXISTS idx_service_aliases_ativo ON service_aliases(ativo)",
+        """
+        CREATE OR REPLACE VIEW vw_bi_execucao_fato AS
+        SELECT
+            id,
+            data_referencia,
+            COALESCE(NULLIF(contrato, ''), 'Sem contrato') AS contrato,
+            COALESCE(NULLIF(nucleo_oficial, ''), NULLIF(nucleo, ''), 'Nao informado') AS nucleo,
+            COALESCE(NULLIF(municipio_oficial, ''), NULLIF(municipio, ''), 'Nao informado') AS municipio,
+            COALESCE(NULLIF(equipe, ''), 'Nao informado') AS equipe,
+            COALESCE(
+                NULLIF(servico_oficial, ''),
+                NULLIF(servico_normalizado, ''),
+                NULLIF(servico_bruto, ''),
+                NULLIF(item_original, ''),
+                'servico_nao_mapeado'
+            ) AS servico,
+            COALESCE(NULLIF(categoria, ''), NULLIF(categoria_item, ''), 'servico_nao_mapeado') AS categoria,
+            quantidade,
+            COALESCE(NULLIF(unidade, ''), 'un') AS unidade,
+            CASE
+                WHEN COALESCE(NULLIF(servico_oficial, ''), '') IN ('', '-', 'servico_nao_mapeado', 'nao_mapeado')
+                    THEN FALSE
+                ELSE TRUE
+            END AS mapeado
+        FROM management_execucao
+        """,
+        """
+        CREATE OR REPLACE VIEW vw_bi_kpi_diario AS
+        SELECT
+            data_referencia,
+            COUNT(*)::BIGINT AS registros_execucao,
+            COALESCE(SUM(quantidade), 0)::NUMERIC(18,3) AS volume_total,
+            COUNT(DISTINCT contrato)::BIGINT AS contratos_distintos,
+            COUNT(DISTINCT COALESCE(NULLIF(nucleo_oficial, ''), nucleo))::BIGINT AS nucleos_distintos,
+            COUNT(DISTINCT COALESCE(NULLIF(equipe, ''), 'Nao informado'))::BIGINT AS equipes_distintas
+        FROM management_execucao
+        GROUP BY data_referencia
+        """,
+        """
+        CREATE OR REPLACE VIEW vw_bi_kpi_contrato AS
+        SELECT
+            COALESCE(NULLIF(contrato, ''), 'Sem contrato') AS contrato,
+            COUNT(*)::BIGINT AS registros_execucao,
+            COALESCE(SUM(quantidade), 0)::NUMERIC(18,3) AS volume_total,
+            COUNT(DISTINCT COALESCE(NULLIF(nucleo_oficial, ''), nucleo))::BIGINT AS nucleos_distintos,
+            COUNT(DISTINCT COALESCE(NULLIF(equipe, ''), 'Nao informado'))::BIGINT AS equipes_distintas
+        FROM management_execucao
+        GROUP BY COALESCE(NULLIF(contrato, ''), 'Sem contrato')
+        """,
+        """
+        CREATE OR REPLACE VIEW vw_bi_ranking_servico AS
+        SELECT
+            COALESCE(
+                NULLIF(servico_oficial, ''),
+                NULLIF(servico_normalizado, ''),
+                NULLIF(servico_bruto, ''),
+                NULLIF(item_original, ''),
+                'servico_nao_mapeado'
+            ) AS servico,
+            COALESCE(NULLIF(unidade, ''), 'un') AS unidade,
+            COUNT(*)::BIGINT AS registros_execucao,
+            COALESCE(SUM(quantidade), 0)::NUMERIC(18,3) AS volume_total
+        FROM management_execucao
+        GROUP BY
+            COALESCE(
+                NULLIF(servico_oficial, ''),
+                NULLIF(servico_normalizado, ''),
+                NULLIF(servico_bruto, ''),
+                NULLIF(item_original, ''),
+                'servico_nao_mapeado'
+            ),
+            COALESCE(NULLIF(unidade, ''), 'un')
+        """,
+        """
+        CREATE OR REPLACE VIEW vw_bi_qualidade_mapeamento AS
+        SELECT
+            data_referencia,
+            COUNT(*)::BIGINT AS registros_total,
+            SUM(
+                CASE
+                    WHEN COALESCE(NULLIF(servico_oficial, ''), '') IN ('', '-', 'servico_nao_mapeado', 'nao_mapeado')
+                        THEN 0
+                    ELSE 1
+                END
+            )::BIGINT AS registros_mapeados,
+            SUM(
+                CASE
+                    WHEN COALESCE(NULLIF(servico_oficial, ''), '') IN ('', '-', 'servico_nao_mapeado', 'nao_mapeado')
+                        THEN 1
+                    ELSE 0
+                END
+            )::BIGINT AS registros_nao_mapeados,
+            ROUND(
+                100.0 * SUM(
+                    CASE
+                        WHEN COALESCE(NULLIF(servico_oficial, ''), '') IN ('', '-', 'servico_nao_mapeado', 'nao_mapeado')
+                            THEN 0
+                        ELSE 1
+                    END
+                ) / NULLIF(COUNT(*), 0),
+                2
+            ) AS percentual_mapeado
+        FROM management_execucao
+        GROUP BY data_referencia
+        """,
+        """
+        CREATE OR REPLACE VIEW vw_bi_ocorrencias_tipo AS
+        SELECT
+            data_referencia,
+            COALESCE(NULLIF(tipo_ocorrencia, ''), 'nao_informado') AS tipo_ocorrencia,
+            COUNT(*)::BIGINT AS ocorrencias
+        FROM management_ocorrencias
+        GROUP BY data_referencia, COALESCE(NULLIF(tipo_ocorrencia, ''), 'nao_informado')
+        """,
     ]
 
     with db.connection() as conn:
