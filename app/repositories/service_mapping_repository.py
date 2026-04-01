@@ -186,6 +186,23 @@ class ServiceMappingRepository:
                 rows = cur.fetchall()
         return [_row_to_dict(row) for row in rows]
 
+    def set_alias_active(self, alias_id: int, ativo: bool) -> bool:
+        alias_pk = int(alias_id or 0)
+        if alias_pk <= 0:
+            return False
+        sql = """
+        UPDATE service_aliases
+        SET ativo = %s,
+            updated_at = NOW()
+        WHERE id = %s
+        """
+        with self._db.connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql, (bool(ativo), alias_pk))
+                changed = int(cur.rowcount or 0) > 0
+            conn.commit()
+        return changed
+
     def upsert_alias(
         self,
         alias_text: str,

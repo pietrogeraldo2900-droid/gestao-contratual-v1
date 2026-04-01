@@ -38,18 +38,44 @@ from app.services.report_system import ReportGenerator, ServiceDictionary, Whats
 
 
 SERVICE_ALIAS_BOOTSTRAP: dict[str, dict[str, object]] = {
-    "rede_agua": {
-        "categoria": "rede",
+    "PRA": {
+        "categoria": "rede_agua",
         "unidade_padrao": "m",
         "aliases": [
+            "PRA",
+        ],
+    },
+    "PRE": {
+        "categoria": "rede_esgoto",
+        "unidade_padrao": "m",
+        "aliases": [
+            "PRE",
+        ],
+    },
+    "rede_agua": {
+        "categoria": "rede_agua",
+        "unidade_padrao": "m",
+        "aliases": [
+            "rede_agua",
+            "Rede de agua",
+            "Rede agua",
             "Prolongamento de rede de agua",
             "Prolongamento de rede",
             "Prolongamento rede agua",
             "Prolongamento rede",
         ],
     },
+    "rede_esgoto": {
+        "categoria": "rede_esgoto",
+        "unidade_padrao": "m",
+        "aliases": [
+            "rede_esgoto",
+            "Execucao de rede de esgoto",
+            "Rede de esgoto",
+        ],
+    },
     "ramal_agua": {
-        "categoria": "ligacao",
+        "categoria": "rede_agua",
         "unidade_padrao": "un",
         "aliases": [
             "Execucao de ramais de agua",
@@ -58,7 +84,7 @@ SERVICE_ALIAS_BOOTSTRAP: dict[str, dict[str, object]] = {
         ],
     },
     "ramal_esgoto": {
-        "categoria": "ligacao",
+        "categoria": "rede_esgoto",
         "unidade_padrao": "un",
         "aliases": [
             "Execucao de ramais de esgoto",
@@ -66,16 +92,17 @@ SERVICE_ALIAS_BOOTSTRAP: dict[str, dict[str, object]] = {
             "Ramal de esgoto",
         ],
     },
-    "rede_esgoto": {
-        "categoria": "esgoto",
+    "furo_direcional": {
+        "categoria": "rede_agua",
         "unidade_padrao": "m",
         "aliases": [
-            "Execucao de rede de esgoto",
-            "Rede de esgoto",
+            "furo_direcional",
+            "Furo direcional",
+            "Execucao de furo direcional",
         ],
     },
     "intradomiciliar": {
-        "categoria": "ligacao",
+        "categoria": "intradomiciliar",
         "unidade_padrao": "un",
         "aliases": [
             "Ligacoes intradomiciliares",
@@ -93,7 +120,7 @@ SERVICE_ALIAS_BOOTSTRAP: dict[str, dict[str, object]] = {
         ],
     },
     "caixa_uma": {
-        "categoria": "ligacao",
+        "categoria": "caixa_uma",
         "unidade_padrao": "un",
         "aliases": [
             "Instalacao de caixas UMA",
@@ -102,7 +129,7 @@ SERVICE_ALIAS_BOOTSTRAP: dict[str, dict[str, object]] = {
         ],
     },
     "interligacao": {
-        "categoria": "rede",
+        "categoria": "rede_agua",
         "unidade_padrao": "un",
         "aliases": [
             "Execucao de interligacao de rede",
@@ -111,16 +138,8 @@ SERVICE_ALIAS_BOOTSTRAP: dict[str, dict[str, object]] = {
             "Interligacao",
         ],
     },
-    "furo_direcional": {
-        "categoria": "rede",
-        "unidade_padrao": "m",
-        "aliases": [
-            "Execucao de furo direcional",
-            "Furo direcional",
-        ],
-    },
     "adesao_agua": {
-        "categoria": "ligacao",
+        "categoria": "adesao_agua",
         "unidade_padrao": "un",
         "aliases": [
             "Adesoes realizadas",
@@ -129,7 +148,7 @@ SERVICE_ALIAS_BOOTSTRAP: dict[str, dict[str, object]] = {
         ],
     },
     "caixa_dagua": {
-        "categoria": "ligacao",
+        "categoria": "caixa_dagua",
         "unidade_padrao": "un",
         "aliases": [
             "Instalacao de caixa dagua",
@@ -140,6 +159,14 @@ SERVICE_ALIAS_BOOTSTRAP: dict[str, dict[str, object]] = {
             "Caixas d'agua instaladas",
             "Caixa dgua instalada",
             "Caixa d agua instalada",
+        ],
+    },
+    "Economias": {
+        "categoria": "economias",
+        "unidade_padrao": "un",
+        "aliases": [
+            "Economias",
+            "economias",
         ],
     },
     "caixa_inspecao": {
@@ -202,13 +229,21 @@ SERVICE_ALIAS_BOOTSTRAP: dict[str, dict[str, object]] = {
             "Luvas",
         ],
     },
+    "manutencao_poco_inspecao": {
+        "categoria": "manutencao",
+        "unidade_padrao": "un",
+        "aliases": [
+            "Manutencao de pocos de inspecao",
+            "Manutencao poco inspecao",
+            "Manutencao de poco de inspecao",
+            "Poco de inspecao",
+        ],
+    },
     "servico_complementar": {
         "categoria": "apoio",
         "unidade_padrao": "un",
         "aliases": [
-            "Economias",
             "Execucao de e degraus",
-            "Manutencao de pocos de inspecao",
             "Retrabalhos em ramais",
             "Retrabalho em ramais",
         ],
@@ -758,6 +793,10 @@ class WebPipelineService:
         if not norm:
             return ""
 
+        if norm == "pra":
+            return "PRA"
+        if norm == "pre":
+            return "PRE"
         if "prolongamento" in norm and "rede" in norm:
             return "rede_agua"
         if "ramal" in norm and "esgoto" in norm:
@@ -766,6 +805,8 @@ class WebPipelineService:
             return "ramal_agua"
         if "rede" in norm and "esgoto" in norm:
             return "rede_esgoto"
+        if "rede" in norm and "agua" in norm:
+            return "rede_agua"
         if "intradomiciliar" in norm or ("ligacao" in norm and "domic" in norm):
             return "intradomiciliar"
         if "hidrometr" in norm:
@@ -778,6 +819,12 @@ class WebPipelineService:
             return "furo_direcional"
         if "ades" in norm:
             return "adesao_agua"
+        if "economia" in norm:
+            return "Economias"
+        if "manutencao" in norm and "poco" in norm and "inspec" in norm:
+            return "manutencao_poco_inspecao"
+        if "poco" in norm and "inspec" in norm:
+            return "manutencao_poco_inspecao"
         if "caixa" in norm and "inspec" in norm:
             return "caixa_inspecao"
         if "caixa" in norm and (
@@ -794,15 +841,30 @@ class WebPipelineService:
             return "retirada_entulho"
         if "luvas" in norm:
             return "luvas"
-        if "economias" in norm or "degraus" in norm or ("retrabalho" in norm and "ramal" in norm):
-            return "servico_complementar"
-        if "pocos de inspec" in norm or "manutencao de pocos" in norm:
+        if "degraus" in norm or ("retrabalho" in norm and "ramal" in norm):
             return "servico_complementar"
         if "recompos" in norm:
             return "recomposicao_passeio"
         if "concretagem" in norm and "vala" in norm:
             return "concretagem_vala"
         return ""
+
+    def _sanitize_unmapped_alias_term(self, term: object) -> str:
+        raw = str(term or "").strip()
+        if not raw:
+            return ""
+        clean = self._sanitize_institutional_text(raw)
+        clean = re.sub(r"(?i)^(item|servico|serviço)\s*[:\\-]\s*", "", clean).strip(" -")
+        clean = re.sub(r"\s+", " ", clean).strip()
+        if not clean:
+            return ""
+        norm = normalizar_texto(clean)
+        if not norm:
+            return ""
+        generic_noise = {"ok", "na", "n a", "sem", "com", "de", "servico"}
+        if norm in generic_noise:
+            return ""
+        return clean
 
     def bootstrap_service_aliases(
         self,
@@ -833,17 +895,60 @@ class WebPipelineService:
             service_id = service_ids.get(servico_oficial, 0)
             if service_id <= 0:
                 continue
+            seen_alias_norms: set[str] = set()
             for alias in list(meta.get("aliases", []) or []):
                 alias_clean = str(alias or "").strip()
                 if not alias_clean:
                     continue
+                alias_norm = normalizar_texto(alias_clean)
+                if not alias_norm or alias_norm in seen_alias_norms:
+                    continue
+                seen_alias_norms.add(alias_norm)
                 repo.upsert_alias(alias_clean, service_id, source="bootstrap_catalog", ativo=True)
                 upserted_aliases += 1
+
+        aliases_cleaned = 0
+        aliases_deactivated = 0
+        try:
+            existing_aliases = repo.list_aliases(limit=5000)
+        except Exception:
+            existing_aliases = []
+        for alias_row in existing_aliases:
+            if str(alias_row.get("source", "") or "").strip() != "bootstrap_unmapped":
+                continue
+            alias_id = int(alias_row.get("id", 0) or 0)
+            service_id = int(alias_row.get("service_id", 0) or 0)
+            alias_text = str(alias_row.get("alias_text", "") or "").strip()
+            if alias_id <= 0 or service_id <= 0 or not alias_text:
+                continue
+
+            cleaned_text = self._sanitize_unmapped_alias_term(alias_text)
+            if not cleaned_text:
+                if repo.set_alias_active(alias_id, False):
+                    aliases_deactivated += 1
+                continue
+
+            if cleaned_text == alias_text:
+                continue
+
+            upserted = repo.upsert_alias(
+                cleaned_text,
+                service_id,
+                source="bootstrap_unmapped",
+                ativo=True,
+            )
+            aliases_cleaned += 1
+            old_norm = normalizar_texto(alias_text)
+            new_norm = normalizar_texto(cleaned_text)
+            new_id = int(upserted.get("id", 0) or 0)
+            if old_norm != new_norm and new_id and new_id != alias_id:
+                if repo.set_alias_active(alias_id, False):
+                    aliases_deactivated += 1
 
         unmapped_terms = repo.list_unmapped_terms_from_management(limit=max_terms, min_count=min_count)
         auto_mapped_terms = 0
         for item in unmapped_terms:
-            term = str(item.get("termo", "") or "").strip()
+            term = self._sanitize_unmapped_alias_term(item.get("termo", ""))
             if not term:
                 continue
             suggested = self._suggest_service_for_unmapped_term(term)
@@ -862,6 +967,8 @@ class WebPipelineService:
             "aliases_upserted": upserted_aliases,
             "unmapped_terms_seen": len(unmapped_terms),
             "unmapped_terms_auto_mapped": auto_mapped_terms,
+            "aliases_cleaned": aliases_cleaned,
+            "aliases_deactivated": aliases_deactivated,
             "rows_updated": int(remap_stats.get("rows_updated", 0) or 0),
             "rows_scanned": int(remap_stats.get("rows_scanned", 0) or 0),
             "aliases_loaded": int(remap_stats.get("aliases_loaded", 0) or 0),
@@ -924,6 +1031,7 @@ class WebPipelineService:
 
         def _candidate_terms(row_data: dict) -> List[str]:
             values = [
+                row_data.get("servico_oficial", ""),
                 row_data.get("servico_normalizado", ""),
                 row_data.get("servico_bruto", ""),
                 row_data.get("item_normalizado", ""),
@@ -939,18 +1047,8 @@ class WebPipelineService:
                 out.append(normalized)
             return out
 
-        def _is_unmapped_exec(row_data: dict) -> bool:
-            servico_oficial = normalizar_texto(str(row_data.get("servico_oficial", "") or ""))
-            categoria_item = normalizar_texto(str(row_data.get("categoria_item", "") or ""))
-            categoria = normalizar_texto(str(row_data.get("categoria", "") or ""))
-            return (
-                servico_oficial in {"", "servico_nao_mapeado"}
-                or categoria_item in {"", "servico_nao_mapeado"}
-                or categoria in {"", "servico_nao_mapeado"}
-            )
-
         for idx, item in enumerate(parsed.get("execucao", [])):
-            if not isinstance(item, dict) or not _is_unmapped_exec(item):
+            if not isinstance(item, dict):
                 continue
             match = None
             for term in _candidate_terms(item):
@@ -961,16 +1059,28 @@ class WebPipelineService:
             if not match:
                 continue
 
+            target_service = str(match.get("servico_oficial", "") or "").strip()
+            target_category = str(match.get("categoria", "") or "").strip() or "servico_nao_mapeado"
+            current_service = str(item.get("servico_oficial", "") or "").strip()
+            current_category_item = str(item.get("categoria_item", "") or "").strip()
+            current_category = str(item.get("categoria", "") or "").strip()
+            if (
+                current_service == target_service
+                and current_category_item == target_category
+                and current_category == target_category
+            ):
+                continue
+
             item.setdefault("servico_original_bruto", str(item.get("servico_bruto", item.get("item_original", "")) or "").strip())
             item.setdefault("servico_original_normalizado", str(item.get("servico_normalizado", item.get("item_normalizado", "")) or "").strip())
-            item["servico_oficial"] = str(match.get("servico_oficial", "") or "").strip()
-            item["item_normalizado"] = str(match.get("servico_oficial", "") or "").strip()
-            item["categoria_item"] = str(match.get("categoria", "") or "").strip() or "servico_nao_mapeado"
-            item["categoria"] = str(match.get("categoria", "") or "").strip() or "servico_nao_mapeado"
+            item["servico_oficial"] = target_service
+            item["item_normalizado"] = target_service
+            item["categoria_item"] = target_category
+            item["categoria"] = target_category
             item["regra_disparada"] = "alias_cadastrado"
             item["corrigido_alias"] = "sim"
-            item["servico_corrigido_alias"] = str(match.get("servico_oficial", "") or "").strip()
-            item["categoria_corrigida_alias"] = str(match.get("categoria", "") or "").strip() or "servico_nao_mapeado"
+            item["servico_corrigido_alias"] = target_service
+            item["categoria_corrigida_alias"] = target_category
             item["alias_usado"] = str(match.get("alias_text", "") or "").strip()
             item["data_correcao_alias"] = timestamp
             applied.append(
@@ -3511,6 +3621,8 @@ class WebPipelineService:
             "nao mapeado": "Serviço não mapeado",
         }
         service_map = {
+            "pra": "PRA",
+            "pre": "PRE",
             "hidrometro": "Instalação de hidrômetro",
             "hidrometros": "Instalação de hidrômetros",
             "hidrometros instalados": "Instalação de hidrômetros",
@@ -3521,10 +3633,13 @@ class WebPipelineService:
             "ligacao intradomiciliar": "Ligação intradomiciliar",
             "ligacao intradomiciliares": "Ligações intradomiciliares",
             "rede agua": "Rede de Água",
+            "rede_agua": "Rede de Água",
             "rede de agua": "Rede de Água",
             "prolongamento rede agua": "Prolongamento de Rede de Água",
             "prolongamento de rede": "Prolongamento de Rede de Água",
             "prolongamento de rede agua": "Prolongamento de Rede de Água",
+            "rede esgoto": "Rede de Esgoto",
+            "rede_esgoto": "Rede de Esgoto",
             "ramal agua": "Ramal de Água",
             "ramais agua": "Ramais de Água",
             "ramal esgoto": "Ramal de esgoto",
@@ -3542,6 +3657,7 @@ class WebPipelineService:
             "instalacao de caixas d agua": "Instalação de Caixas d'água",
             "adesoes realizadas": "Adesões realizadas",
             "caixas dagua instaladas": "Instalação de Caixas d'água",
+            "economias": "Economias",
             "luvas executadas": "Luvas executadas",
             "embutida": "Instalação de caixas UMA (embutida)",
             "mureta": "Instalação de caixas UMA (mureta)",
@@ -3562,6 +3678,11 @@ class WebPipelineService:
             "interligacao": "Interligação",
             "caixa_uma": "Caixa UMA",
             "caixa uma": "Caixa UMA",
+            "ligacao_agua": "Ligação de Água",
+            "adesao_agua": "Adesão de Água",
+            "caixa_dagua": "Caixa d'água",
+            "economias": "Economias",
+            "rede_esgoto": "Rede de Esgoto",
             "caixa_inspecao": "Caixa de inspeção",
             "recomposicao": "Recomposição",
             "apoio_operacional": "Apoio operacional",
