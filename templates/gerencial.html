@@ -147,37 +147,37 @@
 
     <article class="pgm3-kpi-card">
       <span class="pgm3-kpi-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="5" width="16" height="14" rx="2"></rect><path d="M8 10h8"></path></svg></span>
-      <p class="pgm3-kpi-label">Frentes</p>
-      <strong>{{ kpi.get('total_frentes', 0) }}</strong>
-      <small>frentes registradas</small>
-    </article>
-
-    <article class="pgm3-kpi-card">
-      <span class="pgm3-kpi-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l9 16H3z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
-      <p class="pgm3-kpi-label">Ocorrencias</p>
-      <strong>{{ kpi.get('total_ocorrencias', 0) }}</strong>
-      <small>itens de risco</small>
-    </article>
-
-    <article class="pgm3-kpi-card">
-      <span class="pgm3-kpi-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 9h16"></path><path d="M6 5h12v14H6z"></path><path d="M9 13h6"></path></svg></span>
-      <p class="pgm3-kpi-label">Qtd total</p>
-      <strong>{{ consolidado.get('volume_total_fmt', '0') }}</strong>
+      <p class="pgm3-kpi-label">Ligacoes agua</p>
+      <strong>{{ kpi.get('ligacoes_agua_total_fmt', '0') }}</strong>
       <small>volume consolidado</small>
     </article>
 
     <article class="pgm3-kpi-card">
+      <span class="pgm3-kpi-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l9 16H3z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
+      <p class="pgm3-kpi-label">Ligacoes esgoto</p>
+      <strong>{{ kpi.get('ligacoes_esgoto_total_fmt', '0') }}</strong>
+      <small>volume consolidado</small>
+    </article>
+
+    <article class="pgm3-kpi-card">
+      <span class="pgm3-kpi-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 9h16"></path><path d="M6 5h12v14H6z"></path><path d="M9 13h6"></path></svg></span>
+      <p class="pgm3-kpi-label">PRA</p>
+      <strong>{{ kpi.get('prolongamento_rede_agua_total_fmt', '0') }}</strong>
+      <small>prol. rede agua</small>
+    </article>
+
+    <article class="pgm3-kpi-card">
       <span class="pgm3-kpi-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M7 5h10"></path><path d="M5 9h14"></path><path d="M4 13h16"></path><path d="M6 17h12"></path></svg></span>
-      <p class="pgm3-kpi-label">Categorias</p>
-      <strong>{{ categorias_items|length }}</strong>
-      <small>categorias ativas</small>
+      <p class="pgm3-kpi-label">PRE</p>
+      <strong>{{ kpi.get('prolongamento_rede_esgoto_total_fmt', '0') }}</strong>
+      <small>prol. rede esgoto</small>
     </article>
 
     <article class="pgm3-kpi-card">
       <span class="pgm3-kpi-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="9" r="3"></circle><circle cx="16" cy="14" r="3"></circle><path d="M3 20c0-3 3-5 6-5"></path><path d="M11 20c0-2.7 2.5-4.5 5-4.5 2.6 0 5 1.8 5 4.5"></path></svg></span>
-      <p class="pgm3-kpi-label">Equipes</p>
-      <strong>{{ kpi.get('total_equipes', 0) }}</strong>
-      <small>equipes com producao</small>
+      <p class="pgm3-kpi-label">Nucleo lider</p>
+      <strong class="pgm3-kpi-text">{{ pretty_metric_label(kpi.get('nucleo_maior_volume', '-')) }}</strong>
+      <small>{{ kpi.get('nucleo_maior_volume_valor_fmt', '0') }} de volume</small>
     </article>
   </section>
 

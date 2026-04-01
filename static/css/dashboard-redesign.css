@@ -2975,6 +2975,15 @@ body.auth-shell-mode .gerencial-page-v3 .pgm3-kpi-card strong {
   font-variant-numeric: tabular-nums;
 }
 
+body.auth-shell-mode .gerencial-page-v3 .pgm3-kpi-card .pgm3-kpi-text {
+  font-size: 21px;
+  line-height: 1.18;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 body.auth-shell-mode .gerencial-page-v3 .pgm3-kpi-card small {
   margin-top: 3px;
   color: #83ace0;

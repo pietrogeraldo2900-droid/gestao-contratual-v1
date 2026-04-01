@@ -900,6 +900,10 @@ class ManagementRepository:
         ocorrencia_tipo_values: dict[str, float] = {}
         servicos_set: set[str] = set()
         municipios_set: set[str] = set()
+        ligacoes_agua_total = 0.0
+        ligacoes_esgoto_total = 0.0
+        prolongamento_rede_agua_total = 0.0
+        prolongamento_rede_esgoto_total = 0.0
 
         for row in exec_filtered:
             nucleo = _pick_first_text(row.get("nucleo_oficial"), row.get("nucleo")) or "-"
@@ -931,6 +935,28 @@ class ManagementRepository:
                 units.add(unidade)
             servicos_set.add(servico)
             municipios_set.add(municipio)
+
+            servico_lookup = _normalize_lookup(servico)
+            if "prolongamento" in servico_lookup and "esgoto" in servico_lookup:
+                prolongamento_rede_esgoto_total += peso
+            elif "prolongamento" in servico_lookup and (
+                "agua" in servico_lookup or "rede" in servico_lookup
+            ):
+                prolongamento_rede_agua_total += peso
+
+            is_ligacao_like = (
+                "ligacao" in servico_lookup
+                or "ramal" in servico_lookup
+                or "intradomiciliar" in servico_lookup
+            )
+            if is_ligacao_like and "esgoto" in servico_lookup:
+                ligacoes_esgoto_total += peso
+            elif is_ligacao_like and (
+                "agua" in servico_lookup
+                or "hidrometro" in servico_lookup
+                or "intradomiciliar" in servico_lookup
+            ):
+                ligacoes_agua_total += peso
 
         for row in ocorr_filtered:
             tipo = _pick_first_text(row.get("tipo_ocorrencia"), row.get("descricao")) or "-"
@@ -1170,6 +1196,14 @@ class ManagementRepository:
         processamentos_com_alerta = min(total_execucao, total_ocorrencias)
         processamentos_sem_alerta = max(total_execucao - processamentos_com_alerta, 0)
         bi_mvp = self._load_bi_mvp_snapshot(filters)
+        if nucleo_values:
+            nucleo_maior_volume, nucleo_maior_volume_valor = max(
+                nucleo_values.items(),
+                key=lambda item: item[1],
+            )
+        else:
+            nucleo_maior_volume = "-"
+            nucleo_maior_volume_valor = 0.0
 
         return {
             "has_data": has_data,
@@ -1193,6 +1227,17 @@ class ManagementRepository:
                 "processamentos_sem_alerta": processamentos_sem_alerta,
                 "processamentos_sucesso": total_execucao,
                 "processamentos_erro": 0,
+                "ligacoes_agua_total": ligacoes_agua_total,
+                "ligacoes_agua_total_fmt": _display_number(ligacoes_agua_total),
+                "ligacoes_esgoto_total": ligacoes_esgoto_total,
+                "ligacoes_esgoto_total_fmt": _display_number(ligacoes_esgoto_total),
+                "prolongamento_rede_agua_total": prolongamento_rede_agua_total,
+                "prolongamento_rede_agua_total_fmt": _display_number(prolongamento_rede_agua_total),
+                "prolongamento_rede_esgoto_total": prolongamento_rede_esgoto_total,
+                "prolongamento_rede_esgoto_total_fmt": _display_number(prolongamento_rede_esgoto_total),
+                "nucleo_maior_volume": str(nucleo_maior_volume or "-"),
+                "nucleo_maior_volume_valor": nucleo_maior_volume_valor,
+                "nucleo_maior_volume_valor_fmt": _display_number(float(nucleo_maior_volume_valor or 0.0)),
             },
             "consolidado_periodo": {
                 "runs_consideradas": 1 if has_data else 0,
