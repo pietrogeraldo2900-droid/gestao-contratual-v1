@@ -3176,6 +3176,72 @@ body.auth-shell-mode .gerencial-page-v3 .pgm3-panel-header p {
   font-size: 11px;
 }
 
+body.auth-shell-mode .gerencial-page-v3 .pgm3-bi-panel {
+  min-height: auto;
+}
+
+body.auth-shell-mode .gerencial-page-v3 .pgm3-bi-grid {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+body.auth-shell-mode .gerencial-page-v3 .pgm3-bi-card {
+  border-radius: 12px;
+  border: 1px solid rgba(147, 178, 240, 0.26);
+  background: rgba(10, 21, 39, 0.88);
+  padding: 9px 10px;
+  min-height: 82px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+body.auth-shell-mode .gerencial-page-v3 .pgm3-bi-label {
+  margin: 0;
+  color: #8fb3e3;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+body.auth-shell-mode .gerencial-page-v3 .pgm3-bi-card strong {
+  margin: 2px 0 0;
+  color: #f8fbff;
+  font-size: 20px;
+  line-height: 1.12;
+  font-weight: 680;
+  letter-spacing: -0.02em;
+}
+
+body.auth-shell-mode .gerencial-page-v3 .pgm3-bi-card small {
+  color: #7fa8de;
+  font-size: 10px;
+}
+
+body.auth-shell-mode .gerencial-page-v3 .pgm3-bi-timeline {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+body.auth-shell-mode .gerencial-page-v3 .pgm3-bi-timeline span {
+  border-radius: 999px;
+  border: 1px solid rgba(142, 174, 241, 0.24);
+  background: rgba(10, 20, 36, 0.9);
+  color: #9fc0ee;
+  font-size: 10px;
+  padding: 3px 8px;
+}
+
+body.auth-shell-mode .gerencial-page-v3 .pgm3-bi-service-list {
+  margin-top: 8px;
+}
+
 body.auth-shell-mode .gerencial-page-v3 .pgm3-nuc-chart-wrap {
   margin-top: 8px;
   border-radius: 16px;
@@ -3560,6 +3626,10 @@ body.auth-shell-mode .gerencial-page-v3 .pgm3-empty {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  body.auth-shell-mode .gerencial-page-v3 .pgm3-bi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   body.auth-shell-mode .gerencial-page-v3 .pgm3-analytics-grid {
     grid-template-columns: 1fr;
   }
@@ -3571,7 +3641,8 @@ body.auth-shell-mode .gerencial-page-v3 .pgm3-empty {
 
 @media (max-width: 980px) {
   body.auth-shell-mode .gerencial-page-v3 .pgm3-kpi-grid,
-  body.auth-shell-mode .gerencial-page-v3 .pgm3-filter-grid {
+  body.auth-shell-mode .gerencial-page-v3 .pgm3-filter-grid,
+  body.auth-shell-mode .gerencial-page-v3 .pgm3-bi-grid {
     grid-template-columns: 1fr;
   }
 

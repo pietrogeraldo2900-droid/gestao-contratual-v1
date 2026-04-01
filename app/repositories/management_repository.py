@@ -605,6 +605,229 @@ class ManagementRepository:
             return f"A partir de {start:%d/%m/%Y}"
         return f"Ate {end:%d/%m/%Y}"
 
+    def _load_bi_mvp_snapshot(self, filters: _Filters) -> dict[str, Any]:
+        snapshot: dict[str, Any] = {
+            "enabled": False,
+            "has_data": False,
+            "error": "",
+            "kpis": {
+                "registros": 0,
+                "registros_fmt": "0",
+                "volume_total": 0.0,
+                "volume_total_fmt": "0",
+                "dias": 0,
+                "percentual_mapeado": 0.0,
+                "percentual_mapeado_fmt": "0",
+                "nao_mapeados": 0,
+            },
+            "top_servico": {"servico": "-", "volume_total_fmt": "0", "unidade": "", "registros": 0},
+            "top_ocorrencia": {"tipo_ocorrencia": "-", "ocorrencias": 0},
+            "top_servicos": [],
+            "timeline": [],
+        }
+        if self._db is None:
+            return snapshot
+
+        exec_where_parts: list[str] = []
+        exec_params: list[Any] = []
+        if filters.obra_from:
+            exec_where_parts.append("data_referencia >= %s")
+            exec_params.append(filters.obra_from)
+        if filters.obra_to:
+            exec_where_parts.append("data_referencia <= %s")
+            exec_params.append(filters.obra_to)
+        if filters.nucleo:
+            exec_where_parts.append("COALESCE(nucleo, '') ILIKE %s")
+            exec_params.append(f"%{filters.nucleo}%")
+        if filters.municipio:
+            exec_where_parts.append("COALESCE(municipio, '') ILIKE %s")
+            exec_params.append(f"%{filters.municipio}%")
+        if filters.equipe:
+            exec_where_parts.append("COALESCE(equipe, '') ILIKE %s")
+            exec_params.append(f"%{filters.equipe}%")
+        exec_where_sql = f" WHERE {' AND '.join(exec_where_parts)}" if exec_where_parts else ""
+
+        date_where_parts: list[str] = []
+        date_params: list[Any] = []
+        if filters.obra_from:
+            date_where_parts.append("data_referencia >= %s")
+            date_params.append(filters.obra_from)
+        if filters.obra_to:
+            date_where_parts.append("data_referencia <= %s")
+            date_params.append(filters.obra_to)
+        date_where_sql = f" WHERE {' AND '.join(date_where_parts)}" if date_where_parts else ""
+
+        cursor_kwargs = {}
+        dict_factory = _dict_row_factory()
+        if dict_factory is not None:
+            cursor_kwargs["row_factory"] = dict_factory
+
+        try:
+            with self._db.connection() as conn:
+                with conn.cursor(**cursor_kwargs) as cur:
+                    cur.execute(
+                        f"""
+                        SELECT
+                            COUNT(*)::BIGINT AS registros,
+                            COALESCE(SUM(quantidade), 0)::NUMERIC(18,3) AS volume_total,
+                            COUNT(DISTINCT data_referencia)::BIGINT AS dias
+                        FROM vw_bi_execucao_fato
+                        {exec_where_sql}
+                        """,
+                        exec_params,
+                    )
+                    recorte = cur.fetchone() or {}
+
+                    cur.execute(
+                        f"""
+                        SELECT
+                            COALESCE(SUM(CASE WHEN mapeado THEN 1 ELSE 0 END), 0)::BIGINT AS mapeados,
+                            COALESCE(SUM(CASE WHEN mapeado THEN 0 ELSE 1 END), 0)::BIGINT AS nao_mapeados
+                        FROM vw_bi_execucao_fato
+                        {exec_where_sql}
+                        """,
+                        exec_params,
+                    )
+                    mapa = cur.fetchone() or {}
+
+                    cur.execute(
+                        f"""
+                        SELECT
+                            servico,
+                            COALESCE(NULLIF(unidade, ''), 'un') AS unidade,
+                            COUNT(*)::BIGINT AS registros,
+                            COALESCE(SUM(quantidade), 0)::NUMERIC(18,3) AS volume_total
+                        FROM vw_bi_execucao_fato
+                        {exec_where_sql}
+                        GROUP BY servico, COALESCE(NULLIF(unidade, ''), 'un')
+                        ORDER BY volume_total DESC, registros DESC
+                        LIMIT 1
+                        """,
+                        exec_params,
+                    )
+                    top_servico = cur.fetchone() or {}
+
+                    cur.execute(
+                        f"""
+                        SELECT
+                            servico,
+                            COALESCE(NULLIF(unidade, ''), 'un') AS unidade,
+                            COUNT(*)::BIGINT AS registros,
+                            COALESCE(SUM(quantidade), 0)::NUMERIC(18,3) AS volume_total
+                        FROM vw_bi_execucao_fato
+                        {exec_where_sql}
+                        GROUP BY servico, COALESCE(NULLIF(unidade, ''), 'un')
+                        ORDER BY volume_total DESC, registros DESC
+                        LIMIT 5
+                        """,
+                        exec_params,
+                    )
+                    top_servicos = cur.fetchall() or []
+
+                    cur.execute(
+                        f"""
+                        SELECT
+                            tipo_ocorrencia,
+                            COALESCE(SUM(ocorrencias), 0)::BIGINT AS ocorrencias_total
+                        FROM vw_bi_ocorrencias_tipo
+                        {date_where_sql}
+                        GROUP BY tipo_ocorrencia
+                        ORDER BY ocorrencias_total DESC
+                        LIMIT 1
+                        """,
+                        date_params,
+                    )
+                    top_ocorrencia = cur.fetchone() or {}
+
+                    cur.execute(
+                        f"""
+                        SELECT
+                            data_referencia,
+                            registros_execucao,
+                            volume_total
+                        FROM vw_bi_kpi_diario
+                        {date_where_sql}
+                        ORDER BY data_referencia DESC
+                        LIMIT 7
+                        """,
+                        date_params,
+                    )
+                    timeline_rows = cur.fetchall() or []
+        except Exception as exc:
+            snapshot["error"] = str(exc)
+            return snapshot
+
+        registros = int(recorte.get("registros", 0) or 0)
+        volume_total = float(recorte.get("volume_total", 0) or 0)
+        dias = int(recorte.get("dias", 0) or 0)
+        mapeados = int(mapa.get("mapeados", 0) or 0)
+        nao_mapeados = int(mapa.get("nao_mapeados", 0) or 0)
+        percentual_mapeado = (100.0 * mapeados / registros) if registros else 0.0
+
+        timeline: list[dict[str, Any]] = []
+        for row in reversed(timeline_rows):
+            dt = row.get("data_referencia")
+            data_label = f"{dt:%d/%m}" if isinstance(dt, date) else _safe_text(dt)
+            timeline.append(
+                {
+                    "data": data_label,
+                    "registros": int(row.get("registros_execucao", 0) or 0),
+                    "volume_total": float(row.get("volume_total", 0) or 0.0),
+                    "volume_total_fmt": _display_number(float(row.get("volume_total", 0) or 0.0)),
+                }
+            )
+
+        normalized_top_servicos = []
+        for row in top_servicos:
+            volume = float(row.get("volume_total", 0) or 0.0)
+            unidade = _safe_text(row.get("unidade"))
+            normalized_top_servicos.append(
+                {
+                    "servico": _safe_text(row.get("servico")) or "-",
+                    "unidade": unidade,
+                    "registros": int(row.get("registros", 0) or 0),
+                    "volume_total": volume,
+                    "volume_total_fmt": _display_number(volume),
+                    "value_display": f"{_display_number(volume)} {unidade}".strip(),
+                }
+            )
+        max_top_servico_volume = max((row.get("volume_total", 0.0) for row in normalized_top_servicos), default=0.0)
+        if max_top_servico_volume > 0:
+            for row in normalized_top_servicos:
+                row["width_pct"] = round((float(row.get("volume_total", 0.0) or 0.0) / max_top_servico_volume) * 100.0, 1)
+        else:
+            for row in normalized_top_servicos:
+                row["width_pct"] = 0.0
+
+        top_servico_volume = float(top_servico.get("volume_total", 0) or 0.0)
+        top_servico_unidade = _safe_text(top_servico.get("unidade"))
+        snapshot["enabled"] = True
+        snapshot["has_data"] = registros > 0
+        snapshot["kpis"] = {
+            "registros": registros,
+            "registros_fmt": _display_number(float(registros)),
+            "volume_total": volume_total,
+            "volume_total_fmt": _display_number(volume_total),
+            "dias": dias,
+            "percentual_mapeado": percentual_mapeado,
+            "percentual_mapeado_fmt": _display_number(percentual_mapeado),
+            "nao_mapeados": nao_mapeados,
+        }
+        snapshot["top_servico"] = {
+            "servico": _safe_text(top_servico.get("servico")) or "-",
+            "volume_total": top_servico_volume,
+            "volume_total_fmt": _display_number(top_servico_volume),
+            "unidade": top_servico_unidade,
+            "registros": int(top_servico.get("registros", 0) or 0),
+        }
+        snapshot["top_ocorrencia"] = {
+            "tipo_ocorrencia": _safe_text(top_ocorrencia.get("tipo_ocorrencia")) or "-",
+            "ocorrencias": int(top_ocorrencia.get("ocorrencias_total", 0) or 0),
+        }
+        snapshot["top_servicos"] = normalized_top_servicos
+        snapshot["timeline"] = timeline
+        return snapshot
+
     def build_gerencial_dashboard(self, raw_filters: dict[str, object] | None = None) -> dict[str, Any]:
         filters = self._parse_filters(raw_filters)
 
@@ -946,10 +1169,12 @@ class ManagementRepository:
         total_equipes = len(equipe_values)
         processamentos_com_alerta = min(total_execucao, total_ocorrencias)
         processamentos_sem_alerta = max(total_execucao - processamentos_com_alerta, 0)
+        bi_mvp = self._load_bi_mvp_snapshot(filters)
 
         return {
             "has_data": has_data,
             "source": source_kind,
+            "bi_mvp": bi_mvp,
             "kpis_principais": {
                 "total_processamentos": total_execucao,
                 "total_execucoes": total_execucao,

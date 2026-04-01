@@ -13,6 +13,10 @@
 {% set ocorrencias_tipo_items = graficos.get('tipos_ocorrencia', {}).get('items', []) %}
 {% set radar = dashboard.get('radar_risco_contratos', {}) %}
 {% set radar_items = radar.get('items', []) %}
+{% set bi_mvp = dashboard.get('bi_mvp', {}) %}
+{% set bi_kpis = bi_mvp.get('kpis', {}) %}
+{% set bi_timeline = bi_mvp.get('timeline', []) %}
+{% set bi_top_servicos = bi_mvp.get('top_servicos', []) %}
 {% set nucleos_small_mode = (nucleos_items|length <= 4) %}
 {% set ocorrencias_small_mode = (ocorrencias_tipo_items|length <= 4) %}
 {% set categorias_total = categorias_items | map(attribute='value') | sum %}
@@ -176,6 +180,64 @@
       <small>equipes com producao</small>
     </article>
   </section>
+
+  {% if bi_mvp.get('enabled') %}
+  <section class="pgm3-panel pgm3-bi-panel">
+    <header class="pgm3-panel-header">
+      <h3>Camada BI (MVP)</h3>
+      <p>Indicadores consolidados via views analiticas `vw_bi_*` no mesmo recorte aplicado no painel.</p>
+    </header>
+
+    <div class="pgm3-bi-grid">
+      <article class="pgm3-bi-card">
+        <p class="pgm3-bi-label">Registros no recorte</p>
+        <strong>{{ bi_kpis.get('registros_fmt', '0') }}</strong>
+      </article>
+      <article class="pgm3-bi-card">
+        <p class="pgm3-bi-label">Volume consolidado</p>
+        <strong>{{ bi_kpis.get('volume_total_fmt', '0') }}</strong>
+      </article>
+      <article class="pgm3-bi-card">
+        <p class="pgm3-bi-label">Mapeamento</p>
+        <strong>{{ bi_kpis.get('percentual_mapeado_fmt', '0') }}%</strong>
+        <small>{{ bi_kpis.get('nao_mapeados', 0) }} nao mapeado(s)</small>
+      </article>
+      <article class="pgm3-bi-card">
+        <p class="pgm3-bi-label">Top ocorrencia</p>
+        <strong>{{ pretty_metric_label(bi_mvp.get('top_ocorrencia', {}).get('tipo_ocorrencia', '-')) }}</strong>
+        <small>{{ bi_mvp.get('top_ocorrencia', {}).get('ocorrencias', 0) }} registro(s)</small>
+      </article>
+    </div>
+
+    {% if bi_timeline %}
+    <div class="pgm3-bi-timeline">
+      {% for point in bi_timeline %}
+      <span>{{ point.get('data', '-') }} · {{ point.get('volume_total_fmt', '0') }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if bi_top_servicos %}
+    <div class="pgm3-team-list pgm3-team-list-wide pgm3-bi-service-list">
+      {% for row in bi_top_servicos[:5] %}
+      <article class="pgm3-team-row">
+        <span class="label">{{ pretty_metric_label(row.get('servico', '-')) }}</span>
+        <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
+        <span class="val">{{ row.get('value_display', row.get('volume_total_fmt', '0')) }}</span>
+      </article>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </section>
+  {% elif bi_mvp.get('error') %}
+  <section class="pgm3-panel">
+    <header class="pgm3-panel-header">
+      <h3>Camada BI (MVP)</h3>
+      <p>As views analiticas ainda nao estao disponiveis neste ambiente.</p>
+    </header>
+    <div class="pgm3-empty">Detalhe tecnico: {{ bi_mvp.get('error') }}</div>
+  </section>
+  {% endif %}
 
   <section class="pgm3-panel pgm3-panel-rank pgm3-risk-panel">
     <header class="pgm3-panel-header">
