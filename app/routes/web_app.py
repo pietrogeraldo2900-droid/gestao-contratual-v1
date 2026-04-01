@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Dict
 from urllib.parse import urlparse
 
-from flask import Flask, abort, flash, g, make_response, redirect, render_template, request, send_file, session, url_for
+from flask import Flask, abort, flash, g, jsonify, make_response, redirect, render_template, request, send_file, session, url_for
 
 from config.settings import AppSettings, load_settings
 from app.database import build_database_manager, init_db
@@ -176,6 +176,39 @@ def _collect_management_filters(args) -> Dict[str, object]:
     }
 
 
+def _collect_management_drilldown_filters(
+    base_filters: Dict[str, object],
+    args,
+) -> tuple[Dict[str, object], str, str]:
+    dimension = str(args.get("dimension", "") or "").strip().lower()
+    label = str(args.get("label", "") or "").strip()
+
+    filters: Dict[str, object] = {
+        "contrato": str(args.get("contrato", "") or "").strip(),
+        "nucleo": str(base_filters.get("nucleo", "") or "").strip(),
+        "municipio": str(base_filters.get("municipio", "") or "").strip(),
+        "equipe": str(base_filters.get("equipe", "") or "").strip(),
+        "servico": str(args.get("servico", "") or "").strip(),
+        "categoria": str(args.get("categoria", "") or "").strip(),
+        "data_from": str(base_filters.get("obra_from", "") or "").strip(),
+        "data_to": str(base_filters.get("obra_to", "") or "").strip(),
+    }
+
+    if label:
+        field_by_dimension = {
+            "nucleo": "nucleo",
+            "equipe": "equipe",
+            "municipio": "municipio",
+            "servico": "servico",
+            "categoria": "categoria",
+        }
+        mapped_field = field_by_dimension.get(dimension)
+        if mapped_field:
+            filters[mapped_field] = label
+
+    return filters, dimension, label
+
+
 def _is_safe_internal_next(next_url: str) -> bool:
     text = str(next_url or "").strip()
     if not text:
@@ -201,7 +234,7 @@ def _resolve_permission_for_endpoint(endpoint: str) -> str | None:
         return "nucleos"
     if endpoint in {"servicos", "servicos_create", "servicos_alias_upsert", "servicos_bootstrap"}:
         return "servicos"
-    if endpoint in {"gerencial"}:
+    if endpoint in {"gerencial", "gerencial_drilldown", "gerencial_export_csv"}:
         return "gerencial"
     if endpoint in {"institucional", "institucional_export"}:
         return "institucional"
@@ -310,6 +343,8 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         "generate",
         "history",
         "gerencial",
+        "gerencial_drilldown",
+        "gerencial_export_csv",
         "institucional",
         "institucional_export",
         "nova_entrada_redirect",
@@ -2406,6 +2441,104 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             alertas_filter=filters["alertas"],
             top_n=filters["top_n"],
         )
+
+    @app.get("/gerencial/drilldown")
+    def gerencial_drilldown():
+        filters = _collect_management_filters(request.args)
+        drill_filters, dimension, label = _collect_management_drilldown_filters(filters, request.args)
+
+        limit_raw = str(request.args.get("limit", "150") or "150").strip()
+        try:
+            limit = int(limit_raw)
+        except Exception:
+            limit = 150
+        limit = max(20, min(limit, 1000))
+
+        rows: list[dict] = []
+        management_repo = app.config.get("MANAGEMENT_REPOSITORY")
+        list_rows = getattr(management_repo, "list_master_execucao_rows", None)
+        if callable(list_rows):
+            try:
+                rows = list_rows(drill_filters, limit=limit)
+            except Exception as exc:
+                app.logger.warning("Falha ao carregar drill-down do gerencial: %s", exc)
+
+        total_rows = len(rows)
+        total_quantidade = sum(float(row.get("quantidade", 0) or 0.0) for row in rows)
+        response_payload = {
+            "success": True,
+            "dimension": dimension,
+            "label": label,
+            "total_rows": total_rows,
+            "total_quantidade": total_quantidade,
+            "total_quantidade_fmt": f"{total_quantidade:.2f}".rstrip("0").rstrip("."),
+            "rows": rows,
+        }
+        return jsonify(response_payload)
+
+    @app.get("/gerencial/export/csv")
+    def gerencial_export_csv():
+        filters = _collect_management_filters(request.args)
+        drill_filters, dimension, label = _collect_management_drilldown_filters(filters, request.args)
+
+        limit_raw = str(request.args.get("limit", "50000") or "50000").strip()
+        try:
+            limit = int(limit_raw)
+        except Exception:
+            limit = 50000
+        limit = max(100, min(limit, 50000))
+
+        rows: list[dict] = []
+        management_repo = app.config.get("MANAGEMENT_REPOSITORY")
+        list_rows = getattr(management_repo, "list_master_execucao_rows", None)
+        if callable(list_rows):
+            try:
+                rows = list_rows(drill_filters, limit=limit)
+            except Exception as exc:
+                app.logger.warning("Falha ao exportar CSV do gerencial: %s", exc)
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(
+            [
+                "data_referencia",
+                "contrato",
+                "nucleo",
+                "municipio",
+                "equipe",
+                "servico_oficial",
+                "categoria",
+                "quantidade",
+                "unidade",
+            ]
+        )
+        for row in rows:
+            writer.writerow(
+                [
+                    row.get("data_referencia", ""),
+                    row.get("contrato", ""),
+                    row.get("nucleo", ""),
+                    row.get("municipio", ""),
+                    row.get("equipe", ""),
+                    row.get("servico_oficial", ""),
+                    row.get("categoria", ""),
+                    row.get("quantidade_fmt", row.get("quantidade", "")),
+                    row.get("unidade", ""),
+                ]
+            )
+
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        suffix = ""
+        if dimension and label:
+            clean = "".join(ch for ch in label if ch.isalnum() or ch in {"_", "-", " "}).strip().replace(" ", "_")
+            if clean:
+                suffix = f"_{dimension}_{clean[:40]}"
+        filename = f"gerencial_recorte{suffix}_{stamp}.csv"
+
+        response = make_response(output.getvalue())
+        response.headers["Content-Type"] = "text/csv; charset=utf-8"
+        response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
 
     @app.get("/institucional")
     def institucional():

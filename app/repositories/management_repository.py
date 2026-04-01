@@ -1344,6 +1344,11 @@ class ManagementRepository:
             probe = f"%{servico}%"
             params.extend([probe, probe, probe, probe])
 
+        categoria = _safe_text(filters.get("categoria"))
+        if categoria:
+            where_parts.append("COALESCE(NULLIF(categoria, ''), NULLIF(categoria_item, ''), '') ILIKE %s")
+            params.append(f"%{categoria}%")
+
         data_from = _parse_date(filters.get("data_from"))
         if data_from is not None:
             where_parts.append("data_referencia >= %s")

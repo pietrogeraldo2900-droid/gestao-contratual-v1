@@ -945,6 +945,24 @@ EXECUCAO:
         self.assertIn("Evolução de processamentos por período", html)
         self.assertIn("Mapeado x não mapeado", html)
 
+    def test_gerencial_drilldown_endpoint_returns_json_shape(self):
+        self.app.config["USER_SERVICE"] = None
+        resp = self.client.get("/gerencial/drilldown?dimension=servico&label=hidrometro")
+        self.assertEqual(resp.status_code, 200)
+        payload = resp.get_json()
+        self.assertIsInstance(payload, dict)
+        self.assertTrue(payload.get("success"))
+        self.assertIn("rows", payload)
+        self.assertIsInstance(payload.get("rows"), list)
+
+    def test_gerencial_export_csv_endpoint_returns_csv(self):
+        self.app.config["USER_SERVICE"] = None
+        resp = self.client.get("/gerencial/export/csv?dimension=nucleo&label=Mississipi")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("text/csv", resp.headers.get("Content-Type", ""))
+        csv_text = resp.data.decode("utf-8")
+        self.assertIn("data_referencia,contrato,nucleo,municipio,equipe,servico_oficial,categoria,quantidade,unidade", csv_text)
+
     def test_gerencial_consolida_variacoes_de_mississipi_e_ignora_vila_dirce(self):
         output_dir = self.outputs_root / "saida_institucional_demo"
         output_dir.mkdir(parents=True, exist_ok=True)

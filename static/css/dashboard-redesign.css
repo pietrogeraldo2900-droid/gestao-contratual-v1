@@ -3673,3 +3673,62 @@ body.auth-shell-mode .gerencial-page-v3 .pgm3-empty {
     text-align: left;
   }
 }
+
+body.auth-shell-mode .gerencial-page-v3 [data-pgm3-drill-trigger] {
+  cursor: pointer;
+}
+
+body.auth-shell-mode .gerencial-page-v3 [data-pgm3-drill-trigger]:hover {
+  border-color: rgba(125, 179, 255, 0.48);
+  box-shadow: 0 8px 18px rgba(9, 22, 38, 0.34);
+}
+
+body.auth-shell-mode .gerencial-page-v3 .pgm3-drilldown-panel {
+  margin-top: 2px;
+}
+
+body.auth-shell-mode .gerencial-page-v3 .pgm3-drill-header {
+  align-items: center;
+}
+
+body.auth-shell-mode .gerencial-page-v3 .pgm3-drill-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+body.auth-shell-mode .gerencial-page-v3 .pgm3-drill-table-wrap {
+  margin-top: 6px;
+  overflow-x: auto;
+  border: 1px solid rgba(111, 157, 240, 0.24);
+  border-radius: 14px;
+}
+
+body.auth-shell-mode .gerencial-page-v3 .pgm3-drill-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+
+body.auth-shell-mode .gerencial-page-v3 .pgm3-drill-table thead th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #8fb6ea;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(111, 157, 240, 0.2);
+  background: rgba(8, 20, 38, 0.94);
+}
+
+body.auth-shell-mode .gerencial-page-v3 .pgm3-drill-table tbody td {
+  padding: 9px 12px;
+  border-bottom: 1px solid rgba(109, 153, 237, 0.14);
+  color: #d9e8fb;
+  font-size: 13px;
+}
+
+body.auth-shell-mode .gerencial-page-v3 .pgm3-drill-table tbody tr:last-child td {
+  border-bottom: 0;
+}

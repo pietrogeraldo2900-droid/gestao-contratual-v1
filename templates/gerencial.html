@@ -133,6 +133,13 @@
       <div class="pgm3-filter-actions">
         <button type="submit" class="pgm3-btn-primary">Aplicar filtros</button>
         <a href="{{ url_for('gerencial') }}" class="pgm3-btn-ghost">Limpar filtros</a>
+        <a
+          href="{{ url_for('gerencial_export_csv', obra_from=obra_from, obra_to=obra_to, processed_from=processed_from, processed_to=processed_to, nucleo=nucleo, municipio=municipio, equipe=equipe, status=status_filter, alertas=alertas_filter, top_n=top_n) }}"
+          class="pgm3-btn-ghost"
+          data-pgm3-export-current
+        >
+          Exportar CSV
+        </a>
       </div>
     </form>
   </section>
@@ -304,9 +311,9 @@
       </div>
 
       <div class="pgm3-nuc-list">
-        {% for row in nucleos_items[:4] %}
+          {% for row in nucleos_items[:4] %}
           {% set pct = ((row.get('value', 0) / nucleos_total) * 100) if nucleos_total else 0 %}
-          <article class="pgm3-nuc-row">
+          <article class="pgm3-nuc-row" data-pgm3-drill-trigger data-dim="nucleo" data-label="{{ row.get('label', '-') }}">
             <span class="name">{{ pretty_metric_label(row.get('label', '-')) }}</span>
             <span>{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
             <span>{{ '%.1f'|format(pct) }}%</span>
@@ -318,7 +325,7 @@
         {% for row in nucleos_items[:4] %}
         {% set pct = ((row.get('value', 0) / nucleos_total) * 100) if nucleos_total else 0 %}
         {% set nuc_width = pct if pct > 0 else 0 %}
-        <article class="pgm3-team-row">
+        <article class="pgm3-team-row" data-pgm3-drill-trigger data-dim="nucleo" data-label="{{ row.get('label', '-') }}">
           <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
           <span class="track"><span style="width: {{ '%.1f'|format(nuc_width) }}%;"></span></span>
           <span class="val">{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
@@ -352,7 +359,7 @@
           {% for row in categorias_items[:6] %}
             {% set color = cat_colors[loop.index0 % (cat_colors|length)] %}
             {% set pct = ((row.get('value', 0) / categorias_total) * 100) if categorias_total else 0 %}
-            <article class="pgm3-cat-row" data-cat-item data-value="{{ row.get('value', 0) }}" data-color="{{ color }}">
+            <article class="pgm3-cat-row" data-cat-item data-value="{{ row.get('value', 0) }}" data-color="{{ color }}" data-pgm3-drill-trigger data-dim="categoria" data-label="{{ row.get('label', '-') }}">
               <span class="dot" style="--dot: {{ color }};"></span>
               <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
               <span class="val">{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
@@ -378,7 +385,7 @@
         {% for row in equipes_items[:7] %}
         {% set team_width = (row.get('width_pct', 0) * 1.15) %}
         {% if team_width > 100 %}{% set team_width = 100 %}{% endif %}
-        <article class="pgm3-team-row">
+        <article class="pgm3-team-row" data-pgm3-drill-trigger data-dim="equipe" data-label="{{ row.get('label', '-') }}">
           <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
           <span class="track"><span style="width: {{ '%.1f'|format(team_width) }}%;"></span></span>
           <span class="val">{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
@@ -399,7 +406,7 @@
       {% if servicos_items %}
       <div class="pgm3-team-list pgm3-team-list-wide">
         {% for row in servicos_items[:7] %}
-        <article class="pgm3-team-row">
+        <article class="pgm3-team-row" data-pgm3-drill-trigger data-dim="servico" data-label="{{ row.get('label', '-') }}">
           <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
           <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
           <span class="val">{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
@@ -420,7 +427,7 @@
       {% if municipios_items %}
       <div class="pgm3-team-list pgm3-team-list-wide pgm3-team-list-compact">
         {% for row in municipios_items[:7] %}
-        <article class="pgm3-team-row">
+        <article class="pgm3-team-row" data-pgm3-drill-trigger data-dim="municipio" data-label="{{ row.get('label', '-') }}">
           <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
           <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
           <span class="val">{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
@@ -454,6 +461,37 @@
     </article>
   </section>
   </div>
+
+  <section class="pgm3-panel pgm3-drilldown-panel" data-pgm3-drilldown-panel hidden>
+    <header class="pgm3-panel-header pgm3-drill-header">
+      <div>
+        <h3 data-pgm3-drill-title>Detalhamento do indicador</h3>
+        <p data-pgm3-drill-summary>Selecione uma barra/lista para abrir os registros que compõem o total.</p>
+      </div>
+      <div class="pgm3-drill-actions">
+        <a href="{{ url_for('gerencial_export_csv') }}" class="pgm3-btn-ghost" data-pgm3-drill-export>Exportar detalhe (CSV)</a>
+        <button type="button" class="pgm3-btn-ghost" data-pgm3-drill-close>Fechar</button>
+      </div>
+    </header>
+    <div class="pgm3-drill-table-wrap">
+      <table class="pgm3-drill-table">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Nucleo</th>
+            <th>Municipio</th>
+            <th>Equipe</th>
+            <th>Servico</th>
+            <th>Categoria</th>
+            <th>Qtd</th>
+          </tr>
+        </thead>
+        <tbody data-pgm3-drill-body>
+          <tr><td colspan="7">Nenhum detalhe carregado.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
 </div>
 {% endblock %}
 
@@ -464,10 +502,29 @@
     if (!root) return;
     const dynamicSections = root.querySelector('[data-pgm3-dynamic-sections]');
     const sectionEndpoint = "{{ url_for('gerencial') }}";
+    const drilldownEndpoint = "{{ url_for('gerencial_drilldown') }}";
+    const exportEndpoint = "{{ url_for('gerencial_export_csv') }}";
 
     const toggleBtn = root.querySelector('[data-pgm3-toggle]');
     const filterForm = root.querySelector('[data-pgm3-form]');
     const toggleLabel = root.querySelector('[data-pgm3-toggle-label]');
+    const exportCurrentLink = root.querySelector('[data-pgm3-export-current]');
+    const drillPanel = root.querySelector('[data-pgm3-drilldown-panel]');
+    const drillTitle = root.querySelector('[data-pgm3-drill-title]');
+    const drillSummary = root.querySelector('[data-pgm3-drill-summary]');
+    const drillBody = root.querySelector('[data-pgm3-drill-body]');
+    const drillExport = root.querySelector('[data-pgm3-drill-export]');
+    const drillClose = root.querySelector('[data-pgm3-drill-close]');
+
+    function buildFilterParams() {
+      return new URLSearchParams(new FormData(filterForm || document.createElement('form')));
+    }
+
+    function updateCurrentExportHref() {
+      if (!exportCurrentLink || !filterForm) return;
+      const params = buildFilterParams();
+      exportCurrentLink.href = params.toString() ? `${exportEndpoint}?${params.toString()}` : exportEndpoint;
+    }
 
     if (toggleBtn && filterForm) {
       toggleBtn.addEventListener('click', function () {
@@ -482,6 +539,11 @@
           if (toggleLabel) toggleLabel.textContent = 'Mostrar filtros';
         }
       });
+    }
+    if (filterForm) {
+      filterForm.addEventListener('input', updateCurrentExportHref);
+      filterForm.addEventListener('change', updateCurrentExportHref);
+      updateCurrentExportHref();
     }
 
     function renderCategoryDonut(scope) {
@@ -512,6 +574,76 @@
 
     renderCategoryDonut(root);
 
+    function hideDrilldown() {
+      if (!drillPanel) return;
+      drillPanel.setAttribute('hidden', '');
+    }
+
+    if (drillClose) {
+      drillClose.addEventListener('click', hideDrilldown);
+    }
+
+    async function loadDrilldown(dimension, label) {
+      if (!drillPanel || !drillBody || !drillTitle || !drillSummary) return;
+      const params = buildFilterParams();
+      params.set('dimension', dimension);
+      params.set('label', label);
+      params.set('limit', '180');
+
+      const target = `${drilldownEndpoint}?${params.toString()}`;
+      const response = await fetch(target, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+      if (!response.ok) {
+        throw new Error(`status ${response.status}`);
+      }
+      const payload = await response.json();
+      const rows = Array.isArray(payload.rows) ? payload.rows : [];
+
+      drillTitle.textContent = `Detalhamento: ${label}`;
+      const quantidadeFmt = payload.total_quantidade_fmt || '0';
+      drillSummary.textContent = `${rows.length} registro(s) encontrados · Quantitativo consolidado ${quantidadeFmt}.`;
+
+      if (!rows.length) {
+        drillBody.innerHTML = '<tr><td colspan="7">Nenhum registro encontrado para este recorte.</td></tr>';
+      } else {
+        drillBody.innerHTML = rows.map((row) => `
+          <tr>
+            <td>${row.data_referencia || '-'}</td>
+            <td>${row.nucleo || '-'}</td>
+            <td>${row.municipio || '-'}</td>
+            <td>${row.equipe || '-'}</td>
+            <td>${row.servico_oficial || '-'}</td>
+            <td>${row.categoria || '-'}</td>
+            <td>${row.quantidade_fmt || row.quantidade || '0'} ${row.unidade || ''}</td>
+          </tr>
+        `).join('');
+      }
+
+      if (drillExport) {
+        drillExport.href = `${exportEndpoint}?${params.toString()}`;
+      }
+      drillPanel.removeAttribute('hidden');
+      drillPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    root.addEventListener('click', async function (event) {
+      const trigger = event.target.closest('[data-pgm3-drill-trigger]');
+      if (!trigger || !root.contains(trigger)) return;
+      event.preventDefault();
+
+      const dimension = String(trigger.getAttribute('data-dim') || '').trim();
+      const label = String(trigger.getAttribute('data-label') || '').trim();
+      if (!dimension || !label) return;
+
+      root.classList.add('is-loading');
+      try {
+        await loadDrilldown(dimension, label);
+      } catch (err) {
+        console.warn('Falha ao carregar detalhamento do gerencial.', err);
+      } finally {
+        root.classList.remove('is-loading');
+      }
+    });
+
     if (filterForm && dynamicSections) {
       filterForm.addEventListener('submit', async function (event) {
         event.preventDefault();
@@ -538,6 +670,8 @@
 
           dynamicSections.innerHTML = nextDynamic.innerHTML;
           renderCategoryDonut(root);
+          updateCurrentExportHref();
+          hideDrilldown();
           window.history.replaceState({}, '', targetUrl);
         } catch (err) {
           console.warn('Falha ao atualizar filtros dinamicamente, executando fallback.', err);
