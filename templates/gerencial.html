@@ -137,6 +137,7 @@
     </form>
   </section>
 
+  <div data-pgm3-dynamic-sections>
   <section class="pgm3-kpi-grid">
     <article class="pgm3-kpi-card">
       <span class="pgm3-kpi-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M5 3h14v18H5z"></path><path d="M9 7h6"></path><path d="M9 11h6"></path><path d="M9 15h4"></path></svg></span>
@@ -452,6 +453,7 @@
       {% endif %}
     </article>
   </section>
+  </div>
 </div>
 {% endblock %}
 
@@ -460,6 +462,8 @@
   (function () {
     const root = document.querySelector('[data-gerencial-v3]');
     if (!root) return;
+    const dynamicSections = root.querySelector('[data-pgm3-dynamic-sections]');
+    const sectionEndpoint = "{{ url_for('gerencial') }}";
 
     const toggleBtn = root.querySelector('[data-pgm3-toggle]');
     const filterForm = root.querySelector('[data-pgm3-form]');
@@ -480,9 +484,11 @@
       });
     }
 
-    const donut = root.querySelector('[data-cat-donut]');
-    const items = Array.from(root.querySelectorAll('[data-cat-item]'));
-    if (donut && items.length) {
+    function renderCategoryDonut(scope) {
+      const donut = scope.querySelector('[data-cat-donut]');
+      const items = Array.from(scope.querySelectorAll('[data-cat-item]'));
+      if (!donut || !items.length) return;
+
       const total = items.reduce((sum, item) => sum + Number(item.dataset.value || 0), 0);
       let offset = 0;
       const segments = [];
@@ -498,7 +504,48 @@
         offset = end;
       });
 
-      donut.style.setProperty('--pgm3-donut-bg', segments.length ? `conic-gradient(${segments.join(', ')})` : 'conic-gradient(#1e293b 0 100%)');
+      donut.style.setProperty(
+        '--pgm3-donut-bg',
+        segments.length ? `conic-gradient(${segments.join(', ')})` : 'conic-gradient(#1e293b 0 100%)'
+      );
+    }
+
+    renderCategoryDonut(root);
+
+    if (filterForm && dynamicSections) {
+      filterForm.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        const params = new URLSearchParams(new FormData(filterForm));
+        const targetUrl = params.toString() ? `${sectionEndpoint}?${params.toString()}` : sectionEndpoint;
+
+        root.classList.add('is-loading');
+        try {
+          const response = await fetch(targetUrl, {
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest'
+            }
+          });
+          if (!response.ok) {
+            throw new Error(`status ${response.status}`);
+          }
+          const htmlText = await response.text();
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(htmlText, 'text/html');
+          const nextDynamic = doc.querySelector('[data-pgm3-dynamic-sections]');
+          if (!nextDynamic) {
+            throw new Error('dynamic section not found');
+          }
+
+          dynamicSections.innerHTML = nextDynamic.innerHTML;
+          renderCategoryDonut(root);
+          window.history.replaceState({}, '', targetUrl);
+        } catch (err) {
+          console.warn('Falha ao atualizar filtros dinamicamente, executando fallback.', err);
+          filterForm.submit();
+        } finally {
+          root.classList.remove('is-loading');
+        }
+      });
     }
   })();
 </script>

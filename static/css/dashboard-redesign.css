@@ -2718,6 +2718,11 @@ body.auth-shell-mode .gerencial-page-v3 {
   gap: 8px;
 }
 
+body.auth-shell-mode .gerencial-page-v3.is-loading [data-pgm3-dynamic-sections] {
+  opacity: 0.68;
+  transition: opacity 140ms ease;
+}
+
 body.auth-shell-mode .gerencial-page-v3 .pgm3-hero {
   border-radius: 24px;
   border: 1px solid rgba(148, 179, 255, 0.24);
