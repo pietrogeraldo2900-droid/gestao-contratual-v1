@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block title %}Painel Gerencial{% endblock %}
 
 {% block content %}
@@ -19,35 +19,26 @@
 {% set radar_items = radar.get('items', []) %}
 {% set bi_mvp = dashboard.get('bi_mvp', {}) %}
 {% set bi_kpis = bi_mvp.get('kpis', {}) %}
-{% set bi_timeline = bi_mvp.get('timeline', []) %}
-{% set bi_top_servicos = bi_mvp.get('top_servicos', []) %}
-{% set nucleos_small_mode = (nucleos_items|length <= 4) %}
-{% set ocorrencias_small_mode = (ocorrencias_tipo_items|length <= 4) %}
 {% set categorias_total = categorias_items | map(attribute='value') | sum %}
-{% set nucleos_total = nucleos_items | map(attribute='value') | sum %}
 {% set max_nucleo_val = (nucleos_items[0].get('value', 0)|float if nucleos_items else 0.0) %}
 {% if max_nucleo_val <= 0 %}{% set max_nucleo_val = 1.0 %}{% endif %}
-{% set trend_direction = bi_kpis.get('trend_direction', 'neutral') %}
-{% set trend_arrow = '→' %}
-{% if trend_direction == 'up' %}{% set trend_arrow = '↑' %}{% endif %}
-{% if trend_direction == 'down' %}{% set trend_arrow = '↓' %}{% endif %}
-{% set cat_colors = ['#49b6ff', '#33d6dd', '#4ade80', '#a3e635', '#facc15', '#fb7185', '#a78bfa', '#60a5fa'] %}
-{% set user_initials = (session.get('user_email', 'OP')[:2] or 'OP')|upper %}
 {% set pretty_label_map = {
-  'rede_agua': 'Rede de Água',
-  'ramal_agua': 'Ramal de Água',
-  'ocorrencia_operacional': 'Ocorrência Operacional',
-  'sem_producao': 'Sem produção',
+  'rede_agua': 'Rede de Agua',
+  'ramal_agua': 'Ramal de Agua',
+  'ocorrencia_operacional': 'Ocorrencia Operacional',
+  'sem_producao': 'Sem producao',
   'caixa_uma': 'Caixa UMA',
   'intradomiciliar': 'Intradomiciliar',
-  'hidrometro': 'Hidrômetro',
-  'recomposicao': 'Recomposição'
+  'hidrometro': 'Hidrometro',
+  'recomposicao': 'Recomposicao',
+  'rede_esgoto': 'Rede de Esgoto'
 } %}
+{% set cat_colors = ['#4aa8ff', '#33c8ff', '#4ade80', '#a3e635', '#facc15', '#fb7185', '#a78bfa'] %}
 {% macro pretty_metric_label(value) -%}
   {%- set raw = (value|string).strip() -%}
   {%- set norm = raw|lower -%}
   {%- if not raw or norm in ['-', '--', 'null', 'none', 'nan', 'n/a'] -%}
-    Não informado
+    Nao informado
   {%- elif norm in pretty_label_map -%}
     {{ pretty_label_map[norm] }}
   {%- else -%}
@@ -55,489 +46,305 @@
   {%- endif -%}
 {%- endmacro %}
 
-<div class="gerencial-page-v3" data-gerencial-v3>
-  <header class="pgm3-hero">
-    <div>
-      <h1>Painel Gerencial de Evolucao de Obra</h1>
-      <p>Base executiva consolidada para leitura rapida e acompanhamento operacional.</p>
+<div class="gerencial-page-v4" data-gerencial-v4>
+  <header class="pgm4-hero">
+    <div class="pgm4-hero-copy">
+      <h1>Painel Gerencial</h1>
+      <p>Recorte operacional consolidado para leitura executiva.</p>
     </div>
-    <div class="pgm3-hero-actions">
+    <div class="pgm4-hero-actions">
+      <button type="button" class="pgm4-btn pgm4-btn-ghost" data-pgm4-toggle-filters>Filtros</button>
       <a
+        class="pgm4-btn pgm4-btn-primary"
         href="{{ url_for('gerencial_export_csv', obra_from=obra_from, obra_to=obra_to, processed_from=processed_from, processed_to=processed_to, nucleo=nucleo, municipio=municipio, equipe=equipe, status=status_filter, alertas=alertas_filter, top_n=top_n) }}"
-        class="pgm3-hero-btn"
-        data-pgm3-export-hero
       >
         Exportar CSV
       </a>
-      <button type="button" class="pgm3-hero-btn pgm3-hero-btn-ghost" data-pgm3-scroll-filters>Filtros</button>
-      <span class="pgm3-user-badge">{{ user_initials }}</span>
     </div>
   </header>
 
-  <section class="pgm3-filters-shell">
-    <div class="pgm3-filters-header">
-      <div>
-        <h2>Filtros do painel</h2>
-        <p>Refine o recorte por periodo, nucleo, municipio, equipe e status.</p>
-      </div>
-      <button type="button" class="pgm3-filter-toggle is-open" data-pgm3-toggle>
-        <span data-pgm3-toggle-label>Ocultar filtros</span>
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M6 9l6 6 6-6"></path>
-        </svg>
-      </button>
+  <section class="pgm4-filter-shell">
+    <div class="pgm4-filter-chips">
+      {% if obra_from or obra_to %}
+      <span class="pgm4-chip">Periodo: {{ obra_from or '...' }} - {{ obra_to or '...' }}</span>
+      {% endif %}
+      {% if municipio %}
+      <span class="pgm4-chip">Municipio: {{ municipio }}</span>
+      {% endif %}
+      {% if nucleo %}
+      <span class="pgm4-chip">Nucleo: {{ nucleo }}</span>
+      {% endif %}
+      {% if status_filter %}
+      <span class="pgm4-chip">Status: {{ status_filter }}</span>
+      {% endif %}
+      {% if alertas_filter %}
+      <span class="pgm4-chip">Alertas: {{ alertas_filter }}</span>
+      {% endif %}
+      {% if not (obra_from or obra_to or municipio or nucleo or status_filter or alertas_filter) %}
+      <span class="pgm4-chip pgm4-chip-muted">Sem filtros ativos</span>
+      {% endif %}
     </div>
-
-    <form method="get" action="{{ url_for('gerencial') }}" class="pgm3-filter-form" data-pgm3-form>
-      <div class="pgm3-filter-grid">
-        <label>
-          Periodo da obra (de)
-          <input type="date" name="obra_from" value="{{ obra_from }}">
-        </label>
-        <label>
-          Periodo da obra (ate)
-          <input type="date" name="obra_to" value="{{ obra_to }}">
-        </label>
-        <label>
-          Processado em (de)
-          <input type="date" name="processed_from" value="{{ processed_from }}">
-        </label>
-        <label>
-          Processado em (ate)
-          <input type="date" name="processed_to" value="{{ processed_to }}">
-        </label>
-        <label>
-          Nucleo
-          <input type="text" name="nucleo" value="{{ nucleo }}" placeholder="Ex.: Mississipi">
-        </label>
-        <label>
-          Municipio
-          <input type="text" name="municipio" value="{{ municipio }}" placeholder="Ex.: Carapicuiba">
-        </label>
-        <label>
-          Equipe
-          <input type="text" name="equipe" value="{{ equipe }}" placeholder="Ex.: Sidney">
-        </label>
-        <label>
-          Status
+    <form method="get" action="{{ url_for('gerencial') }}" class="pgm4-filter-form" data-pgm4-filter-form hidden>
+      <div class="pgm4-filter-grid">
+        <label>Periodo obra (de)<input type="date" name="obra_from" value="{{ obra_from }}"></label>
+        <label>Periodo obra (ate)<input type="date" name="obra_to" value="{{ obra_to }}"></label>
+        <label>Processado (de)<input type="date" name="processed_from" value="{{ processed_from }}"></label>
+        <label>Processado (ate)<input type="date" name="processed_to" value="{{ processed_to }}"></label>
+        <label>Nucleo<input type="text" name="nucleo" value="{{ nucleo }}" placeholder="Ex.: Mississipi"></label>
+        <label>Municipio<input type="text" name="municipio" value="{{ municipio }}" placeholder="Ex.: Carapicuiba"></label>
+        <label>Equipe<input type="text" name="equipe" value="{{ equipe }}" placeholder="Ex.: Sidney"></label>
+        <label>Status
           <select name="status">
             <option value="" {% if not status_filter %}selected{% endif %}>Todos</option>
             <option value="sucesso" {% if status_filter == 'sucesso' %}selected{% endif %}>Sucesso</option>
             <option value="erro" {% if status_filter == 'erro' %}selected{% endif %}>Erro</option>
           </select>
         </label>
-        <label>
-          Alertas
+        <label>Alertas
           <select name="alertas">
             <option value="" {% if not alertas_filter %}selected{% endif %}>Todos</option>
             <option value="com_alerta" {% if alertas_filter == 'com_alerta' %}selected{% endif %}>Com alerta</option>
             <option value="sem_alerta" {% if alertas_filter == 'sem_alerta' %}selected{% endif %}>Sem alerta</option>
           </select>
         </label>
-        <label>
-          Top N
-          <input type="number" min="3" max="50" name="top_n" value="{{ top_n }}">
-        </label>
+        <label>Top N<input type="number" min="3" max="50" name="top_n" value="{{ top_n }}"></label>
       </div>
-
-      <div class="pgm3-filter-actions">
-        <button type="submit" class="pgm3-btn-primary">Aplicar filtros</button>
-        <a href="{{ url_for('gerencial') }}" class="pgm3-btn-ghost">Limpar filtros</a>
-        <a
-          href="{{ url_for('gerencial_export_csv', obra_from=obra_from, obra_to=obra_to, processed_from=processed_from, processed_to=processed_to, nucleo=nucleo, municipio=municipio, equipe=equipe, status=status_filter, alertas=alertas_filter, top_n=top_n) }}"
-          class="pgm3-btn-ghost"
-          data-pgm3-export-current
-        >
-          Exportar CSV
-        </a>
+      <div class="pgm4-filter-actions">
+        <button type="submit" class="pgm4-btn pgm4-btn-primary">Aplicar filtros</button>
+        <a href="{{ url_for('gerencial') }}" class="pgm4-btn pgm4-btn-ghost">Limpar</a>
       </div>
     </form>
   </section>
 
-  <div data-pgm3-dynamic-sections>
-  <section class="pgm3-kpi-grid">
-    <article class="pgm3-kpi-card">
-      <span class="pgm3-kpi-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M5 3h14v18H5z"></path><path d="M9 7h6"></path><path d="M9 11h6"></path><path d="M9 15h4"></path></svg></span>
-      <p class="pgm3-kpi-label">Nucleos</p>
-      <strong>{{ kpi.get('total_nucleos', 0) }}</strong>
-      <small>com atividade no periodo</small>
-    </article>
-
-    <article class="pgm3-kpi-card">
-      <span class="pgm3-kpi-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="5" width="16" height="14" rx="2"></rect><path d="M8 10h8"></path></svg></span>
-      <p class="pgm3-kpi-label">Ligacoes agua</p>
-      <strong>{{ kpi.get('ligacoes_agua_total_fmt', '0') }}</strong>
-      <small>volume consolidado</small>
-    </article>
-
-    <article class="pgm3-kpi-card">
-      <span class="pgm3-kpi-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l9 16H3z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
-      <p class="pgm3-kpi-label">Ligacoes esgoto</p>
-      <strong>{{ kpi.get('ligacoes_esgoto_total_fmt', '0') }}</strong>
-      <small>volume consolidado</small>
-    </article>
-
-    <article class="pgm3-kpi-card">
-      <span class="pgm3-kpi-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 9h16"></path><path d="M6 5h12v14H6z"></path><path d="M9 13h6"></path></svg></span>
-      <p class="pgm3-kpi-label">PRA</p>
+  <section class="pgm4-kpi-grid">
+    <article class="pgm4-kpi-card">
+      <span class="pgm4-kpi-label">PRA</span>
       <strong>{{ kpi.get('prolongamento_rede_agua_total_fmt', '0') }}</strong>
       <small>prol. rede agua</small>
     </article>
-
-    <article class="pgm3-kpi-card">
-      <span class="pgm3-kpi-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M7 5h10"></path><path d="M5 9h14"></path><path d="M4 13h16"></path><path d="M6 17h12"></path></svg></span>
-      <p class="pgm3-kpi-label">PRE</p>
+    <article class="pgm4-kpi-card">
+      <span class="pgm4-kpi-label">PRE</span>
       <strong>{{ kpi.get('prolongamento_rede_esgoto_total_fmt', '0') }}</strong>
       <small>prol. rede esgoto</small>
     </article>
-
-    <article class="pgm3-kpi-card">
-      <span class="pgm3-kpi-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="9" r="3"></circle><circle cx="16" cy="14" r="3"></circle><path d="M3 20c0-3 3-5 6-5"></path><path d="M11 20c0-2.7 2.5-4.5 5-4.5 2.6 0 5 1.8 5 4.5"></path></svg></span>
-      <p class="pgm3-kpi-label">Nucleo lider</p>
-      <strong class="pgm3-kpi-text">{{ pretty_metric_label(kpi.get('nucleo_maior_volume', '-')) }}</strong>
-      <small>{{ kpi.get('nucleo_maior_volume_valor_fmt', '0') }} de volume</small>
+    <article class="pgm4-kpi-card">
+      <span class="pgm4-kpi-label">Ligacoes Agua</span>
+      <strong>{{ kpi.get('ligacoes_agua_total_fmt', '0') }}</strong>
+      <small>volume consolidado</small>
+    </article>
+    <article class="pgm4-kpi-card">
+      <span class="pgm4-kpi-label">Ligacoes Esgoto</span>
+      <strong>{{ kpi.get('ligacoes_esgoto_total_fmt', '0') }}</strong>
+      <small>volume consolidado</small>
     </article>
   </section>
 
-  {% if bi_mvp.get('enabled') %}
-  <section class="pgm3-panel pgm3-bi-panel">
-    <header class="pgm3-panel-header">
-      <h3>Camada BI (MVP)</h3>
-      <p>Indicadores consolidados via views analiticas `vw_bi_*` no mesmo recorte aplicado no painel.</p>
-    </header>
-
-    <div class="pgm3-bi-grid">
-      <article class="pgm3-bi-card">
-        <p class="pgm3-bi-label">Registros no recorte</p>
-        <strong>{{ bi_kpis.get('registros_fmt', '0') }}</strong>
-      </article>
-      <article class="pgm3-bi-card">
-        <p class="pgm3-bi-label">Volume consolidado</p>
-        <strong>{{ bi_kpis.get('volume_total_fmt', '0') }}</strong>
-        <small class="pgm3-bi-trend is-{{ trend_direction }}">
-          {{ trend_arrow }} {{ bi_kpis.get('trend_pct_fmt', '0') }}% vs dia anterior
-        </small>
-      </article>
-      <article class="pgm3-bi-card">
-        <p class="pgm3-bi-label">Mapeamento</p>
-        <strong>{{ bi_kpis.get('percentual_mapeado_fmt', '0') }}%</strong>
-        <div class="pgm3-bi-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ bi_kpis.get('percentual_mapeado', 0)|float|round(1) }}">
-          <span style="width: {{ bi_kpis.get('percentual_mapeado', 0)|float|round(2) }}%;"></span>
-        </div>
-        <small>{{ bi_kpis.get('mapeados', 0) }} mapeado(s) · {{ bi_kpis.get('nao_mapeados', 0) }} nao mapeado(s)</small>
-      </article>
-      <article class="pgm3-bi-card">
-        <p class="pgm3-bi-label">Top ocorrencia</p>
-        <strong>{{ pretty_metric_label(bi_mvp.get('top_ocorrencia', {}).get('tipo_ocorrencia', '-')) }}</strong>
-        <small>{{ bi_mvp.get('top_ocorrencia', {}).get('ocorrencias', 0) }} registro(s)</small>
-      </article>
-    </div>
-
-    {% if bi_timeline %}
-    <div class="pgm3-bi-timeline">
-      {% for point in bi_timeline %}
-      <span>{{ point.get('data', '-') }} · {{ point.get('volume_total_fmt', '0') }}</span>
-      {% endfor %}
-    </div>
-    {% endif %}
-
-    {% if bi_top_servicos %}
-    <div class="pgm3-team-list pgm3-team-list-wide pgm3-bi-service-list">
-      {% for row in bi_top_servicos[:5] %}
-      <article class="pgm3-team-row">
-        <span class="label">{{ pretty_metric_label(row.get('servico', '-')) }}</span>
-        <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
-        <span class="val">{{ row.get('value_display', row.get('volume_total_fmt', '0')) }}</span>
-      </article>
-      {% endfor %}
-    </div>
-    {% endif %}
-  </section>
-  {% elif bi_mvp.get('error') %}
-  <section class="pgm3-panel">
-    <header class="pgm3-panel-header">
-      <h3>Camada BI (MVP)</h3>
-      <p>As views analiticas ainda nao estao disponiveis neste ambiente.</p>
-    </header>
-    <div class="pgm3-empty">Detalhe tecnico: {{ bi_mvp.get('error') }}</div>
-  </section>
-  {% endif %}
-
-  <section class="pgm3-panel pgm3-panel-rank pgm3-risk-panel">
-    <header class="pgm3-panel-header">
-      <h3>Radar de risco por contrato</h3>
-      <p>Score 0-100 baseado em ocorrencias, nao mapeados, volume e tendencia recente.</p>
-    </header>
-
-    <div class="pgm3-risk-summary">
-      <span class="pgm3-risk-chip">Monitorados: {{ radar.get('monitorados', 0) }}</span>
-      <span class="pgm3-risk-chip is-critical">Critico: {{ radar.get('critico', 0) }}</span>
-      <span class="pgm3-risk-chip is-high">Alto: {{ radar.get('alto', 0) }}</span>
-      <span class="pgm3-risk-chip is-moderate">Moderado: {{ radar.get('moderado', 0) }}</span>
-      <span class="pgm3-risk-chip is-low">Baixo: {{ radar.get('baixo', 0) }}</span>
-    </div>
-
-    {% if radar_items %}
-      <div class="pgm3-risk-list">
-        {% for item in radar_items %}
-        <article class="pgm3-risk-row">
-          <div class="pgm3-risk-main">
-            <p class="pgm3-risk-name">{{ item.get('contract_label', 'Sem contrato') }}</p>
-            <p class="pgm3-risk-meta">{{ item.get('summary', '-') }}</p>
-            <p class="pgm3-risk-reasons">{{ item.get('reasons', []) | join(' • ') }}</p>
-          </div>
-          <div class="pgm3-risk-score">
-            <span class="pgm3-risk-badge is-{{ item.get('level_key', 'baixo') }}">{{ item.get('level_label', 'Baixo') }}</span>
-            <div class="pgm3-risk-score-value">{{ item.get('score', 0) }}</div>
-            <div class="pgm3-risk-score-max">/100</div>
-          </div>
-          <div class="pgm3-risk-track">
-            <span style="width: {{ item.get('bar_width_pct', 0) }}%;"></span>
-          </div>
-        </article>
-        {% endfor %}
-      </div>
-    {% else %}
-      <div class="pgm3-empty">Sem contratos suficientes para calcular risco no recorte atual.</div>
-    {% endif %}
-  </section>
-
-  <section class="pgm3-analytics-grid">
-    <article class="pgm3-panel {% if nucleos_small_mode %}pgm3-panel-compact{% endif %}">
-      <header class="pgm3-panel-header">
-        <h3>Visao por Nucleo</h3>
-        <p>Frentes, itens, ocorrencias e volume</p>
+  <section class="pgm4-main-grid">
+    <article class="pgm4-panel">
+      <header class="pgm4-panel-header">
+        <h3>Bloco analitico principal</h3>
       </header>
-
-      {% if nucleos_items %}
-      {% if not nucleos_small_mode %}
-      <div class="pgm3-nuc-chart-wrap">
-        <div class="pgm3-nuc-chart">
-          {% for row in nucleos_items[:7] %}
-          {% set nuc_ratio = ((row.get('value', 0)|float / max_nucleo_val) if max_nucleo_val else 0.0) %}
-          {% if nuc_ratio > 1 %}{% set nuc_ratio = 1 %}{% endif %}
-          {% if nuc_ratio < 0 %}{% set nuc_ratio = 0 %}{% endif %}
-          {% set nuc_height_px = (10 + (nuc_ratio * 150)) if row.get('value', 0)|float > 0 else 6 %}
-          <div class="pgm3-nuc-col">
-            <span class="pgm3-nuc-bar" style="height: {{ '%.0f'|format(nuc_height_px) }}px;"></span>
-            <span class="pgm3-nuc-value">{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-
-      <div class="pgm3-nuc-list">
-          {% for row in nucleos_items[:4] %}
-          {% set pct = ((row.get('value', 0) / nucleos_total) * 100) if nucleos_total else 0 %}
-          <article class="pgm3-nuc-row" data-pgm3-drill-trigger data-dim="nucleo" data-label="{{ row.get('label', '-') }}">
-            <span class="name">{{ pretty_metric_label(row.get('label', '-')) }}</span>
-            <span>{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
-            <span>{{ '%.1f'|format(pct) }}%</span>
-          </article>
-        {% endfor %}
-      </div>
-      {% else %}
-      <div class="pgm3-team-list pgm3-team-list-wide pgm3-team-list-compact">
-        {% for row in nucleos_items[:4] %}
-        {% set pct = ((row.get('value', 0) / nucleos_total) * 100) if nucleos_total else 0 %}
-        {% set nuc_width = pct if pct > 0 else 0 %}
-        <article class="pgm3-team-row" data-pgm3-drill-trigger data-dim="nucleo" data-label="{{ row.get('label', '-') }}">
-          <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
-          <span class="track"><span style="width: {{ '%.1f'|format(nuc_width) }}%;"></span></span>
-          <span class="val">{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
-        </article>
-        {% endfor %}
-      </div>
-      {% endif %}
-      {% else %}
-      <div class="pgm3-empty">Sem dados de nucleo para o recorte atual.</div>
-      {% endif %}
-    </article>
-
-    <article class="pgm3-panel">
-      <header class="pgm3-panel-header">
-        <h3>Visao por Categoria</h3>
-        <p>Participacao e status operacional</p>
-      </header>
-
-      {% if categorias_items %}
-      <div class="pgm3-cat-layout">
-        <div class="pgm3-cat-donut-wrap">
-          <div class="pgm3-cat-donut" data-cat-donut>
-            <div class="pgm3-cat-center">
-              <small>VOLUME</small>
-              <strong>{{ consolidado.get('volume_total_fmt', '0') }}</strong>
-            </div>
-          </div>
-        </div>
-
-        <div class="pgm3-cat-list">
-          {% for row in categorias_items[:6] %}
-            {% set color = cat_colors[loop.index0 % (cat_colors|length)] %}
-            {% set pct = ((row.get('value', 0) / categorias_total) * 100) if categorias_total else 0 %}
-            <article class="pgm3-cat-row" data-cat-item data-value="{{ row.get('value', 0) }}" data-color="{{ color }}" data-pgm3-drill-trigger data-dim="categoria" data-label="{{ row.get('label', '-') }}">
-              <span class="dot" style="--dot: {{ color }};"></span>
-              <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
-              <span class="val">{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
-              <span class="pct" data-cat-pct>{{ '%.1f'|format(pct) }}%</span>
-              <span class="status">Ativa</span>
+      <nav class="pgm4-tabs" data-tab-group="principal">
+        <button type="button" class="is-active" data-tab="nucleos">Nucleos</button>
+        <button type="button" data-tab="servicos">Servicos</button>
+        <button type="button" data-tab="equipes">Equipes</button>
+        <button type="button" data-tab="municipios">Municipios</button>
+      </nav>
+      <div class="pgm4-tab-panels" data-tab-panels="principal">
+        <section class="is-active" data-tab-panel="nucleos">
+          {% if nucleos_items %}
+          <div class="pgm4-bar-chart">
+            {% for row in nucleos_items[:7] %}
+            {% set ratio = ((row.get('value', 0)|float / max_nucleo_val) if max_nucleo_val else 0) %}
+            {% if ratio > 1 %}{% set ratio = 1 %}{% endif %}
+            {% if ratio < 0 %}{% set ratio = 0 %}{% endif %}
+            <article class="pgm4-bar-col">
+              <span class="bar" style="height: {{ '%.0f'|format(10 + (ratio * 86)) }}px;"></span>
+              <small>{{ row.get('value_display', row.get('value_fmt', '0')) }}</small>
             </article>
+            {% endfor %}
+          </div>
+          <div class="pgm4-rank-list">
+            {% for row in nucleos_items[:5] %}
+            <article class="pgm4-rank-row">
+              <span>{{ pretty_metric_label(row.get('label', '-')) }}</span>
+              <strong>{{ row.get('value_display', row.get('value_fmt', '0')) }}</strong>
+            </article>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="pgm4-empty">Sem dados de nucleos no recorte.</div>
+          {% endif %}
+        </section>
+
+        <section data-tab-panel="servicos">
+          <div class="pgm4-service-mode">
+            <button type="button" class="is-active" data-service-mode-btn data-mode="ambos">Ambos</button>
+            <button type="button" data-service-mode-btn data-mode="metragem">Metragem</button>
+            <button type="button" data-service-mode-btn data-mode="quantitativo">Quantitativo</button>
+          </div>
+          <div class="pgm4-rank-list" data-service-mode="ambos">
+            {% for row in servicos_ambos_items[:6] %}
+            <article class="pgm4-rank-progress-row">
+              <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
+              <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
+              <strong>{{ row.get('value_display', row.get('value_fmt', '0')) }}</strong>
+            </article>
+            {% endfor %}
+            {% if not servicos_ambos_items %}
+            <div class="pgm4-empty">Sem servicos no recorte.</div>
+            {% endif %}
+          </div>
+          <div class="pgm4-rank-list" data-service-mode="metragem" hidden>
+            {% for row in servicos_metragem_items[:6] %}
+            <article class="pgm4-rank-progress-row">
+              <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
+              <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
+              <strong>{{ row.get('value_display', row.get('value_fmt', '0')) }}</strong>
+            </article>
+            {% endfor %}
+            {% if not servicos_metragem_items %}
+            <div class="pgm4-empty">Sem servicos de metragem no recorte.</div>
+            {% endif %}
+          </div>
+          <div class="pgm4-rank-list" data-service-mode="quantitativo" hidden>
+            {% for row in servicos_quantitativo_items[:6] %}
+            <article class="pgm4-rank-progress-row">
+              <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
+              <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
+              <strong>{{ row.get('value_display', row.get('value_fmt', '0')) }}</strong>
+            </article>
+            {% endfor %}
+            {% if not servicos_quantitativo_items %}
+            <div class="pgm4-empty">Sem servicos quantitativos no recorte.</div>
+            {% endif %}
+          </div>
+        </section>
+
+        <section data-tab-panel="equipes">
+          {% if equipes_items %}
+          <div class="pgm4-rank-list">
+            {% for row in equipes_items[:7] %}
+            <article class="pgm4-rank-progress-row">
+              <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
+              <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
+              <strong>{{ row.get('value_display', row.get('value_fmt', '0')) }}</strong>
+            </article>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="pgm4-empty">Sem dados de equipe no recorte.</div>
+          {% endif %}
+        </section>
+
+        <section data-tab-panel="municipios">
+          {% if municipios_items %}
+          <div class="pgm4-rank-list">
+            {% for row in municipios_items[:7] %}
+            <article class="pgm4-rank-progress-row">
+              <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
+              <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
+              <strong>{{ row.get('value_display', row.get('value_fmt', '0')) }}</strong>
+            </article>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="pgm4-empty">Sem dados de municipio no recorte.</div>
+          {% endif %}
+        </section>
+      </div>
+    </article>
+
+    <aside class="pgm4-side-stack">
+      <article class="pgm4-panel pgm4-panel-tight">
+        <header class="pgm4-panel-header">
+          <h3>Radar resumido</h3>
+        </header>
+        <div class="pgm4-risk-chips">
+          <span class="chip">Monitorados: {{ radar.get('monitorados', 0) }}</span>
+          <span class="chip critico">Critico: {{ radar.get('critico', 0) }}</span>
+          <span class="chip alto">Alto: {{ radar.get('alto', 0) }}</span>
+          <span class="chip moderado">Moderado: {{ radar.get('moderado', 0) }}</span>
+          <span class="chip baixo">Baixo: {{ radar.get('baixo', 0) }}</span>
+        </div>
+        {% if radar_items %}
+        <div class="pgm4-risk-mini">
+          {% for item in radar_items[:3] %}
+          <article>
+            <div class="title">{{ item.get('contract_label', 'Sem contrato') }}</div>
+            <div class="score">{{ item.get('score', 0) }}/100</div>
+            <span class="track"><span style="width: {{ item.get('bar_width_pct', 0) }}%;"></span></span>
+          </article>
           {% endfor %}
         </div>
-      </div>
-      {% else %}
-      <div class="pgm3-empty">Sem dados de categoria para o recorte atual.</div>
-      {% endif %}
-    </article>
-
-    <article class="pgm3-panel pgm3-panel-rank">
-      <header class="pgm3-panel-header">
-        <h3>Visao por Equipe</h3>
-        <p>Equipes com maior volume executado</p>
-      </header>
-
-      {% if equipes_items %}
-      <div class="pgm3-team-list">
-        {% for row in equipes_items[:7] %}
-        {% set team_width = (row.get('width_pct', 0) * 1.15) %}
-        {% if team_width > 100 %}{% set team_width = 100 %}{% endif %}
-        <article class="pgm3-team-row" data-pgm3-drill-trigger data-dim="equipe" data-label="{{ row.get('label', '-') }}">
-          <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
-          <span class="track"><span style="width: {{ '%.1f'|format(team_width) }}%;"></span></span>
-          <span class="val">{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
-        </article>
-        {% endfor %}
-      </div>
-      {% else %}
-      <div class="pgm3-empty">Sem dados de equipe para o recorte atual.</div>
-      {% endif %}
-    </article>
-
-    <article class="pgm3-panel pgm3-panel-rank">
-      <header class="pgm3-panel-header">
-        <div>
-          <h3>Visao por Servicos</h3>
-          <p>Top servicos mais executados (volume consolidado)</p>
-        </div>
-        <div class="pgm3-unit-toggle" role="group" aria-label="Unidade dos servicos">
-          <button type="button" class="is-active" data-service-mode-btn data-mode="ambos">Ambos</button>
-          <button type="button" data-service-mode-btn data-mode="metragem">Metragem</button>
-          <button type="button" data-service-mode-btn data-mode="quantitativo">Quantitativo</button>
-        </div>
-      </header>
-
-      {% if servicos_ambos_items or servicos_metragem_items or servicos_quantitativo_items %}
-      <div class="pgm3-team-list pgm3-team-list-wide pgm3-service-list" data-service-mode="ambos">
-        {% for row in servicos_ambos_items[:7] %}
-        <article class="pgm3-team-row" data-pgm3-drill-trigger data-dim="servico" data-label="{{ row.get('label', '-') }}">
-          <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
-          <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
-          <span class="val">{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
-        </article>
-        {% endfor %}
-      </div>
-      <div class="pgm3-team-list pgm3-team-list-wide pgm3-service-list" data-service-mode="metragem" hidden>
-        {% for row in servicos_metragem_items[:7] %}
-        <article class="pgm3-team-row" data-pgm3-drill-trigger data-dim="servico" data-label="{{ row.get('label', '-') }}">
-          <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
-          <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
-          <span class="val">{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
-        </article>
-        {% endfor %}
-        {% if not servicos_metragem_items %}
-        <div class="pgm3-empty">Nao ha servicos de metragem no recorte atual.</div>
+        {% else %}
+        <div class="pgm4-empty">Sem contratos suficientes no recorte.</div>
         {% endif %}
-      </div>
-      <div class="pgm3-team-list pgm3-team-list-wide pgm3-service-list" data-service-mode="quantitativo" hidden>
-        {% for row in servicos_quantitativo_items[:7] %}
-        <article class="pgm3-team-row" data-pgm3-drill-trigger data-dim="servico" data-label="{{ row.get('label', '-') }}">
-          <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
-          <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
-          <span class="val">{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
-        </article>
-        {% endfor %}
-        {% if not servicos_quantitativo_items %}
-        <div class="pgm3-empty">Nao ha servicos quantitativos no recorte atual.</div>
-        {% endif %}
-      </div>
-      {% else %}
-      <div class="pgm3-empty">Sem dados de servico para o recorte atual.</div>
-      {% endif %}
-    </article>
+      </article>
 
-    <article class="pgm3-panel pgm3-panel-rank pgm3-panel-compact">
-      <header class="pgm3-panel-header">
-        <h3>Visao por Municipio</h3>
-        <p>Municipios com maior volume executado</p>
-      </header>
+      <article class="pgm4-panel pgm4-panel-tight">
+        <header class="pgm4-panel-header">
+          <h3>Blocos secundarios</h3>
+        </header>
+        <nav class="pgm4-tabs pgm4-tabs-small" data-tab-group="secundario">
+          <button type="button" class="is-active" data-tab="categoria">Categoria</button>
+          <button type="button" data-tab="ocorrencias">Ocorrencias</button>
+          <button type="button" data-tab="bi">BI</button>
+        </nav>
+        <div class="pgm4-tab-panels" data-tab-panels="secundario">
+          <section class="is-active" data-tab-panel="categoria">
+            {% if categorias_items %}
+            <div class="pgm4-cat-mini">
+              <div class="donut" data-cat-donut>
+                <div class="center">{{ consolidado.get('volume_total_fmt', '0') }}</div>
+              </div>
+              <div class="list">
+                {% for row in categorias_items[:5] %}
+                {% set pct = ((row.get('value', 0) / categorias_total) * 100) if categorias_total else 0 %}
+                <article data-cat-item data-value="{{ row.get('value', 0) }}" data-color="{{ cat_colors[loop.index0 % (cat_colors|length)] }}">
+                  <span class="dot" style="--dot: {{ cat_colors[loop.index0 % (cat_colors|length)] }};"></span>
+                  <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
+                  <strong>{{ '%.1f'|format(pct) }}%</strong>
+                </article>
+                {% endfor %}
+              </div>
+            </div>
+            {% else %}
+            <div class="pgm4-empty">Sem categorias no recorte.</div>
+            {% endif %}
+          </section>
 
-      {% if municipios_items %}
-      <div class="pgm3-team-list pgm3-team-list-wide pgm3-team-list-compact">
-        {% for row in municipios_items[:7] %}
-        <article class="pgm3-team-row" data-pgm3-drill-trigger data-dim="municipio" data-label="{{ row.get('label', '-') }}">
-          <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
-          <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
-          <span class="val">{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
-        </article>
-        {% endfor %}
-      </div>
-      {% else %}
-      <div class="pgm3-empty">Sem dados de municipio para o recorte atual.</div>
-      {% endif %}
-    </article>
+          <section data-tab-panel="ocorrencias">
+            {% if ocorrencias_tipo_items %}
+            <div class="pgm4-rank-list">
+              {% for row in ocorrencias_tipo_items[:5] %}
+              <article class="pgm4-rank-progress-row">
+                <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
+                <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
+                <strong>{{ row.get('value_display', row.get('value_fmt', '0')) }}</strong>
+              </article>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="pgm4-empty">Sem ocorrencias no recorte.</div>
+            {% endif %}
+          </section>
 
-    <article class="pgm3-panel pgm3-panel-rank {% if ocorrencias_small_mode %}pgm3-panel-compact{% endif %}">
-      <header class="pgm3-panel-header">
-        <h3>Ocorrencias por Tipo</h3>
-        <p>Tipos de ocorrencia mais frequentes</p>
-      </header>
-
-      {% if ocorrencias_tipo_items %}
-      <div class="pgm3-team-list pgm3-team-list-wide {% if ocorrencias_small_mode %}pgm3-team-list-compact{% endif %}">
-        {% for row in ocorrencias_tipo_items[:7] %}
-        <article class="pgm3-team-row">
-          <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
-          <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
-          <span class="val">{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
-        </article>
-        {% endfor %}
-      </div>
-      {% else %}
-      <div class="pgm3-empty">Sem ocorrencias no recorte atual.</div>
-      {% endif %}
-    </article>
-  </section>
-  </div>
-
-  <section class="pgm3-panel pgm3-drilldown-panel" data-pgm3-drilldown-panel hidden>
-    <header class="pgm3-panel-header pgm3-drill-header">
-      <div>
-        <h3 data-pgm3-drill-title>Detalhamento do indicador</h3>
-        <p data-pgm3-drill-summary>Selecione uma barra/lista para abrir os registros que compõem o total.</p>
-      </div>
-      <div class="pgm3-drill-actions">
-        <a href="{{ url_for('gerencial_export_csv') }}" class="pgm3-btn-ghost" data-pgm3-drill-export>Exportar detalhe (CSV)</a>
-        <button type="button" class="pgm3-btn-ghost" data-pgm3-drill-close>Fechar</button>
-      </div>
-    </header>
-    <div class="pgm3-drill-table-wrap">
-      <table class="pgm3-drill-table">
-        <thead>
-          <tr>
-            <th>Data</th>
-            <th>Nucleo</th>
-            <th>Municipio</th>
-            <th>Equipe</th>
-            <th>Servico</th>
-            <th>Categoria</th>
-            <th>Qtd</th>
-          </tr>
-        </thead>
-        <tbody data-pgm3-drill-body>
-          <tr><td colspan="7">Nenhum detalhe carregado.</td></tr>
-        </tbody>
-      </table>
-    </div>
+          <section data-tab-panel="bi">
+            {% if bi_mvp.get('enabled') %}
+            <div class="pgm4-bi-mini-grid">
+              <article><small>Registros</small><strong>{{ bi_kpis.get('registros_fmt', '0') }}</strong></article>
+              <article><small>Volume</small><strong>{{ bi_kpis.get('volume_total_fmt', '0') }}</strong></article>
+              <article><small>Mapeado</small><strong>{{ bi_kpis.get('percentual_mapeado_fmt', '0') }}%</strong></article>
+              <article><small>Top ocorrencia</small><strong>{{ pretty_metric_label(bi_mvp.get('top_ocorrencia', {}).get('tipo_ocorrencia', '-')) }}</strong></article>
+            </div>
+            {% else %}
+            <div class="pgm4-empty">Camada BI indisponivel no ambiente.</div>
+            {% endif %}
+          </section>
+        </div>
+      </article>
+    </aside>
   </section>
 </div>
 {% endblock %}
@@ -545,233 +352,86 @@
 {% block extra_scripts %}
 <script>
   (function () {
-    const root = document.querySelector('[data-gerencial-v3]');
+    const root = document.querySelector('[data-gerencial-v4]');
     if (!root) return;
-    const dynamicSections = root.querySelector('[data-pgm3-dynamic-sections]');
-    const sectionEndpoint = "{{ url_for('gerencial') }}";
-    const drilldownEndpoint = "{{ url_for('gerencial_drilldown') }}";
-    const exportEndpoint = "{{ url_for('gerencial_export_csv') }}";
 
-    const toggleBtn = root.querySelector('[data-pgm3-toggle]');
-    const filtersShell = root.querySelector('.pgm3-filters-shell');
-    const filterForm = root.querySelector('[data-pgm3-form]');
-    const toggleLabel = root.querySelector('[data-pgm3-toggle-label]');
-    const exportCurrentLink = root.querySelector('[data-pgm3-export-current]');
-    const exportHeroLink = root.querySelector('[data-pgm3-export-hero]');
-    const scrollFiltersBtn = root.querySelector('[data-pgm3-scroll-filters]');
-    const drillPanel = root.querySelector('[data-pgm3-drilldown-panel]');
-    const drillTitle = root.querySelector('[data-pgm3-drill-title]');
-    const drillSummary = root.querySelector('[data-pgm3-drill-summary]');
-    const drillBody = root.querySelector('[data-pgm3-drill-body]');
-    const drillExport = root.querySelector('[data-pgm3-drill-export]');
-    const drillClose = root.querySelector('[data-pgm3-drill-close]');
-
-    function buildFilterParams() {
-      return new URLSearchParams(new FormData(filterForm || document.createElement('form')));
-    }
-
-    function updateCurrentExportHref() {
-      if (!filterForm) return;
-      const params = buildFilterParams();
-      const nextHref = params.toString() ? `${exportEndpoint}?${params.toString()}` : exportEndpoint;
-      if (exportCurrentLink) exportCurrentLink.href = nextHref;
-      if (exportHeroLink) exportHeroLink.href = nextHref;
-    }
-
-    if (toggleBtn && filterForm) {
-      toggleBtn.addEventListener('click', function () {
-        const isHidden = filterForm.hasAttribute('hidden');
-        if (isHidden) {
+    const filterBtn = root.querySelector('[data-pgm4-toggle-filters]');
+    const filterForm = root.querySelector('[data-pgm4-filter-form]');
+    if (filterBtn && filterForm) {
+      filterBtn.addEventListener('click', function () {
+        const hidden = filterForm.hasAttribute('hidden');
+        if (hidden) {
           filterForm.removeAttribute('hidden');
-          toggleBtn.classList.add('is-open');
-          if (toggleLabel) toggleLabel.textContent = 'Ocultar filtros';
+          filterBtn.textContent = 'Ocultar filtros';
         } else {
           filterForm.setAttribute('hidden', '');
-          toggleBtn.classList.remove('is-open');
-          if (toggleLabel) toggleLabel.textContent = 'Mostrar filtros';
-        }
-      });
-    }
-    if (filterForm) {
-      filterForm.addEventListener('input', updateCurrentExportHref);
-      filterForm.addEventListener('change', updateCurrentExportHref);
-      updateCurrentExportHref();
-    }
-
-    if (scrollFiltersBtn && filtersShell) {
-      scrollFiltersBtn.addEventListener('click', function () {
-        filtersShell.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-    }
-
-    function activateServiceMode(scope, mode) {
-      const buttons = Array.from(scope.querySelectorAll('[data-service-mode-btn]'));
-      const lists = Array.from(scope.querySelectorAll('[data-service-mode]'));
-      buttons.forEach((btn) => {
-        const active = String(btn.getAttribute('data-mode') || '') === mode;
-        btn.classList.toggle('is-active', active);
-      });
-      lists.forEach((list) => {
-        const visible = String(list.getAttribute('data-service-mode') || '') === mode;
-        if (visible) {
-          list.removeAttribute('hidden');
-        } else {
-          list.setAttribute('hidden', '');
+          filterBtn.textContent = 'Filtros';
         }
       });
     }
 
-    function initServiceMode(scope) {
-      const activeBtn = scope.querySelector('[data-service-mode-btn].is-active') || scope.querySelector('[data-service-mode-btn][data-mode="ambos"]');
-      const mode = activeBtn ? String(activeBtn.getAttribute('data-mode') || 'ambos') : 'ambos';
-      activateServiceMode(scope, mode);
-    }
+    root.querySelectorAll('[data-tab-group]').forEach(function (group) {
+      group.addEventListener('click', function (event) {
+        const btn = event.target.closest('[data-tab]');
+        if (!btn) return;
+        const scope = group.getAttribute('data-tab-group');
+        const target = btn.getAttribute('data-tab');
+        if (!scope || !target) return;
 
-    function renderCategoryDonut(scope) {
-      const donut = scope.querySelector('[data-cat-donut]');
-      const items = Array.from(scope.querySelectorAll('[data-cat-item]'));
-      if (!donut || !items.length) return;
+        group.querySelectorAll('[data-tab]').forEach(function (el) {
+          el.classList.toggle('is-active', el === btn);
+        });
 
-      const total = items.reduce((sum, item) => sum + Number(item.dataset.value || 0), 0);
-      let offset = 0;
-      const segments = [];
-
-      items.forEach((item) => {
-        const value = Number(item.dataset.value || 0);
-        const pct = total > 0 ? (value / total) * 100 : 0;
-        const color = item.dataset.color || '#49b6ff';
-        const end = offset + pct;
-        segments.push(`${color} ${offset.toFixed(2)}% ${end.toFixed(2)}%`);
-        const pctEl = item.querySelector('[data-cat-pct]');
-        if (pctEl) pctEl.textContent = `${pct.toFixed(1)}%`;
-        offset = end;
+        const panels = root.querySelector('[data-tab-panels="' + scope + '"]');
+        if (!panels) return;
+        panels.querySelectorAll('[data-tab-panel]').forEach(function (panel) {
+          panel.classList.toggle('is-active', panel.getAttribute('data-tab-panel') === target);
+        });
       });
-
-      donut.style.setProperty(
-        '--pgm3-donut-bg',
-        segments.length ? `conic-gradient(${segments.join(', ')})` : 'conic-gradient(#1e293b 0 100%)'
-      );
-    }
-
-    renderCategoryDonut(root);
-    initServiceMode(root);
-
-    function hideDrilldown() {
-      if (!drillPanel) return;
-      drillPanel.setAttribute('hidden', '');
-    }
-
-    if (drillClose) {
-      drillClose.addEventListener('click', hideDrilldown);
-    }
-
-    async function loadDrilldown(dimension, label) {
-      if (!drillPanel || !drillBody || !drillTitle || !drillSummary) return;
-      const params = buildFilterParams();
-      params.set('dimension', dimension);
-      params.set('label', label);
-      params.set('limit', '180');
-
-      const target = `${drilldownEndpoint}?${params.toString()}`;
-      const response = await fetch(target, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-      if (!response.ok) {
-        throw new Error(`status ${response.status}`);
-      }
-      const payload = await response.json();
-      const rows = Array.isArray(payload.rows) ? payload.rows : [];
-
-      drillTitle.textContent = `Detalhamento: ${label}`;
-      const quantidadeFmt = payload.total_quantidade_fmt || '0';
-      drillSummary.textContent = `${rows.length} registro(s) encontrados · Quantitativo consolidado ${quantidadeFmt}.`;
-
-      if (!rows.length) {
-        drillBody.innerHTML = '<tr><td colspan="7">Nenhum registro encontrado para este recorte.</td></tr>';
-      } else {
-        drillBody.innerHTML = rows.map((row) => `
-          <tr>
-            <td>${row.data_referencia || '-'}</td>
-            <td>${row.nucleo || '-'}</td>
-            <td>${row.municipio || '-'}</td>
-            <td>${row.equipe || '-'}</td>
-            <td>${row.servico_oficial || '-'}</td>
-            <td>${row.categoria || '-'}</td>
-            <td>${row.quantidade_fmt || row.quantidade || '0'} ${row.unidade || ''}</td>
-          </tr>
-        `).join('');
-      }
-
-      if (drillExport) {
-        drillExport.href = `${exportEndpoint}?${params.toString()}`;
-      }
-      drillPanel.removeAttribute('hidden');
-      drillPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-
-    root.addEventListener('click', async function (event) {
-      const modeBtn = event.target.closest('[data-service-mode-btn]');
-      if (modeBtn && root.contains(modeBtn)) {
-        event.preventDefault();
-        const mode = String(modeBtn.getAttribute('data-mode') || 'ambos');
-        activateServiceMode(root, mode);
-        return;
-      }
-
-      const trigger = event.target.closest('[data-pgm3-drill-trigger]');
-      if (!trigger || !root.contains(trigger)) return;
-      event.preventDefault();
-
-      const dimension = String(trigger.getAttribute('data-dim') || '').trim();
-      const label = String(trigger.getAttribute('data-label') || '').trim();
-      if (!dimension || !label) return;
-
-      root.classList.add('is-loading');
-      try {
-        await loadDrilldown(dimension, label);
-      } catch (err) {
-        console.warn('Falha ao carregar detalhamento do gerencial.', err);
-      } finally {
-        root.classList.remove('is-loading');
-      }
     });
 
-    if (filterForm && dynamicSections) {
-      filterForm.addEventListener('submit', async function (event) {
-        event.preventDefault();
-        const params = new URLSearchParams(new FormData(filterForm));
-        const targetUrl = params.toString() ? `${sectionEndpoint}?${params.toString()}` : sectionEndpoint;
-
-        root.classList.add('is-loading');
-        try {
-          const response = await fetch(targetUrl, {
-            headers: {
-              'X-Requested-With': 'XMLHttpRequest'
-            }
-          });
-          if (!response.ok) {
-            throw new Error(`status ${response.status}`);
-          }
-          const htmlText = await response.text();
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(htmlText, 'text/html');
-          const nextDynamic = doc.querySelector('[data-pgm3-dynamic-sections]');
-          if (!nextDynamic) {
-            throw new Error('dynamic section not found');
-          }
-
-          dynamicSections.innerHTML = nextDynamic.innerHTML;
-          renderCategoryDonut(root);
-          initServiceMode(root);
-          updateCurrentExportHref();
-          hideDrilldown();
-          window.history.replaceState({}, '', targetUrl);
-        } catch (err) {
-          console.warn('Falha ao atualizar filtros dinamicamente, executando fallback.', err);
-          filterForm.submit();
-        } finally {
-          root.classList.remove('is-loading');
-        }
+    function activateServiceMode(mode) {
+      root.querySelectorAll('[data-service-mode-btn]').forEach(function (btn) {
+        btn.classList.toggle('is-active', btn.getAttribute('data-mode') === mode);
+      });
+      root.querySelectorAll('[data-service-mode]').forEach(function (list) {
+        const visible = list.getAttribute('data-service-mode') === mode;
+        if (visible) list.removeAttribute('hidden');
+        else list.setAttribute('hidden', '');
       });
     }
+
+    root.querySelectorAll('[data-service-mode-btn]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        activateServiceMode(btn.getAttribute('data-mode') || 'ambos');
+      });
+    });
+    activateServiceMode('ambos');
+
+    root.querySelectorAll('[data-cat-donut]').forEach(function (donut) {
+      const container = donut.closest('[data-tab-panel]');
+      if (!container) return;
+      const rows = container.querySelectorAll('[data-cat-item]');
+      if (!rows.length) return;
+
+      let total = 0;
+      rows.forEach(function (row) {
+        total += Number(row.getAttribute('data-value') || '0');
+      });
+      if (!total) return;
+
+      let offset = 0;
+      const segments = [];
+      rows.forEach(function (row) {
+        const value = Number(row.getAttribute('data-value') || '0');
+        const color = row.getAttribute('data-color') || '#4aa8ff';
+        const pct = (value / total) * 100;
+        const next = offset + pct;
+        segments.push(color + ' ' + offset.toFixed(2) + '% ' + next.toFixed(2) + '%');
+        offset = next;
+      });
+      donut.style.background = 'conic-gradient(' + segments.join(',') + ')';
+    });
   })();
 </script>
 {% endblock %}
