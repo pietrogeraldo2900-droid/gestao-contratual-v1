@@ -621,6 +621,12 @@
       });
     }
 
+    function initServiceMode(scope) {
+      const activeBtn = scope.querySelector('[data-service-mode-btn].is-active') || scope.querySelector('[data-service-mode-btn][data-mode="ambos"]');
+      const mode = activeBtn ? String(activeBtn.getAttribute('data-mode') || 'ambos') : 'ambos';
+      activateServiceMode(scope, mode);
+    }
+
     function renderCategoryDonut(scope) {
       const donut = scope.querySelector('[data-cat-donut]');
       const items = Array.from(scope.querySelectorAll('[data-cat-item]'));
@@ -648,6 +654,7 @@
     }
 
     renderCategoryDonut(root);
+    initServiceMode(root);
 
     function hideDrilldown() {
       if (!drillPanel) return;
@@ -753,6 +760,7 @@
 
           dynamicSections.innerHTML = nextDynamic.innerHTML;
           renderCategoryDonut(root);
+          initServiceMode(root);
           updateCurrentExportHref();
           hideDrilldown();
           window.history.replaceState({}, '', targetUrl);

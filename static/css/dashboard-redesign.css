@@ -3554,6 +3554,10 @@ body.auth-shell-mode .gerencial-page-v3 .pgm3-team-list {
   overflow: hidden;
 }
 
+body.auth-shell-mode .gerencial-page-v3 .pgm3-service-list[hidden] {
+  display: none !important;
+}
+
 body.auth-shell-mode .gerencial-page-v3 .pgm3-team-row {
   display: grid;
   grid-template-columns: 94px minmax(0, 1fr) 48px;
