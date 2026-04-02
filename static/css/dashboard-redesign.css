@@ -2714,7 +2714,12 @@ body.auth-shell-mode .gerencial-page-v2[data-mode="empty"] .pgm-mode-rich {
 }
 /* ---- Painel Gerencial v3 (mockup inspired) ---- */
 body.auth-shell-mode .gerencial-page-v3 {
-  --pgm3-card-gap: 10px;
+  --pgm3-card-gap: 14px;
+  display: grid;
+  gap: var(--pgm3-card-gap);
+}
+
+body.auth-shell-mode .gerencial-page-v3 [data-pgm3-dynamic-sections] {
   display: grid;
   gap: var(--pgm3-card-gap);
 }
@@ -3208,6 +3213,12 @@ body.auth-shell-mode .gerencial-page-v3 .pgm3-panel-header {
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
+}
+
+body.auth-shell-mode .gerencial-page-v3 .pgm3-panel-titlegroup {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
 }
 
 body.auth-shell-mode .gerencial-page-v3 .pgm3-panel-header h3 {
