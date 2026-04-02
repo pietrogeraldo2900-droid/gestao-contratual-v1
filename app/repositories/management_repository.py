@@ -72,6 +72,39 @@ def _normalize_lookup(value: object) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def _normalize_unit(value: object) -> str:
+    unit = _normalize_lookup(value)
+    if unit in {"m", "metro", "metros", "mt", "mts"}:
+        return "m"
+    if unit in {"un", "und", "unid", "unidade", "unidades"}:
+        return "un"
+    return unit
+
+
+def _looks_like_service_label(value: object) -> bool:
+    text = _normalize_lookup(value)
+    if not text:
+        return False
+    service_tokens = (
+        "rede",
+        "ramal",
+        "ligacao",
+        "intradomiciliar",
+        "hidrometro",
+        "caixa",
+        "recompos",
+        "prolongamento",
+        "furo",
+        "economia",
+        "adesao",
+        "interligacao",
+        "poco",
+        "vala",
+        "pavimento",
+    )
+    return any(token in text for token in service_tokens)
+
+
 _SERVICE_EQUIVALENCE_MAP: dict[str, str] = {
     "prolongamento rede agua": "Prolongamento de rede de água",
     "prolongamento de rede agua": "Prolongamento de rede de água",
@@ -616,9 +649,15 @@ class ManagementRepository:
                 "volume_total": 0.0,
                 "volume_total_fmt": "0",
                 "dias": 0,
+                "mapeados": 0,
                 "percentual_mapeado": 0.0,
                 "percentual_mapeado_fmt": "0",
                 "nao_mapeados": 0,
+                "trend_delta": 0.0,
+                "trend_delta_fmt": "0",
+                "trend_pct": 0.0,
+                "trend_pct_fmt": "0",
+                "trend_direction": "neutral",
             },
             "top_servico": {"servico": "-", "volume_total_fmt": "0", "unidade": "", "registros": 0},
             "top_ocorrencia": {"tipo_ocorrencia": "-", "ocorrencias": 0},
@@ -777,6 +816,18 @@ class ManagementRepository:
                 }
             )
 
+        trend_delta = 0.0
+        trend_pct = 0.0
+        trend_direction = "neutral"
+        if len(timeline) >= 2:
+            last = float(timeline[-1].get("volume_total", 0.0) or 0.0)
+            previous = float(timeline[-2].get("volume_total", 0.0) or 0.0)
+            trend_delta = last - previous
+            if abs(trend_delta) > 1e-9:
+                trend_direction = "up" if trend_delta > 0 else "down"
+            if abs(previous) > 1e-9:
+                trend_pct = (trend_delta / previous) * 100.0
+
         normalized_top_servicos = []
         for row in top_servicos:
             volume = float(row.get("volume_total", 0) or 0.0)
@@ -809,9 +860,15 @@ class ManagementRepository:
             "volume_total": volume_total,
             "volume_total_fmt": _display_number(volume_total),
             "dias": dias,
+            "mapeados": mapeados,
             "percentual_mapeado": percentual_mapeado,
             "percentual_mapeado_fmt": _display_number(percentual_mapeado),
             "nao_mapeados": nao_mapeados,
+            "trend_delta": trend_delta,
+            "trend_delta_fmt": _display_number(abs(trend_delta)),
+            "trend_pct": trend_pct,
+            "trend_pct_fmt": _display_number(abs(trend_pct)),
+            "trend_direction": trend_direction,
         }
         snapshot["top_servico"] = {
             "servico": _safe_text(top_servico.get("servico")) or "-",
@@ -895,6 +952,8 @@ class ManagementRepository:
         equipe_values: dict[str, float] = {}
         categoria_values: dict[str, float] = {}
         servico_values: dict[str, float] = {}
+        servico_values_metragem: dict[str, float] = {}
+        servico_values_quantitativo: dict[str, float] = {}
         servico_units: dict[str, set[str]] = {}
         municipio_values: dict[str, float] = {}
         ocorrencia_tipo_values: dict[str, float] = {}
@@ -923,7 +982,8 @@ class ManagementRepository:
             peso = quantidade if quantidade > 0 else 1.0
 
             nucleo_values[nucleo] = nucleo_values.get(nucleo, 0) + peso
-            equipe_values[equipe] = equipe_values.get(equipe, 0) + peso
+            if equipe != "-" and not _looks_like_service_label(equipe):
+                equipe_values[equipe] = equipe_values.get(equipe, 0) + peso
             categoria_values[categoria] = categoria_values.get(categoria, 0) + peso
             servico_values[servico] = servico_values.get(servico, 0) + peso
             municipio_values[municipio] = municipio_values.get(municipio, 0) + peso
@@ -933,6 +993,11 @@ class ManagementRepository:
                     units = set()
                     servico_units[servico] = units
                 units.add(unidade)
+            normalized_unit = _normalize_unit(unidade)
+            if normalized_unit == "m":
+                servico_values_metragem[servico] = servico_values_metragem.get(servico, 0.0) + peso
+            elif normalized_unit == "un":
+                servico_values_quantitativo[servico] = servico_values_quantitativo.get(servico, 0.0) + peso
             servicos_set.add(servico)
             municipios_set.add(municipio)
 
@@ -1163,6 +1228,22 @@ class ManagementRepository:
             }
             for label, value in sorted(servico_values.items(), key=lambda item: item[1], reverse=True)[:top_n]
         ]
+        servico_rows_metragem = [
+            {
+                "label": label,
+                "value": value,
+                "unit": "m",
+            }
+            for label, value in sorted(servico_values_metragem.items(), key=lambda item: item[1], reverse=True)[:top_n]
+        ]
+        servico_rows_quantitativo = [
+            {
+                "label": label,
+                "value": value,
+                "unit": "un",
+            }
+            for label, value in sorted(servico_values_quantitativo.items(), key=lambda item: item[1], reverse=True)[:top_n]
+        ]
         municipio_rows = [
             {"label": label, "value": value}
             for label, value in sorted(municipio_values.items(), key=lambda item: item[1], reverse=True)[:top_n]
@@ -1275,6 +1356,20 @@ class ManagementRepository:
                     "items": _chart_items(servico_rows, unit_field="unit"),
                     "has_data": bool(servico_rows),
                     "max_value_fmt": _display_number(max((row["value"] for row in servico_rows), default=0)),
+                },
+                "servicos_por_unidade": {
+                    "ambos": {
+                        "items": _chart_items(servico_rows, unit_field="unit"),
+                        "has_data": bool(servico_rows),
+                    },
+                    "metragem": {
+                        "items": _chart_items(servico_rows_metragem, unit_field="unit"),
+                        "has_data": bool(servico_rows_metragem),
+                    },
+                    "quantitativo": {
+                        "items": _chart_items(servico_rows_quantitativo, unit_field="unit"),
+                        "has_data": bool(servico_rows_quantitativo),
+                    },
                 },
                 "municipios": {
                     "items": _chart_items(municipio_rows),

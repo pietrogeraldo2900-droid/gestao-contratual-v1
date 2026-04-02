@@ -9,6 +9,10 @@
 {% set categorias_items = graficos.get('categorias', {}).get('items', []) %}
 {% set equipes_items = graficos.get('equipes', {}).get('items', []) %}
 {% set servicos_items = graficos.get('servicos', {}).get('items', []) %}
+{% set servicos_por_unidade = graficos.get('servicos_por_unidade', {}) %}
+{% set servicos_ambos_items = servicos_por_unidade.get('ambos', {}).get('items', servicos_items) %}
+{% set servicos_metragem_items = servicos_por_unidade.get('metragem', {}).get('items', []) %}
+{% set servicos_quantitativo_items = servicos_por_unidade.get('quantitativo', {}).get('items', []) %}
 {% set municipios_items = graficos.get('municipios', {}).get('items', []) %}
 {% set ocorrencias_tipo_items = graficos.get('tipos_ocorrencia', {}).get('items', []) %}
 {% set radar = dashboard.get('radar_risco_contratos', {}) %}
@@ -23,6 +27,10 @@
 {% set nucleos_total = nucleos_items | map(attribute='value') | sum %}
 {% set max_nucleo_val = (nucleos_items[0].get('value', 0)|float if nucleos_items else 0.0) %}
 {% if max_nucleo_val <= 0 %}{% set max_nucleo_val = 1.0 %}{% endif %}
+{% set trend_direction = bi_kpis.get('trend_direction', 'neutral') %}
+{% set trend_arrow = '→' %}
+{% if trend_direction == 'up' %}{% set trend_arrow = '↑' %}{% endif %}
+{% if trend_direction == 'down' %}{% set trend_arrow = '↓' %}{% endif %}
 {% set cat_colors = ['#49b6ff', '#33d6dd', '#4ade80', '#a3e635', '#facc15', '#fb7185', '#a78bfa', '#60a5fa'] %}
 {% set user_initials = (session.get('user_email', 'OP')[:2] or 'OP')|upper %}
 {% set pretty_label_map = {
@@ -53,13 +61,15 @@
       <h1>Painel Gerencial de Evolucao de Obra</h1>
       <p>Base executiva consolidada para leitura rapida e acompanhamento operacional.</p>
     </div>
-    <div class="pgm3-hero-actions" aria-hidden="true">
-      <span class="pgm3-icon-btn">
-        <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6"></circle><path d="M20 20l-3.3-3.3"></path></svg>
-      </span>
-      <span class="pgm3-icon-btn">
-        <svg viewBox="0 0 24 24" fill="none"><path d="M12 4a4 4 0 0 0-4 4v2.2l-1.6 2.7a1 1 0 0 0 .9 1.5h9.4a1 1 0 0 0 .9-1.5L16 10.2V8a4 4 0 0 0-4-4Z"></path><path d="M10 18a2 2 0 0 0 4 0"></path></svg>
-      </span>
+    <div class="pgm3-hero-actions">
+      <a
+        href="{{ url_for('gerencial_export_csv', obra_from=obra_from, obra_to=obra_to, processed_from=processed_from, processed_to=processed_to, nucleo=nucleo, municipio=municipio, equipe=equipe, status=status_filter, alertas=alertas_filter, top_n=top_n) }}"
+        class="pgm3-hero-btn"
+        data-pgm3-export-hero
+      >
+        Exportar CSV
+      </a>
+      <button type="button" class="pgm3-hero-btn pgm3-hero-btn-ghost" data-pgm3-scroll-filters>Filtros</button>
       <span class="pgm3-user-badge">{{ user_initials }}</span>
     </div>
   </header>
@@ -204,11 +214,17 @@
       <article class="pgm3-bi-card">
         <p class="pgm3-bi-label">Volume consolidado</p>
         <strong>{{ bi_kpis.get('volume_total_fmt', '0') }}</strong>
+        <small class="pgm3-bi-trend is-{{ trend_direction }}">
+          {{ trend_arrow }} {{ bi_kpis.get('trend_pct_fmt', '0') }}% vs dia anterior
+        </small>
       </article>
       <article class="pgm3-bi-card">
         <p class="pgm3-bi-label">Mapeamento</p>
         <strong>{{ bi_kpis.get('percentual_mapeado_fmt', '0') }}%</strong>
-        <small>{{ bi_kpis.get('nao_mapeados', 0) }} nao mapeado(s)</small>
+        <div class="pgm3-bi-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ bi_kpis.get('percentual_mapeado', 0)|float|round(1) }}">
+          <span style="width: {{ bi_kpis.get('percentual_mapeado', 0)|float|round(2) }}%;"></span>
+        </div>
+        <small>{{ bi_kpis.get('mapeados', 0) }} mapeado(s) · {{ bi_kpis.get('nao_mapeados', 0) }} nao mapeado(s)</small>
       </article>
       <article class="pgm3-bi-card">
         <p class="pgm3-bi-label">Top ocorrencia</p>
@@ -399,19 +415,50 @@
 
     <article class="pgm3-panel pgm3-panel-rank">
       <header class="pgm3-panel-header">
-        <h3>Visao por Servicos</h3>
-        <p>Top servicos mais executados (volume consolidado)</p>
+        <div>
+          <h3>Visao por Servicos</h3>
+          <p>Top servicos mais executados (volume consolidado)</p>
+        </div>
+        <div class="pgm3-unit-toggle" role="group" aria-label="Unidade dos servicos">
+          <button type="button" class="is-active" data-service-mode-btn data-mode="ambos">Ambos</button>
+          <button type="button" data-service-mode-btn data-mode="metragem">Metragem</button>
+          <button type="button" data-service-mode-btn data-mode="quantitativo">Quantitativo</button>
+        </div>
       </header>
 
-      {% if servicos_items %}
-      <div class="pgm3-team-list pgm3-team-list-wide">
-        {% for row in servicos_items[:7] %}
+      {% if servicos_ambos_items or servicos_metragem_items or servicos_quantitativo_items %}
+      <div class="pgm3-team-list pgm3-team-list-wide pgm3-service-list" data-service-mode="ambos">
+        {% for row in servicos_ambos_items[:7] %}
         <article class="pgm3-team-row" data-pgm3-drill-trigger data-dim="servico" data-label="{{ row.get('label', '-') }}">
           <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
           <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
           <span class="val">{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
         </article>
         {% endfor %}
+      </div>
+      <div class="pgm3-team-list pgm3-team-list-wide pgm3-service-list" data-service-mode="metragem" hidden>
+        {% for row in servicos_metragem_items[:7] %}
+        <article class="pgm3-team-row" data-pgm3-drill-trigger data-dim="servico" data-label="{{ row.get('label', '-') }}">
+          <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
+          <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
+          <span class="val">{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
+        </article>
+        {% endfor %}
+        {% if not servicos_metragem_items %}
+        <div class="pgm3-empty">Nao ha servicos de metragem no recorte atual.</div>
+        {% endif %}
+      </div>
+      <div class="pgm3-team-list pgm3-team-list-wide pgm3-service-list" data-service-mode="quantitativo" hidden>
+        {% for row in servicos_quantitativo_items[:7] %}
+        <article class="pgm3-team-row" data-pgm3-drill-trigger data-dim="servico" data-label="{{ row.get('label', '-') }}">
+          <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
+          <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
+          <span class="val">{{ row.get('value_display', row.get('value_fmt', '0')) }}</span>
+        </article>
+        {% endfor %}
+        {% if not servicos_quantitativo_items %}
+        <div class="pgm3-empty">Nao ha servicos quantitativos no recorte atual.</div>
+        {% endif %}
       </div>
       {% else %}
       <div class="pgm3-empty">Sem dados de servico para o recorte atual.</div>
@@ -506,9 +553,12 @@
     const exportEndpoint = "{{ url_for('gerencial_export_csv') }}";
 
     const toggleBtn = root.querySelector('[data-pgm3-toggle]');
+    const filtersShell = root.querySelector('.pgm3-filters-shell');
     const filterForm = root.querySelector('[data-pgm3-form]');
     const toggleLabel = root.querySelector('[data-pgm3-toggle-label]');
     const exportCurrentLink = root.querySelector('[data-pgm3-export-current]');
+    const exportHeroLink = root.querySelector('[data-pgm3-export-hero]');
+    const scrollFiltersBtn = root.querySelector('[data-pgm3-scroll-filters]');
     const drillPanel = root.querySelector('[data-pgm3-drilldown-panel]');
     const drillTitle = root.querySelector('[data-pgm3-drill-title]');
     const drillSummary = root.querySelector('[data-pgm3-drill-summary]');
@@ -521,9 +571,11 @@
     }
 
     function updateCurrentExportHref() {
-      if (!exportCurrentLink || !filterForm) return;
+      if (!filterForm) return;
       const params = buildFilterParams();
-      exportCurrentLink.href = params.toString() ? `${exportEndpoint}?${params.toString()}` : exportEndpoint;
+      const nextHref = params.toString() ? `${exportEndpoint}?${params.toString()}` : exportEndpoint;
+      if (exportCurrentLink) exportCurrentLink.href = nextHref;
+      if (exportHeroLink) exportHeroLink.href = nextHref;
     }
 
     if (toggleBtn && filterForm) {
@@ -544,6 +596,29 @@
       filterForm.addEventListener('input', updateCurrentExportHref);
       filterForm.addEventListener('change', updateCurrentExportHref);
       updateCurrentExportHref();
+    }
+
+    if (scrollFiltersBtn && filtersShell) {
+      scrollFiltersBtn.addEventListener('click', function () {
+        filtersShell.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+
+    function activateServiceMode(scope, mode) {
+      const buttons = Array.from(scope.querySelectorAll('[data-service-mode-btn]'));
+      const lists = Array.from(scope.querySelectorAll('[data-service-mode]'));
+      buttons.forEach((btn) => {
+        const active = String(btn.getAttribute('data-mode') || '') === mode;
+        btn.classList.toggle('is-active', active);
+      });
+      lists.forEach((list) => {
+        const visible = String(list.getAttribute('data-service-mode') || '') === mode;
+        if (visible) {
+          list.removeAttribute('hidden');
+        } else {
+          list.setAttribute('hidden', '');
+        }
+      });
     }
 
     function renderCategoryDonut(scope) {
@@ -626,6 +701,14 @@
     }
 
     root.addEventListener('click', async function (event) {
+      const modeBtn = event.target.closest('[data-service-mode-btn]');
+      if (modeBtn && root.contains(modeBtn)) {
+        event.preventDefault();
+        const mode = String(modeBtn.getAttribute('data-mode') || 'ambos');
+        activateServiceMode(root, mode);
+        return;
+      }
+
       const trigger = event.target.closest('[data-pgm3-drill-trigger]');
       if (!trigger || !root.contains(trigger)) return;
       event.preventDefault();
