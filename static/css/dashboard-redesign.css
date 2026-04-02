@@ -2714,8 +2714,9 @@ body.auth-shell-mode .gerencial-page-v2[data-mode="empty"] .pgm-mode-rich {
 }
 /* ---- Painel Gerencial v3 (mockup inspired) ---- */
 body.auth-shell-mode .gerencial-page-v3 {
+  --pgm3-card-gap: 10px;
   display: grid;
-  gap: 8px;
+  gap: var(--pgm3-card-gap);
 }
 
 body.auth-shell-mode .gerencial-page-v3.is-loading [data-pgm3-dynamic-sections] {
@@ -2946,7 +2947,7 @@ body.auth-shell-mode .gerencial-page-v3 .pgm3-btn-ghost {
 body.auth-shell-mode .gerencial-page-v3 .pgm3-kpi-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 9px;
+  gap: var(--pgm3-card-gap);
 }
 
 body.auth-shell-mode .gerencial-page-v3 .pgm3-kpi-card {
@@ -3024,12 +3025,12 @@ body.auth-shell-mode .gerencial-page-v3 .pgm3-kpi-card small {
 body.auth-shell-mode .gerencial-page-v3 .pgm3-analytics-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 9px;
+  gap: var(--pgm3-card-gap);
 }
 
 body.auth-shell-mode .gerencial-page-v3 .pgm3-risk-panel {
   min-height: auto;
-  margin-top: 2px;
+  margin-top: 0;
 }
 
 body.auth-shell-mode .gerencial-page-v3 .pgm3-risk-summary {
@@ -3231,7 +3232,7 @@ body.auth-shell-mode .gerencial-page-v3 .pgm3-bi-grid {
   margin-top: 8px;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--pgm3-card-gap);
 }
 
 body.auth-shell-mode .gerencial-page-v3 .pgm3-bi-card {
@@ -3782,7 +3783,7 @@ body.auth-shell-mode .gerencial-page-v3 [data-pgm3-drill-trigger]:hover {
 }
 
 body.auth-shell-mode .gerencial-page-v3 .pgm3-drilldown-panel {
-  margin-top: 2px;
+  margin-top: 0;
 }
 
 body.auth-shell-mode .gerencial-page-v3 .pgm3-drill-header {
