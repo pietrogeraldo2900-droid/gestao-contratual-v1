@@ -2412,6 +2412,8 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         filters = _collect_management_filters(request.args)
         dashboard = None
         contract_options: list[str] = []
+        contract_cards: list[dict[str, str]] = []
+        contract_label = filters["contrato"]
         _sync_management_tables_best_effort()
         management_repo = app.config.get("MANAGEMENT_REPOSITORY")
         build_dashboard = getattr(management_repo, "build_gerencial_dashboard", None)
@@ -2429,6 +2431,41 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             except Exception as exc:
                 app.logger.warning("Falha ao carregar opcoes de contrato do gerencial: %s", exc)
 
+        if contract_options:
+            display_map: dict[str, str] = {}
+            for item in _build_contract_options(limit=1000):
+                contract_id = str(item.get("id", "") or "").strip()
+                full_label = str(item.get("label", "") or "").strip()
+                if not full_label:
+                    continue
+                if " - " in full_label:
+                    numero, nome = full_label.split(" - ", 1)
+                    numero = numero.strip()
+                    nome = nome.strip() or full_label
+                    if numero:
+                        display_map[numero] = nome
+                    display_map[full_label] = nome
+                    if contract_id:
+                        display_map[contract_id] = nome
+                else:
+                    nome = full_label
+                    display_map[full_label] = nome
+                    if contract_id:
+                        display_map[contract_id] = nome
+
+            def _contract_label_for(value: object) -> str:
+                raw = str(value or "").strip()
+                if not raw:
+                    return ""
+                if raw in display_map:
+                    return display_map[raw]
+                if " - " in raw:
+                    return raw.split(" - ", 1)[1].strip() or raw
+                return raw
+
+            contract_cards = [{"value": raw, "label": _contract_label_for(raw)} for raw in contract_options]
+            contract_label = _contract_label_for(filters["contrato"])
+
         # Fallback legado apenas quando o repositório/banco não está disponível.
         if dashboard is None:
             dashboard = service.build_management_layer(
@@ -2443,6 +2480,8 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             dashboard=dashboard,
             contrato=filters["contrato"],
             contract_options=contract_options,
+            contract_cards=contract_cards,
+            contrato_label=contract_label,
             obra_from=filters["obra_from"],
             obra_to=filters["obra_to"],
             processed_from=filters["processed_from"],

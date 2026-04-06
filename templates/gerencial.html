@@ -66,7 +66,7 @@
   <section class="pgm4-filter-shell">
     <div class="pgm4-filter-chips">
       {% if contrato %}
-      <span class="pgm4-chip">Contrato: {{ contrato }}</span>
+      <span class="pgm4-chip">Contrato: {{ contrato_label or contrato }}</span>
       {% endif %}
       {% if obra_from or obra_to %}
       <span class="pgm4-chip">Periodo: {{ obra_from or '...' }} - {{ obra_to or '...' }}</span>
@@ -94,20 +94,21 @@
       >
         Todos
       </a>
-      {% for item in contract_options or [] %}
+      {% for item in contract_cards or [] %}
       <a
-        class="pgm4-contract-card {% if contrato == item %}is-active{% endif %}"
-        href="{{ url_for('gerencial', contrato=item, obra_from=obra_from, obra_to=obra_to, processed_from=processed_from, processed_to=processed_to, nucleo=nucleo, municipio=municipio, equipe=equipe, status=status_filter, alertas=alertas_filter, top_n=top_n) }}"
+        class="pgm4-contract-card {% if contrato == item.value %}is-active{% endif %}"
+        href="{{ url_for('gerencial', contrato=item.value, obra_from=obra_from, obra_to=obra_to, processed_from=processed_from, processed_to=processed_to, nucleo=nucleo, municipio=municipio, equipe=equipe, status=status_filter, alertas=alertas_filter, top_n=top_n) }}"
       >
-        {{ item }}
+        {{ item.label }}
       </a>
       {% endfor %}
-      {% if contrato and (contrato not in (contract_options or [])) %}
+      {% set contract_values = (contract_cards | map(attribute='value') | list) %}
+      {% if contrato and (contrato not in contract_values) %}
       <a
         class="pgm4-contract-card is-active"
         href="{{ url_for('gerencial', contrato=contrato, obra_from=obra_from, obra_to=obra_to, processed_from=processed_from, processed_to=processed_to, nucleo=nucleo, municipio=municipio, equipe=equipe, status=status_filter, alertas=alertas_filter, top_n=top_n) }}"
       >
-        {{ contrato }}
+        {{ contrato_label or contrato }}
       </a>
       {% endif %}
     </div>
