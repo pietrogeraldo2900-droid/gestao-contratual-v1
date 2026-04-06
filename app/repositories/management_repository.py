@@ -204,6 +204,7 @@ class _Filters:
     obra_to: date | None
     processed_from: date | None
     processed_to: date | None
+    contrato: str
     nucleo: str
     municipio: str
     equipe: str
@@ -593,6 +594,7 @@ class ManagementRepository:
             obra_to=_parse_date(raw.get("obra_to")),
             processed_from=_parse_date(raw.get("processed_from")),
             processed_to=_parse_date(raw.get("processed_to")),
+            contrato=_normalize(raw.get("contrato")),
             nucleo=_normalize(raw.get("nucleo")),
             municipio=_normalize(raw.get("municipio")),
             equipe=_normalize(raw.get("equipe")),
@@ -616,9 +618,12 @@ class ManagementRepository:
         dt = row.get("data_referencia")
         if not self._filter_by_date(dt, filters):
             return False
+        contrato = _safe_text(row.get("contrato"))
         nucleo = _safe_text(row.get("nucleo_oficial")) or _safe_text(row.get("nucleo"))
         municipio = _safe_text(row.get("municipio_oficial")) or _safe_text(row.get("municipio"))
         equipe = _safe_text(row.get("equipe"))
+        if not _match(contrato, filters.contrato):
+            return False
         if not _match(nucleo, filters.nucleo):
             return False
         if not _match(municipio, filters.municipio):
@@ -669,6 +674,9 @@ class ManagementRepository:
 
         exec_where_parts: list[str] = []
         exec_params: list[Any] = []
+        if filters.contrato:
+            exec_where_parts.append("COALESCE(contrato, '') ILIKE %s")
+            exec_params.append(f"%{filters.contrato}%")
         if filters.obra_from:
             exec_where_parts.append("data_referencia >= %s")
             exec_params.append(filters.obra_from)
@@ -688,6 +696,9 @@ class ManagementRepository:
 
         date_where_parts: list[str] = []
         date_params: list[Any] = []
+        if filters.contrato:
+            date_where_parts.append("COALESCE(contrato, '') ILIKE %s")
+            date_params.append(f"%{filters.contrato}%")
         if filters.obra_from:
             date_where_parts.append("data_referencia >= %s")
             date_params.append(filters.obra_from)

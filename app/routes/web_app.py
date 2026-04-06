@@ -145,6 +145,7 @@ def _build_main_field_audit(
 
 
 def _collect_management_filters(args) -> Dict[str, object]:
+    contrato = str(args.get("contrato", "") or "").strip()
     obra_from = str(args.get("obra_from", "") or "").strip()
     obra_to = str(args.get("obra_to", "") or "").strip()
     processed_from = str(args.get("processed_from", "") or "").strip()
@@ -163,6 +164,7 @@ def _collect_management_filters(args) -> Dict[str, object]:
     top_n = max(3, min(top_n, 50))
 
     return {
+        "contrato": contrato,
         "obra_from": obra_from,
         "obra_to": obra_to,
         "processed_from": processed_from,
@@ -184,7 +186,7 @@ def _collect_management_drilldown_filters(
     label = str(args.get("label", "") or "").strip()
 
     filters: Dict[str, object] = {
-        "contrato": str(args.get("contrato", "") or "").strip(),
+        "contrato": str(args.get("contrato", base_filters.get("contrato", "")) or "").strip(),
         "nucleo": str(base_filters.get("nucleo", "") or "").strip(),
         "municipio": str(base_filters.get("municipio", "") or "").strip(),
         "equipe": str(base_filters.get("equipe", "") or "").strip(),
@@ -2409,14 +2411,23 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     def gerencial():
         filters = _collect_management_filters(request.args)
         dashboard = None
+        contract_options: list[str] = []
         _sync_management_tables_best_effort()
         management_repo = app.config.get("MANAGEMENT_REPOSITORY")
         build_dashboard = getattr(management_repo, "build_gerencial_dashboard", None)
+        list_options = getattr(management_repo, "list_master_execucao_filter_options", None)
         if callable(build_dashboard):
             try:
                 dashboard = build_dashboard(filters)
             except Exception as exc:
                 app.logger.warning("Falha ao carregar painel gerencial pelo banco: %s", exc)
+        if callable(list_options):
+            try:
+                options = list_options() or {}
+                raw_contracts = list(options.get("contratos", []) or [])
+                contract_options = sorted({str(item or "").strip() for item in raw_contracts if str(item or "").strip()})
+            except Exception as exc:
+                app.logger.warning("Falha ao carregar opcoes de contrato do gerencial: %s", exc)
 
         # Fallback legado apenas quando o repositório/banco não está disponível.
         if dashboard is None:
@@ -2430,6 +2441,8 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         return render_template(
             "gerencial.html",
             dashboard=dashboard,
+            contrato=filters["contrato"],
+            contract_options=contract_options,
             obra_from=filters["obra_from"],
             obra_to=filters["obra_to"],
             processed_from=filters["processed_from"],
