@@ -267,6 +267,81 @@ solo_rochoso
         self.assertTrue(all(str(row.get("servico_bruto", "") or "").strip() for row in parsed["execucao"]))
         self.assertTrue(all(str(row.get("servico_bruto", "") or "").strip() not in {"-"} for row in parsed["execucao"]))
 
+    def test_modelo_novo_multiplos_nucleos_preserva_contexto_por_bloco(self):
+        mensagem = """
+RDO - Oeste 1
+DATA: 02/04/2026
+
+NUCLEO: VILA MENCK
+EQUIPE: ROGERIO
+LOCAL: LOURENCO BELOLI
+
+SERVICOS:
+APLICACAO DE PAVIMENTO CBUQ: 18.75 m2
+
+OCORRENCIAS:
+EQUIPE REDUZIDA
+
+NUCLEO: JARDIM OLINDA
+EQUIPE: TIAGO
+LOCAL: RUA JOAO DIAS DE VERGARA
+
+SERVICOS:
+INSTALACAO DE CAIXA DAGUA: 1 un
+
+NUCLEO: BONANCA
+EQUIPE: MARIO
+LOCAL: RUA DA PAZ DIVINA
+
+SERVICOS:
+LIGACOES DE ESGOTO: 5 un
+""".strip()
+        parsed = self.parser.parse_text(mensagem, source_name="multi_nucleos.txt")
+        self.assertIsNotNone(parsed)
+        self.assertEqual(len(parsed["execucao"]), 3)
+
+        exec_by_nucleo = {str(row.get("nucleo", "") or "").strip(): row for row in parsed["execucao"]}
+        self.assertIn("VILA MENCK", exec_by_nucleo)
+        self.assertIn("JARDIM OLINDA", exec_by_nucleo)
+        self.assertIn("BONANCA", exec_by_nucleo)
+
+        self.assertEqual(exec_by_nucleo["VILA MENCK"]["logradouro"], "LOURENCO BELOLI")
+        self.assertEqual(exec_by_nucleo["JARDIM OLINDA"]["logradouro"], "RUA JOAO DIAS DE VERGARA")
+        self.assertEqual(exec_by_nucleo["BONANCA"]["logradouro"], "RUA DA PAZ DIVINA")
+
+        vila_menck = exec_by_nucleo["VILA MENCK"]
+        self.assertEqual(vila_menck["quantidade"], 18.75)
+        self.assertEqual(vila_menck["unidade"], "m2")
+
+    def test_modelo_novo_multiplos_nucleos_com_titulos_marcados(self):
+        mensagem = """
+RDO - Oeste 1
+DATA: 02/04/2026
+
+NÚCLEO: VILA MENCK
+EQUIPE: ROGÉRIO
+LOCAL: LOURENÇO BELOLI
+
+*SERVIÇOS:*
+APLICAÇÃO DE PAVIMENTO CBUQ: 18.75 m²
+
+*OCORRÊNCIAS:*
+EQUIPE REDUZIDA
+
+NÚCLEO: BONANÇA
+EQUIPE: MARIO
+LOCAL: RUA DA PAZ DIVINA
+
+*SERVIÇOS:*
+LIGAÇÕES DE ESGOTO: 5 un
+""".strip()
+        parsed = self.parser.parse_text(mensagem, source_name="multi_nucleos_marcado.txt")
+        self.assertIsNotNone(parsed)
+        self.assertEqual(len(parsed["execucao"]), 2)
+        nucleos = [str(row.get("nucleo", "") or "").strip() for row in parsed["execucao"]]
+        self.assertIn("VILA MENCK", nucleos)
+        self.assertIn("BONANÇA", nucleos)
+
 if __name__ == "__main__":
     unittest.main()
 

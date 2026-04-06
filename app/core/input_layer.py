@@ -151,6 +151,150 @@ def _extract_contract_from_rdo_line(line: str) -> str:
     return contract
 
 
+def _strip_emphasis(text: str) -> str:
+    return str(text or "").strip().strip("*_` ").strip()
+
+
+def _new_scope_template() -> Dict[str, object]:
+    return {
+        "nucleo": "",
+        "equipe": "",
+        "logradouro": "",
+        "municipio": "",
+        "execucao": [],
+        "local": [],
+        "frentes": [],
+        "ocorrencias": [],
+        "obs": [],
+    }
+
+
+def _scope_has_content(scope: Dict[str, object]) -> bool:
+    if not isinstance(scope, dict):
+        return False
+    scalar_fields = ("nucleo", "equipe", "logradouro", "municipio")
+    list_fields = ("execucao", "local", "frentes", "ocorrencias", "obs")
+    if any(str(scope.get(field, "") or "").strip() for field in scalar_fields):
+        return True
+    for field in list_fields:
+        items = scope.get(field, [])
+        if isinstance(items, list) and any(str(item or "").strip() for item in items):
+            return True
+    return False
+
+
+def extrair_escopos_modelo_oficial(texto: str) -> Dict[str, object]:
+    linhas = [ln.rstrip() for ln in texto.splitlines()]
+    data = ""
+    contrato = ""
+    scopes: List[Dict[str, object]] = []
+    scope: Dict[str, object] | None = None
+    secao_atual: Optional[str] = None
+
+    def ensure_scope() -> Dict[str, object]:
+        nonlocal scope
+        if scope is None:
+            scope = _new_scope_template()
+        return scope
+
+    for linha in linhas:
+        linha_limpa = str(linha or "").strip()
+        if not linha_limpa:
+            continue
+
+        if not contrato:
+            extraido = _extract_contract_from_rdo_line(linha_limpa)
+            if extraido:
+                contrato = extraido
+
+        if not data:
+            m_data = re.search(r"\b\d{2}/\d{2}/\d{4}\b", linha_limpa)
+            if m_data:
+                data = m_data.group(0)
+
+        if ":" in linha_limpa:
+            rotulo_raw, valor = linha_limpa.split(":", 1)
+            rotulo = _strip_emphasis(rotulo_raw)
+            valor = valor.strip()
+
+            campo = _canonical_field(rotulo)
+            if campo:
+                if campo == "data":
+                    if valor:
+                        data = valor
+                    secao_atual = None
+                    continue
+                if campo == "contrato":
+                    if valor:
+                        contrato = valor
+                    secao_atual = None
+                    continue
+
+                if campo == "nucleo":
+                    if scope is not None and _scope_has_content(scope):
+                        scopes.append(scope)
+                        scope = None
+                    current = ensure_scope()
+                    current["nucleo"] = valor
+                    secao_atual = None
+                    continue
+
+                if campo in {"equipe", "logradouro", "municipio"}:
+                    current = ensure_scope()
+                    current[campo] = valor
+                    secao_atual = None
+                    continue
+
+            secao = _canonical_section(rotulo)
+            if secao:
+                current = ensure_scope()
+                secao_atual = secao
+                if valor:
+                    item = _linha_item(valor)
+                    if item:
+                        current[secao].append(item)
+                continue
+
+        heading = _strip_emphasis(linha_limpa.rstrip(":"))
+        secao_sem_dois_pontos = _canonical_section(heading)
+        if secao_sem_dois_pontos and linha_limpa.endswith(":"):
+            ensure_scope()
+            secao_atual = secao_sem_dois_pontos
+            continue
+
+        if secao_atual:
+            current = ensure_scope()
+            item = _linha_item(linha_limpa)
+            if item:
+                current[secao_atual].append(item)
+
+    if scope is not None and _scope_has_content(scope):
+        scopes.append(scope)
+
+    default_municipio = ""
+    for item in scopes:
+        municipio = str(item.get("municipio", "") or "").strip()
+        if municipio:
+            default_municipio = municipio
+            break
+
+    normalized_scopes: List[Dict[str, object]] = []
+    for item in scopes:
+        local_lines = [str(v or "").strip() for v in list(item.get("local", []) or []) if str(v or "").strip()]
+        logradouro = str(item.get("logradouro", "") or "").strip()
+        if local_lines and not logradouro:
+            item["logradouro"] = " / ".join(local_lines)
+        if not str(item.get("municipio", "") or "").strip() and default_municipio:
+            item["municipio"] = default_municipio
+        normalized_scopes.append(item)
+
+    return {
+        "data": data,
+        "contrato": contrato,
+        "scopes": normalized_scopes,
+    }
+
+
 def extrair_blocos_mensagem(texto: str) -> Dict[str, object]:
     resultado: Dict[str, object] = {
         "data": "",
@@ -481,180 +625,228 @@ class OfficialMessageParser:
 
     def parse_text(self, texto: str, source_name: str = "mensagem_whatsapp.txt") -> Optional[dict]:
         blocos = extrair_blocos_mensagem(texto)
-        if not blocos.get("modelo_oficial"):
+        scoped_payload = extrair_escopos_modelo_oficial(texto)
+        scoped_candidates = list(scoped_payload.get("scopes", []) or [])
+        scoped_has_context = any(
+            str(scope.get("nucleo", "") or "").strip()
+            or str(scope.get("logradouro", "") or "").strip()
+            or str(scope.get("municipio", "") or "").strip()
+            for scope in scoped_candidates
+        )
+        scoped_has_equipe = any(str(scope.get("equipe", "") or "").strip() for scope in scoped_candidates)
+        scoped_has_execucao = any(list(scope.get("execucao", []) or []) for scope in scoped_candidates)
+        scoped_data = str(scoped_payload.get("data", "") or "").strip()
+        blocos_data = str(blocos.get("data", "") or "").strip()
+        is_modelo_oficial = bool(
+            blocos.get("modelo_oficial")
+            or ((scoped_data or blocos_data) and scoped_has_context and scoped_has_equipe and scoped_has_execucao)
+        )
+        if not is_modelo_oficial:
             return None
 
-        data = str(blocos.get("data", "") or "")
-        nucleo = str(blocos.get("nucleo", "") or "")
-        logradouro = str(blocos.get("logradouro", "") or "")
-        municipio = str(blocos.get("municipio", "") or "")
-        equipe = extrair_primeira_equipe(blocos.get("equipe", ""))
-        contrato = str(blocos.get("contrato", "") or "").strip() or self.contrato_padrao
+        data = str(scoped_payload.get("data", "") or "").strip() or str(blocos.get("data", "") or "").strip()
+        contrato = str(scoped_payload.get("contrato", "") or "").strip() or str(blocos.get("contrato", "") or "").strip() or self.contrato_padrao
         programa = self.programa_padrao
 
-        frentes_raw: List[str] = list(blocos.get("frentes", []))
-        if not frentes_raw:
-            frentes_raw = [""]
+        scope_candidates = scoped_candidates
+        if not scope_candidates:
+            scope_candidates = [
+                {
+                    "nucleo": str(blocos.get("nucleo", "") or "").strip(),
+                    "equipe": str(blocos.get("equipe", "") or "").strip(),
+                    "logradouro": str(blocos.get("logradouro", "") or "").strip(),
+                    "municipio": str(blocos.get("municipio", "") or "").strip(),
+                    "execucao": list(blocos.get("execucao", []) or []),
+                    "frentes": list(blocos.get("frentes", []) or []),
+                    "ocorrencias": list(blocos.get("ocorrencias", []) or []),
+                    "obs": list(blocos.get("obs", []) or []),
+                }
+            ]
 
         frentes: List[dict] = []
-        status_frente = "com_producao" if blocos.get("execucao") else "sem_producao"
-        for idx, frente in enumerate(frentes_raw, start=1):
-            frentes.append(
-                {
-                    "id_frente": f"F{idx:03d}",
+        execucao: List[dict] = []
+        servicos_nao_mapeados: List[dict] = []
+        exec_counter = 0
+
+        ocorrencias: List[dict] = []
+        occ_counter = 0
+
+        observacoes: List[dict] = []
+
+        default_municipio = ""
+        for scope in scope_candidates:
+            municipio_candidate = str(scope.get("municipio", "") or "").strip()
+            if municipio_candidate:
+                default_municipio = municipio_candidate
+                break
+
+        frente_counter = 0
+        for scope in scope_candidates:
+            nucleo = str(scope.get("nucleo", "") or "").strip()
+            equipe = extrair_primeira_equipe(scope.get("equipe", ""))
+            logradouro = str(scope.get("logradouro", "") or "").strip()
+            municipio = str(scope.get("municipio", "") or "").strip() or default_municipio
+
+            frentes_raw: List[str] = list(scope.get("frentes", []) or [])
+            if not frentes_raw:
+                frentes_raw = [""]
+
+            status_frente = "com_producao" if list(scope.get("execucao", []) or []) else "sem_producao"
+            scope_frente_ids: List[str] = []
+            for frente in frentes_raw:
+                frente_counter += 1
+                id_frente = f"F{frente_counter:03d}"
+                scope_frente_ids.append(id_frente)
+                frentes.append(
+                    {
+                        "id_frente": id_frente,
+                        "data_referencia": data,
+                        "data": data,
+                        "contrato": contrato,
+                        "programa": programa,
+                        "nucleo": nucleo,
+                        "equipe": equipe,
+                        "logradouro": logradouro,
+                        "municipio": municipio,
+                        "status_frente": status_frente,
+                        "observacao_frente": str(frente or "").strip(),
+                        "frente": str(frente or "").strip(),
+                        "arquivo_origem": source_name,
+                    }
+                )
+
+            id_frente_principal = scope_frente_ids[0]
+
+            for linha in list(scope.get("execucao", []) or []):
+                parsed = parsear_linha_execucao(str(linha))
+                servico_bruto = str(parsed.get("servico_bruto", "") or "").strip()
+                servico_normalizado = str(parsed.get("servico_normalizado", "") or "").strip()
+                if not servico_bruto and not servico_normalizado and parsed.get("quantidade") is None:
+                    # Ignora placeholders vazios (ex.: linha apenas "-") para nao gerar itens fantasma.
+                    continue
+
+                mapeamento = self.service_dictionary.mapear_servico(str(parsed["servico_bruto"]))
+                quantidade = parsed["quantidade"] if parsed["quantidade"] is not None else ""
+                unidade = str(parsed["unidade"] or "")
+                if not unidade and mapeamento.get("unidades_aceitas") and quantidade not in ("", None):
+                    unidade = mapeamento["unidades_aceitas"][0]
+                unidade = normalizar_unidade(unidade) if unidade else ""
+                mensagem_origem = str(parsed.get("mensagem_original", "")).strip()
+                if mensagem_origem and not mensagem_origem.startswith(("-", "\u2022", "*")):
+                    mensagem_origem = f"- {mensagem_origem}"
+
+                exec_counter += 1
+                exec_item = {
+                    "id_item": f"I{exec_counter:04d}",
+                    "id_frente": id_frente_principal,
                     "data_referencia": data,
                     "data": data,
                     "contrato": contrato,
                     "programa": programa,
                     "nucleo": nucleo,
-                    "equipe": equipe,
                     "logradouro": logradouro,
                     "municipio": municipio,
-                    "status_frente": status_frente,
-                    "observacao_frente": frente.strip(),
-                    "frente": frente.strip(),
+                    "equipe": equipe,
+                    "item_original": parsed["servico_bruto"],
+                    "item_normalizado": mapeamento["servico_oficial"],
+                    "categoria_item": mapeamento["categoria"],
+                    "tipo_registro": "servico",
+                    "quantidade": quantidade,
+                    "unidade": unidade,
+                    "material": "",
+                    "especificacao": "",
+                    "complemento": "",
+                    "observacao_item": "",
                     "arquivo_origem": source_name,
+                    "mensagem_origem": mensagem_origem,
+                    "servico_bruto": parsed["servico_bruto"],
+                    "servico_normalizado": parsed["servico_normalizado"],
+                    "servico_oficial": mapeamento["servico_oficial"],
+                    "categoria": mapeamento["categoria"],
+                    "regra_disparada": mapeamento["regra_disparada"],
                 }
-            )
+                execucao.append(exec_item)
 
-        id_frente_principal = frentes[0]["id_frente"]
-        execucao: List[dict] = []
-        servicos_nao_mapeados: List[dict] = []
+                if mapeamento["servico_oficial"] == "servico_nao_mapeado":
+                    registrar_servico_nao_mapeado(
+                        registros=servicos_nao_mapeados,
+                        contexto={
+                            "data": data,
+                            "nucleo": nucleo,
+                            "logradouro": logradouro,
+                            "municipio": municipio,
+                            "equipe": equipe,
+                        },
+                        execucao_item=exec_item,
+                        mapeamento=mapeamento,
+                    )
 
-        exec_counter = 0
-        for linha in list(blocos.get("execucao", [])):
-            parsed = parsear_linha_execucao(str(linha))
-            servico_bruto = str(parsed.get("servico_bruto", "") or "").strip()
-            servico_normalizado = str(parsed.get("servico_normalizado", "") or "").strip()
-            if not servico_bruto and not servico_normalizado and parsed.get("quantidade") is None:
-                # Ignora placeholders vazios (ex.: linha apenas "-") para nao gerar itens fantasma.
-                continue
+            for item in list(scope.get("ocorrencias", []) or []):
+                descricao = str(item).strip()
+                if not descricao:
+                    continue
+                descricao_norm = normalizar_texto(descricao)
+                if descricao_norm in {"opcional"}:
+                    continue
+                occ_counter += 1
+                tipo_ocorrencia = self._classificar_ocorrencia(descricao)
+                if re.fullmatch(r"[a-z0-9_]+", descricao.lower()) and "_" in descricao:
+                    tipo_ocorrencia = descricao.lower()
+                ocorrencias.append(
+                    {
+                        "id_ocorrencia": f"O{occ_counter:04d}",
+                        "id_frente": id_frente_principal,
+                        "data_referencia": data,
+                        "data": data,
+                        "contrato": contrato,
+                        "programa": programa,
+                        "nucleo": nucleo,
+                        "logradouro": logradouro,
+                        "municipio": municipio,
+                        "equipe": equipe,
+                        "tipo_ocorrencia": tipo_ocorrencia,
+                        "descricao": descricao,
+                        "impacto_producao": self._impacto_ocorrencia(descricao),
+                        "arquivo_origem": source_name,
+                    }
+                )
 
-            mapeamento = self.service_dictionary.mapear_servico(str(parsed["servico_bruto"]))
-            quantidade = parsed["quantidade"] if parsed["quantidade"] is not None else ""
-            unidade = str(parsed["unidade"] or "")
-            if not unidade and mapeamento.get("unidades_aceitas") and quantidade not in ("", None):
-                unidade = mapeamento["unidades_aceitas"][0]
-            unidade = normalizar_unidade(unidade) if unidade else ""
-            mensagem_origem = str(parsed.get("mensagem_original", "")).strip()
-            if mensagem_origem and not mensagem_origem.startswith(("-", "\u2022", "*")):
-                mensagem_origem = f"- {mensagem_origem}"
-
-            exec_counter += 1
-            exec_item = {
-                "id_item": f"I{exec_counter:04d}",
-                "id_frente": id_frente_principal,
-                "data_referencia": data,
-                "data": data,
-                "contrato": contrato,
-                "programa": programa,
-                "nucleo": nucleo,
-                "logradouro": logradouro,
-                "municipio": municipio,
-                "equipe": equipe,
-                "item_original": parsed["servico_bruto"],
-                "item_normalizado": mapeamento["servico_oficial"],
-                "categoria_item": mapeamento["categoria"],
-                "tipo_registro": "servico",
-                "quantidade": quantidade,
-                "unidade": unidade,
-                "material": "",
-                "especificacao": "",
-                "complemento": "",
-                "observacao_item": "",
-                "arquivo_origem": source_name,
-                "mensagem_origem": mensagem_origem,
-                "servico_bruto": parsed["servico_bruto"],
-                "servico_normalizado": parsed["servico_normalizado"],
-                "servico_oficial": mapeamento["servico_oficial"],
-                "categoria": mapeamento["categoria"],
-                "regra_disparada": mapeamento["regra_disparada"],
-            }
-            execucao.append(exec_item)
-
-            if mapeamento["servico_oficial"] == "servico_nao_mapeado":
-                registrar_servico_nao_mapeado(
-                    registros=servicos_nao_mapeados,
-                    contexto={
+            for obs in list(scope.get("obs", []) or []):
+                descricao = str(obs).strip()
+                if not descricao:
+                    continue
+                if normalizar_texto(descricao) in {"opcional"}:
+                    continue
+                observacoes.append(
+                    {
                         "data": data,
                         "nucleo": nucleo,
                         "logradouro": logradouro,
                         "municipio": municipio,
                         "equipe": equipe,
-                    },
-                    execucao_item=exec_item,
-                    mapeamento=mapeamento,
+                        "observacao": descricao,
+                        "arquivo_origem": source_name,
+                    }
                 )
-
-        ocorrencias: List[dict] = []
-        occ_counter = 0
-        for item in list(blocos.get("ocorrencias", [])):
-            descricao = str(item).strip()
-            if not descricao:
-                continue
-            descricao_norm = normalizar_texto(descricao)
-            if descricao_norm in {"opcional"}:
-                continue
-            occ_counter += 1
-            tipo_ocorrencia = self._classificar_ocorrencia(descricao)
-            if re.fullmatch(r"[a-z0-9_]+", descricao.lower()) and "_" in descricao:
-                tipo_ocorrencia = descricao.lower()
-            ocorrencias.append(
-                {
-                    "id_ocorrencia": f"O{occ_counter:04d}",
-                    "id_frente": id_frente_principal,
-                    "data_referencia": data,
-                    "data": data,
-                    "contrato": contrato,
-                    "programa": programa,
-                    "nucleo": nucleo,
-                    "logradouro": logradouro,
-                    "municipio": municipio,
-                    "equipe": equipe,
-                    "tipo_ocorrencia": tipo_ocorrencia,
-                    "descricao": descricao,
-                    "impacto_producao": self._impacto_ocorrencia(descricao),
-                    "arquivo_origem": source_name,
-                }
-            )
-
-        observacoes: List[dict] = []
-        for obs in list(blocos.get("obs", [])):
-            descricao = str(obs).strip()
-            if not descricao:
-                continue
-            if normalizar_texto(descricao) in {"opcional"}:
-                continue
-            observacoes.append(
-                {
-                    "data": data,
-                    "nucleo": nucleo,
-                    "logradouro": logradouro,
-                    "municipio": municipio,
-                    "equipe": equipe,
-                    "observacao": descricao,
-                    "arquivo_origem": source_name,
-                }
-            )
-            occ_counter += 1
-            ocorrencias.append(
-                {
-                    "id_ocorrencia": f"O{occ_counter:04d}",
-                    "id_frente": id_frente_principal,
-                    "data_referencia": data,
-                    "data": data,
-                    "contrato": contrato,
-                    "programa": programa,
-                    "nucleo": nucleo,
-                    "logradouro": logradouro,
-                    "municipio": municipio,
-                    "equipe": equipe,
-                    "tipo_ocorrencia": "observacao_geral",
-                    "descricao": descricao,
-                    "impacto_producao": "parcial",
-                    "arquivo_origem": source_name,
-                }
-            )
+                occ_counter += 1
+                ocorrencias.append(
+                    {
+                        "id_ocorrencia": f"O{occ_counter:04d}",
+                        "id_frente": id_frente_principal,
+                        "data_referencia": data,
+                        "data": data,
+                        "contrato": contrato,
+                        "programa": programa,
+                        "nucleo": nucleo,
+                        "logradouro": logradouro,
+                        "municipio": municipio,
+                        "equipe": equipe,
+                        "tipo_ocorrencia": "observacao_geral",
+                        "descricao": descricao,
+                        "impacto_producao": "parcial",
+                        "arquivo_origem": source_name,
+                    }
+                )
 
         return {
             "data_referencia": data,
