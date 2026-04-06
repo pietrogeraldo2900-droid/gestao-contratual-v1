@@ -456,7 +456,11 @@ class ManagementRepository:
                                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
                                 %s, %s, %s
                             )
-                            ON CONFLICT (source_uid) DO NOTHING
+                            ON CONFLICT (source_uid) DO UPDATE SET
+                                contrato = CASE
+                                    WHEN COALESCE(management_execucao.contrato, '') = '' THEN EXCLUDED.contrato
+                                    ELSE management_execucao.contrato
+                                END
                             """,
                             exec_values,
                         )
@@ -470,7 +474,11 @@ class ManagementRepository:
                             ) VALUES (
                                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                             )
-                            ON CONFLICT (source_uid) DO NOTHING
+                            ON CONFLICT (source_uid) DO UPDATE SET
+                                contrato = CASE
+                                    WHEN COALESCE(management_frentes.contrato, '') = '' THEN EXCLUDED.contrato
+                                    ELSE management_frentes.contrato
+                                END
                             """,
                             frentes_values,
                         )
@@ -486,7 +494,11 @@ class ManagementRepository:
                                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
                                 %s, %s, %s, %s, %s, %s, %s
                             )
-                            ON CONFLICT (source_uid) DO NOTHING
+                            ON CONFLICT (source_uid) DO UPDATE SET
+                                contrato = CASE
+                                    WHEN COALESCE(management_ocorrencias.contrato, '') = '' THEN EXCLUDED.contrato
+                                    ELSE management_ocorrencias.contrato
+                                END
                             """,
                             ocorr_values,
                         )

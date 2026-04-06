@@ -2431,40 +2431,60 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             except Exception as exc:
                 app.logger.warning("Falha ao carregar opcoes de contrato do gerencial: %s", exc)
 
-        if contract_options:
-            display_map: dict[str, str] = {}
-            for item in _build_contract_options(limit=1000):
-                contract_id = str(item.get("id", "") or "").strip()
-                full_label = str(item.get("label", "") or "").strip()
-                if not full_label:
-                    continue
-                if " - " in full_label:
-                    numero, nome = full_label.split(" - ", 1)
-                    numero = numero.strip()
-                    nome = nome.strip() or full_label
-                    if numero:
-                        display_map[numero] = nome
-                    display_map[full_label] = nome
-                    if contract_id:
-                        display_map[contract_id] = nome
-                else:
-                    nome = full_label
-                    display_map[full_label] = nome
-                    if contract_id:
-                        display_map[contract_id] = nome
+        catalog_options = _build_contract_options(limit=1000)
+        display_map: dict[str, str] = {}
+        for item in catalog_options:
+            contract_id = str(item.get("id", "") or "").strip()
+            full_label = str(item.get("label", "") or "").strip()
+            if not full_label:
+                continue
+            if " - " in full_label:
+                numero, nome = full_label.split(" - ", 1)
+                numero = numero.strip()
+                nome = nome.strip() or full_label
+                if numero:
+                    display_map[numero] = nome
+                display_map[full_label] = nome
+                if contract_id:
+                    display_map[contract_id] = nome
+            else:
+                nome = full_label
+                display_map[full_label] = nome
+                if contract_id:
+                    display_map[contract_id] = nome
 
-            def _contract_label_for(value: object) -> str:
-                raw = str(value or "").strip()
-                if not raw:
-                    return ""
-                if raw in display_map:
-                    return display_map[raw]
-                if " - " in raw:
-                    return raw.split(" - ", 1)[1].strip() or raw
-                return raw
+        def _contract_label_for(value: object) -> str:
+            raw = str(value or "").strip()
+            if not raw:
+                return ""
+            if raw in display_map:
+                return display_map[raw]
+            if " - " in raw:
+                return raw.split(" - ", 1)[1].strip() or raw
+            return raw
 
-            contract_cards = [{"value": raw, "label": _contract_label_for(raw)} for raw in contract_options]
-            contract_label = _contract_label_for(filters["contrato"])
+        card_values_seen: set[str] = set()
+        contract_cards = []
+        for item in catalog_options:
+            contract_id = str(item.get("id", "") or "").strip()
+            full_label = str(item.get("label", "") or "").strip()
+            numero = full_label.split(" - ", 1)[0].strip() if " - " in full_label else ""
+            candidates = [v for v in (numero, full_label, contract_id) if v]
+            if not candidates:
+                continue
+            card_value = next((v for v in candidates if v in contract_options), candidates[0])
+            if card_value in card_values_seen:
+                continue
+            card_values_seen.add(card_value)
+            contract_cards.append({"value": card_value, "label": _contract_label_for(card_value)})
+
+        for raw in contract_options:
+            if raw in card_values_seen:
+                continue
+            card_values_seen.add(raw)
+            contract_cards.append({"value": raw, "label": _contract_label_for(raw)})
+
+        contract_label = _contract_label_for(filters["contrato"])
 
         # Fallback legado apenas quando o repositório/banco não está disponível.
         if dashboard is None:

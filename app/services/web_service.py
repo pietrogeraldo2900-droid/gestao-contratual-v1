@@ -1477,6 +1477,23 @@ class WebPipelineService:
 
         return data
 
+    def bind_contract_to_parsed(self, parsed: dict, contract_value: object, force: bool = True) -> dict:
+        value = str(contract_value or "").strip()
+        if not value:
+            return parsed
+
+        parsed["contrato"] = value
+        for bucket in ("frentes", "execucao", "ocorrencias", "observacoes", "servicos_nao_mapeados"):
+            rows = parsed.get(bucket, [])
+            if not isinstance(rows, list):
+                continue
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                if force or not str(row.get("contrato", "") or "").strip():
+                    row["contrato"] = value
+        return parsed
+
     def apply_manual_service_corrections(self, parsed: dict, corrections: List[dict]) -> dict:
         prepared: Dict[str, dict] = {}
         prepared_by_suffix: Dict[str, dict] = {}
@@ -3137,6 +3154,7 @@ class WebPipelineService:
 
         results: List[dict] = []
         entities_cache: Dict[str, Dict[str, List[str]]] = {}
+        contract_cache: Dict[str, str] = {}
         for row in self.read_history(limit=safe_limit):
             row_data = dict(row)
             output_dir_raw = str(row_data.get("output_dir", "") or "").strip()
@@ -3169,6 +3187,26 @@ class WebPipelineService:
             report_files = [item for item in generated_files if item.get("category") == "report"]
             spreadsheet_files = [item for item in generated_files if item.get("category") == "spreadsheet"]
 
+            contract_id_text = str(row.get("contract_id", "") or "").strip()
+            contract_label_text = str(row.get("contract_label", "") or "").strip()
+            if not contract_label_text and output_dir_raw:
+                if output_dir_raw not in contract_cache:
+                    extracted = ""
+                    try:
+                        consolidated = Path(output_dir_raw) / "relatorio_consolidado.json"
+                        if consolidated.exists():
+                            payload = json.loads(consolidated.read_text(encoding="utf-8"))
+                            extracted = str((payload or {}).get("contrato", "") or "").strip()
+                    except Exception:
+                        extracted = ""
+                    contract_cache[output_dir_raw] = extracted
+                contract_label_text = contract_cache.get(output_dir_raw, "")
+
+            if contract_label_text:
+                row_data["contract_label"] = contract_label_text
+            if contract_id_text:
+                row_data["contract_id"] = contract_id_text
+
             primary_download = None
             if spreadsheet_files:
                 primary_download = spreadsheet_files[0]
@@ -3182,8 +3220,8 @@ class WebPipelineService:
                     **row_data,
                     "result_id": str(row.get("output_name", "") or "").strip(),
                     "process_type": "Processamento de entrada",
-                    "contract_id": str(row.get("contract_id", "") or "").strip(),
-                    "contract_label": str(row.get("contract_label", "") or "").strip(),
+                    "contract_id": contract_id_text,
+                    "contract_label": contract_label_text,
                     "nucleos_reais": nucleos_reais,
                     "municipios_reais": municipios_reais,
                     "report_files": report_files,
@@ -6245,6 +6283,10 @@ class WebPipelineService:
         raw_message = str(draft.get("raw_message", "") or "")
         parsed = self.apply_overrides(draft.get("parsed", {}), overrides)
         parsed = self.reconcile_with_nucleo_master(parsed)
+        contract_value = str(contract_label or "").strip() or str(contract_id or "").strip()
+        parsed = self.bind_contract_to_parsed(parsed, contract_value, force=True)
+        if not str(contract_label or "").strip() and contract_value:
+            contract_label = contract_value
 
         alert_items = self.build_alert_items(parsed)
         preview_alerts = [a["message"] for a in alert_items]
@@ -6349,6 +6391,10 @@ class WebPipelineService:
             draft = self.load_draft(draft_id)
             parsed = self.apply_overrides(draft.get("parsed", {}), overrides)
             parsed = self.reconcile_with_nucleo_master(parsed)
+            contract_value = str(contract_label or "").strip() or str(contract_id or "").strip()
+            parsed = self.bind_contract_to_parsed(parsed, contract_value, force=True)
+            if not str(contract_label or "").strip() and contract_value:
+                contract_label = contract_value
             raw_message = str(draft.get("raw_message", "") or "")
             main = self.extract_main_fields(parsed)
         except Exception:
