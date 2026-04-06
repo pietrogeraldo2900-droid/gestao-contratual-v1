@@ -4,7 +4,10 @@ param(
     [string]$Origem,
 
     [Parameter(Mandatory = $false)]
-    [string]$Saida
+    [string]$Saida,
+
+    [Parameter(Mandatory = $false)]
+    [string]$PastaAuditoria
 )
 
 Set-StrictMode -Version Latest
@@ -88,10 +91,22 @@ $outputPathInput = if ([string]::IsNullOrWhiteSpace($Saida)) {
 }
 $outputPath = Resolve-FullPath -PathValue $outputPathInput
 
+$auditFolderInput = if ([string]::IsNullOrWhiteSpace($PastaAuditoria)) {
+    Join-Path -Path $sourcePath -ChildPath "SISG_AUDITORIA"
+} else {
+    $PastaAuditoria
+}
+$auditFolderPath = Resolve-FullPath -PathValue $auditFolderInput
+
 $outputDir = Split-Path -Path $outputPath -Parent
 if (-not (Test-Path -LiteralPath $outputDir -PathType Container)) {
     New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
 }
+
+if (Test-Path -LiteralPath $auditFolderPath) {
+    Remove-Item -LiteralPath $auditFolderPath -Recurse -Force
+}
+New-Item -ItemType Directory -Path $auditFolderPath -Force | Out-Null
 
 if (Test-Path -LiteralPath $outputPath) {
     Remove-Item -LiteralPath $outputPath -Force
@@ -158,6 +173,7 @@ try {
         $copiedFiles++
     }
 
+    Copy-Item -Path (Join-Path -Path $tempRoot -ChildPath "*") -Destination $auditFolderPath -Recurse -Force
     Compress-Archive -Path (Join-Path -Path $tempRoot -ChildPath "*") -DestinationPath $outputPath -Force
 }
 finally {
@@ -168,6 +184,7 @@ finally {
 
 Write-Host "ZIP de auditoria gerado com sucesso."
 Write-Host "Origem: $sourcePath"
+Write-Host "Pasta : $auditFolderPath"
 Write-Host "Saida : $outputPath"
 Write-Host "Arquivos copiados: $copiedFiles"
 Write-Host "Arquivos ignorados: $skippedFiles"

@@ -10,6 +10,9 @@ from typing import Dict, List, Optional
 SECTION_ALIASES = {
     "execucao": "execucao",
     "execucao diaria": "execucao",
+    "servicos": "execucao",
+    "servico": "execucao",
+    "local": "local",
     "frentes": "frentes",
     "ocorrencias": "ocorrencias",
     "obs": "obs",
@@ -18,6 +21,8 @@ SECTION_ALIASES = {
 }
 
 FIELD_ALIASES = {
+    "data": "data",
+    "contrato": "contrato",
     "nucleo": "nucleo",
     "logradouro": "logradouro",
     "municipio": "municipio",
@@ -135,14 +140,27 @@ def _canonical_section(label: str) -> Optional[str]:
     return SECTION_ALIASES.get(normalizar_texto(label))
 
 
+def _extract_contract_from_rdo_line(line: str) -> str:
+    text = str(line or "").strip()
+    if not text:
+        return ""
+    match = re.match(r"^\s*rdo\s*[-\u2013\u2014:]\s*(.+?)\s*$", text, flags=re.IGNORECASE)
+    if not match:
+        return ""
+    contract = match.group(1).strip(" -:\t")
+    return contract
+
+
 def extrair_blocos_mensagem(texto: str) -> Dict[str, object]:
     resultado: Dict[str, object] = {
         "data": "",
+        "contrato": "",
         "nucleo": "",
         "logradouro": "",
         "municipio": "",
         "equipe": "",
         "execucao": [],
+        "local": [],
         "frentes": [],
         "ocorrencias": [],
         "obs": [],
@@ -156,6 +174,11 @@ def extrair_blocos_mensagem(texto: str) -> Dict[str, object]:
         linha_limpa = linha.strip()
         if not linha_limpa:
             continue
+
+        if not resultado["contrato"]:
+            contrato = _extract_contract_from_rdo_line(linha_limpa)
+            if contrato:
+                resultado["contrato"] = contrato
 
         if not resultado["data"]:
             m_data = re.search(r"\b\d{2}/\d{2}/\d{4}\b", linha_limpa)
@@ -190,8 +213,20 @@ def extrair_blocos_mensagem(texto: str) -> Dict[str, object]:
         if secao_atual:
             resultado[secao_atual].append(_linha_item(linha_limpa))
 
+    local_lines = [str(v or "").strip() for v in resultado.get("local", []) if str(v or "").strip()]
+    if local_lines and not str(resultado.get("logradouro", "") or "").strip():
+        resultado["logradouro"] = " / ".join(local_lines)
+
+    has_context_field = bool(
+        str(resultado.get("nucleo", "") or "").strip()
+        or str(resultado.get("logradouro", "") or "").strip()
+        or str(resultado.get("municipio", "") or "").strip()
+    )
     resultado["modelo_oficial"] = bool(
-        "execucao" in secoes_detectadas and bool({"logradouro", "equipe", "municipio"} & campos_detectados)
+        str(resultado.get("data", "") or "").strip()
+        and str(resultado.get("equipe", "") or "").strip()
+        and "execucao" in secoes_detectadas
+        and has_context_field
     )
     return resultado
 
@@ -203,8 +238,19 @@ def parsear_linha_execucao(linha: str) -> Dict[str, object]:
     unidade = ""
     servico = texto
 
+    # Novo modelo oficial: "servico_oficial: 10 un"
+    m_servico_colon = re.match(
+        r"^\s*([^:]+?)\s*:\s*(\d+(?:[.,]\d+)?)\s*(m\u00b2|m2|metro quadrado|metros quadrados|metro|metros|m|unidades|unidade|und|un)?\s*$",
+        texto,
+        flags=re.IGNORECASE,
+    )
+    if m_servico_colon:
+        servico = m_servico_colon.group(1).strip()
+        quantidade = normalizar_quantidade(m_servico_colon.group(2))
+        unidade = normalizar_unidade(m_servico_colon.group(3) or "")
+
     m_qtd = re.match(r"^\s*(\d+(?:[.,]\d+)?)(.*)$", texto)
-    if m_qtd and m_qtd.group(2).strip():
+    if quantidade is None and m_qtd and m_qtd.group(2).strip():
         quantidade = normalizar_quantidade(m_qtd.group(1))
         resto = m_qtd.group(2).strip()
         m_unidade = re.match(
@@ -439,7 +485,7 @@ class OfficialMessageParser:
         logradouro = str(blocos.get("logradouro", "") or "")
         municipio = str(blocos.get("municipio", "") or "")
         equipe = extrair_primeira_equipe(blocos.get("equipe", ""))
-        contrato = self.contrato_padrao
+        contrato = str(blocos.get("contrato", "") or "").strip() or self.contrato_padrao
         programa = self.programa_padrao
 
         frentes_raw: List[str] = list(blocos.get("frentes", []))
@@ -534,7 +580,13 @@ class OfficialMessageParser:
             descricao = str(item).strip()
             if not descricao:
                 continue
+            descricao_norm = normalizar_texto(descricao)
+            if descricao_norm in {"opcional"}:
+                continue
             occ_counter += 1
+            tipo_ocorrencia = self._classificar_ocorrencia(descricao)
+            if re.fullmatch(r"[a-z0-9_]+", descricao.lower()) and "_" in descricao:
+                tipo_ocorrencia = descricao.lower()
             ocorrencias.append(
                 {
                     "id_ocorrencia": f"O{occ_counter:04d}",
@@ -547,7 +599,7 @@ class OfficialMessageParser:
                     "logradouro": logradouro,
                     "municipio": municipio,
                     "equipe": equipe,
-                    "tipo_ocorrencia": self._classificar_ocorrencia(descricao),
+                    "tipo_ocorrencia": tipo_ocorrencia,
                     "descricao": descricao,
                     "impacto_producao": self._impacto_ocorrencia(descricao),
                     "arquivo_origem": source_name,
@@ -558,6 +610,8 @@ class OfficialMessageParser:
         for obs in list(blocos.get("obs", [])):
             descricao = str(obs).strip()
             if not descricao:
+                continue
+            if normalizar_texto(descricao) in {"opcional"}:
                 continue
             observacoes.append(
                 {

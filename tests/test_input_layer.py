@@ -201,6 +201,43 @@ OBS:
         self.assertEqual(parsed["execucao"][0]["equipe"], "Equipe 01")
         self.assertEqual(parsed["ocorrencias"][0]["equipe"], "Equipe 01")
         self.assertEqual(parsed["observacoes"][0]["equipe"], "Equipe 01")
+
+    def test_modelo_novo_rdo_data_local_servicos_ocorrencias(self):
+        mensagem = """
+RDO - Oeste 1
+DATA: 25/03/2026
+
+NUCLEO: Savoy
+EQUIPE: Sidney
+LOCAL:
+Viela 100
+Viela 376
+
+SERVICOS:
+hidrometro: 10 un
+intradomiciliar: 10 un
+caixa_inspecao: 7 un
+ramal_esgoto: 1 un
+
+OCORRENCIAS:
+equipe_reduzida
+falha_equipamento
+
+OBS:
+(opcional)
+""".strip()
+        parsed = self.parser.parse_text(mensagem, source_name="modelo_novo.txt")
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed["contrato"], "Oeste 1")
+        self.assertEqual(parsed["data_referencia"], "25/03/2026")
+        self.assertEqual(parsed["frentes"][0]["logradouro"], "Viela 100 / Viela 376")
+        self.assertEqual(len(parsed["execucao"]), 4)
+        self.assertEqual(parsed["execucao"][0]["servico_oficial"], "hidrometro")
+        self.assertEqual(parsed["execucao"][0]["quantidade"], 10.0)
+        self.assertEqual(parsed["execucao"][0]["unidade"], "un")
+        self.assertEqual(parsed["ocorrencias"][0]["tipo_ocorrencia"], "equipe_reduzida")
+        self.assertEqual(parsed["ocorrencias"][1]["tipo_ocorrencia"], "falha_equipamento")
+        self.assertEqual(len(parsed["observacoes"]), 0)
 if __name__ == "__main__":
     unittest.main()
 
