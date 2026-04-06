@@ -201,7 +201,9 @@ def extrair_blocos_mensagem(texto: str) -> Dict[str, object]:
                 secao_atual = secao
                 secoes_detectadas.add(secao)
                 if valor:
-                    resultado[secao].append(_linha_item(valor))
+                    item = _linha_item(valor)
+                    if item:
+                        resultado[secao].append(item)
                 continue
 
         secao_sem_dois_pontos = _canonical_section(linha_limpa.rstrip(":"))
@@ -211,7 +213,9 @@ def extrair_blocos_mensagem(texto: str) -> Dict[str, object]:
             continue
 
         if secao_atual:
-            resultado[secao_atual].append(_linha_item(linha_limpa))
+            item = _linha_item(linha_limpa)
+            if item:
+                resultado[secao_atual].append(item)
 
     local_lines = [str(v or "").strip() for v in resultado.get("local", []) if str(v or "").strip()]
     if local_lines and not str(resultado.get("logradouro", "") or "").strip():
@@ -517,8 +521,15 @@ class OfficialMessageParser:
         execucao: List[dict] = []
         servicos_nao_mapeados: List[dict] = []
 
-        for idx, linha in enumerate(list(blocos.get("execucao", [])), start=1):
+        exec_counter = 0
+        for linha in list(blocos.get("execucao", [])):
             parsed = parsear_linha_execucao(str(linha))
+            servico_bruto = str(parsed.get("servico_bruto", "") or "").strip()
+            servico_normalizado = str(parsed.get("servico_normalizado", "") or "").strip()
+            if not servico_bruto and not servico_normalizado and parsed.get("quantidade") is None:
+                # Ignora placeholders vazios (ex.: linha apenas "-") para nao gerar itens fantasma.
+                continue
+
             mapeamento = self.service_dictionary.mapear_servico(str(parsed["servico_bruto"]))
             quantidade = parsed["quantidade"] if parsed["quantidade"] is not None else ""
             unidade = str(parsed["unidade"] or "")
@@ -529,8 +540,9 @@ class OfficialMessageParser:
             if mensagem_origem and not mensagem_origem.startswith(("-", "\u2022", "*")):
                 mensagem_origem = f"- {mensagem_origem}"
 
+            exec_counter += 1
             exec_item = {
-                "id_item": f"I{idx:04d}",
+                "id_item": f"I{exec_counter:04d}",
                 "id_frente": id_frente_principal,
                 "data_referencia": data,
                 "data": data,

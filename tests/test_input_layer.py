@@ -238,6 +238,35 @@ OBS:
         self.assertEqual(parsed["ocorrencias"][0]["tipo_ocorrencia"], "equipe_reduzida")
         self.assertEqual(parsed["ocorrencias"][1]["tipo_ocorrencia"], "falha_equipamento")
         self.assertEqual(len(parsed["observacoes"]), 0)
+
+    def test_modelo_novo_ignora_placeholders_vazios_em_servicos(self):
+        mensagem = """
+RDO - Oeste 1
+DATA: 25/03/2026
+
+NUCLEO: Bonanca
+EQUIPE: Mario
+LOCAL:
+Rua A
+
+SERVICOS:
+-
+APLICACAO DE PAVIMENTO CBUQ: 18.75 m2
+-
+INSTALACAO DE CAIXA DAGUA: 1 un
+-
+
+OCORRENCIAS:
+solo_rochoso
+""".strip()
+        parsed = self.parser.parse_text(mensagem, source_name="modelo_placeholders.txt")
+        self.assertIsNotNone(parsed)
+        self.assertEqual(len(parsed["execucao"]), 2)
+        self.assertEqual(parsed["execucao"][0]["id_item"], "I0001")
+        self.assertEqual(parsed["execucao"][1]["id_item"], "I0002")
+        self.assertTrue(all(str(row.get("servico_bruto", "") or "").strip() for row in parsed["execucao"]))
+        self.assertTrue(all(str(row.get("servico_bruto", "") or "").strip() not in {"-"} for row in parsed["execucao"]))
+
 if __name__ == "__main__":
     unittest.main()
 
