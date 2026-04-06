@@ -3940,31 +3940,37 @@ body.auth-shell-mode .gerencial-page-v4 .pgm4-chip-muted {
   color: #9bb7df;
 }
 
-body.auth-shell-mode .gerencial-page-v4 .pgm4-contract-inline {
-  display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto auto;
+body.auth-shell-mode .gerencial-page-v4 .pgm4-contract-cards {
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  align-items: end;
 }
 
-body.auth-shell-mode .gerencial-page-v4 .pgm4-contract-inline label {
-  display: grid;
-  gap: 3px;
-  color: #8db2e2;
-  font-size: 10px;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-  font-weight: 700;
-}
-
-body.auth-shell-mode .gerencial-page-v4 .pgm4-contract-inline input[type="text"] {
-  min-height: 32px;
-  border-radius: 10px;
-  border: 1px solid rgba(138, 170, 237, 0.22);
-  background: rgba(9, 20, 37, 0.9);
-  color: #d7e8ff;
-  padding: 0 10px;
+body.auth-shell-mode .gerencial-page-v4 .pgm4-contract-card {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 11px;
+  border: 1px solid rgba(140, 173, 240, 0.24);
+  background: rgba(10, 22, 40, 0.72);
+  color: #cfe2ff;
+  text-decoration: none;
   font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: filter 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+body.auth-shell-mode .gerencial-page-v4 .pgm4-contract-card:hover {
+  filter: brightness(1.06);
+}
+
+body.auth-shell-mode .gerencial-page-v4 .pgm4-contract-card.is-active {
+  color: #f8fbff;
+  border-color: rgba(96, 157, 255, 0.46);
+  background: linear-gradient(180deg, rgba(62, 126, 255, 0.9), rgba(35, 91, 223, 0.94));
 }
 
 body.auth-shell-mode .gerencial-page-v4 .pgm4-filter-form[hidden] {
@@ -4446,9 +4452,6 @@ body.auth-shell-mode .gerencial-page-v4 .pgm4-empty {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  body.auth-shell-mode .gerencial-page-v4 .pgm4-contract-inline {
-    grid-template-columns: 1fr auto;
-  }
 }
 
 @media (max-width: 760px) {
@@ -4458,8 +4461,9 @@ body.auth-shell-mode .gerencial-page-v4 .pgm4-empty {
     grid-template-columns: 1fr;
   }
 
-  body.auth-shell-mode .gerencial-page-v4 .pgm4-contract-inline {
-    grid-template-columns: 1fr;
+  body.auth-shell-mode .gerencial-page-v4 .pgm4-contract-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
 
   body.auth-shell-mode .gerencial-page-v4 .pgm4-tabs,
