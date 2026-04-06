@@ -16,7 +16,6 @@ from docx import Document
 from docx.shared import Pt
 
 from app.database.connection import DatabaseManager
-from app.repositories.service_mapping_repository import ServiceMappingRepository
 from app.core.input_layer import (
     OfficialMessageParser,
     aplicar_regra_primeira_equipe,
@@ -35,220 +34,6 @@ from app.core.nucleo_master import (
 from app.services.base_builder import build_management_workbook
 from app.services.master_builder import update_master_from_output
 from app.services.report_system import ReportGenerator, ServiceDictionary, WhatsAppReportParser, save_parsed_outputs
-
-
-SERVICE_ALIAS_BOOTSTRAP: dict[str, dict[str, object]] = {
-    "PRA": {
-        "categoria": "rede_agua",
-        "unidade_padrao": "m",
-        "aliases": [
-            "PRA",
-        ],
-    },
-    "PRE": {
-        "categoria": "rede_esgoto",
-        "unidade_padrao": "m",
-        "aliases": [
-            "PRE",
-        ],
-    },
-    "rede_agua": {
-        "categoria": "rede_agua",
-        "unidade_padrao": "m",
-        "aliases": [
-            "rede_agua",
-            "Rede de agua",
-            "Rede agua",
-            "Prolongamento de rede de agua",
-            "Prolongamento de rede",
-            "Prolongamento rede agua",
-            "Prolongamento rede",
-        ],
-    },
-    "rede_esgoto": {
-        "categoria": "rede_esgoto",
-        "unidade_padrao": "m",
-        "aliases": [
-            "rede_esgoto",
-            "Execucao de rede de esgoto",
-            "Rede de esgoto",
-        ],
-    },
-    "ramal_agua": {
-        "categoria": "rede_agua",
-        "unidade_padrao": "un",
-        "aliases": [
-            "Execucao de ramais de agua",
-            "Ramais de agua",
-            "Ramal de agua",
-        ],
-    },
-    "ramal_esgoto": {
-        "categoria": "rede_esgoto",
-        "unidade_padrao": "un",
-        "aliases": [
-            "Execucao de ramais de esgoto",
-            "Ramais de esgoto",
-            "Ramal de esgoto",
-        ],
-    },
-    "furo_direcional": {
-        "categoria": "rede_agua",
-        "unidade_padrao": "m",
-        "aliases": [
-            "furo_direcional",
-            "Furo direcional",
-            "Execucao de furo direcional",
-        ],
-    },
-    "intradomiciliar": {
-        "categoria": "intradomiciliar",
-        "unidade_padrao": "un",
-        "aliases": [
-            "Ligacoes intradomiciliares",
-            "Ligacao intradomiciliar",
-            "Intradomiciliar",
-        ],
-    },
-    "hidrometro": {
-        "categoria": "hidrometro",
-        "unidade_padrao": "un",
-        "aliases": [
-            "Instalacao de hidrometros",
-            "Instalacao de hidrometro",
-            "Hidrometro",
-        ],
-    },
-    "caixa_uma": {
-        "categoria": "caixa_uma",
-        "unidade_padrao": "un",
-        "aliases": [
-            "Instalacao de caixas UMA",
-            "Instalacao de caixa UMA",
-            "Instalacao de caixas uma",
-        ],
-    },
-    "interligacao": {
-        "categoria": "rede_agua",
-        "unidade_padrao": "un",
-        "aliases": [
-            "Execucao de interligacao de rede",
-            "Execucao de interligacao de rede de agua",
-            "Interligacao de rede",
-            "Interligacao",
-        ],
-    },
-    "adesao_agua": {
-        "categoria": "adesao_agua",
-        "unidade_padrao": "un",
-        "aliases": [
-            "Adesoes realizadas",
-            "Adesao de agua",
-            "Adesao agua",
-        ],
-    },
-    "caixa_dagua": {
-        "categoria": "caixa_dagua",
-        "unidade_padrao": "un",
-        "aliases": [
-            "Instalacao de caixa dagua",
-            "Instalacao de caixa de agua",
-            "Caixa dagua",
-            "Caixa dagua instalada",
-            "Caixas dagua instaladas",
-            "Caixas d'agua instaladas",
-            "Caixa dgua instalada",
-            "Caixa d agua instalada",
-        ],
-    },
-    "Economias": {
-        "categoria": "economias",
-        "unidade_padrao": "un",
-        "aliases": [
-            "Economias",
-            "economias",
-        ],
-    },
-    "caixa_inspecao": {
-        "categoria": "esgoto",
-        "unidade_padrao": "un",
-        "aliases": [
-            "Instalacao de caixa de inspecao",
-            "Caixa de inspecao",
-        ],
-    },
-    "recomposicao_passeio": {
-        "categoria": "recomposicao",
-        "unidade_padrao": "m",
-        "aliases": [
-            "Recomposicao de valas",
-            "Recomposicao de vala",
-            "Recomposicao",
-        ],
-    },
-    "concretagem_vala": {
-        "categoria": "recomposicao",
-        "unidade_padrao": "m",
-        "aliases": [
-            "Concretagem de vala realizada",
-            "Concretagem de vala",
-        ],
-    },
-    "caps": {
-        "categoria": "insumo",
-        "unidade_padrao": "un",
-        "aliases": [
-            "Caps utilizados",
-            "Capeamento de rede",
-            "Capeamento",
-        ],
-    },
-    "corte_pavimento": {
-        "categoria": "escavacao",
-        "unidade_padrao": "m",
-        "aliases": [
-            "Corte de pavimento com serra clip",
-            "Corte de pavimento",
-            "Serra clip",
-        ],
-    },
-    "retirada_entulho": {
-        "categoria": "apoio",
-        "unidade_padrao": "un",
-        "aliases": [
-            "Retirada de Big Bag",
-            "Retirada de entulho",
-            "Big Bag",
-        ],
-    },
-    "luvas": {
-        "categoria": "insumo",
-        "unidade_padrao": "un",
-        "aliases": [
-            "Luvas executadas",
-            "Luvas",
-        ],
-    },
-    "manutencao_poco_inspecao": {
-        "categoria": "manutencao",
-        "unidade_padrao": "un",
-        "aliases": [
-            "Manutencao de pocos de inspecao",
-            "Manutencao poco inspecao",
-            "Manutencao de poco de inspecao",
-            "Poco de inspecao",
-        ],
-    },
-    "servico_complementar": {
-        "categoria": "apoio",
-        "unidade_padrao": "un",
-        "aliases": [
-            "Execucao de e degraus",
-            "Retrabalhos em ramais",
-            "Retrabalho em ramais",
-        ],
-    },
-}
 
 
 class WebPipelineService:
@@ -284,7 +69,6 @@ class WebPipelineService:
         self.service_dictionary_v2_json = self.base_dir / "config" / "service_dictionary_v2.json"
         self.nucleo_reference_file = Path(nucleo_reference_file) if nucleo_reference_file else self.base_dir / "config" / "nucleo_reference.json"
         self.db_manager = db_manager
-        self.service_mapping_repository: ServiceMappingRepository | None = None
 
         self.legacy_dictionary = ServiceDictionary(self.dictionary_csv)
         self.legacy_parser = WhatsAppReportParser(self.legacy_dictionary)
@@ -299,14 +83,6 @@ class WebPipelineService:
 
     def set_database_manager(self, db_manager: DatabaseManager | None) -> None:
         self.db_manager = db_manager
-        self.nucleo_reference = self._load_nucleo_reference()
-
-    def set_service_mapping_repository(self, repository: ServiceMappingRepository | None) -> None:
-        self.service_mapping_repository = repository
-        self.service_catalog = self._build_service_catalog()
-
-    def refresh_service_catalog(self) -> None:
-        self.service_catalog = self._build_service_catalog()
 
     def parse_message(self, raw_message: str, source_name: str | None = None) -> Tuple[dict, str]:
         source_name = source_name or f"mensagem_web_{datetime.now():%Y%m%d_%H%M%S}.txt"
@@ -359,92 +135,8 @@ class WebPipelineService:
             out.append(clean)
         return out
 
-    def _read_nucleo_reference_payload_from_db(self) -> dict | None:
-        if self.db_manager is None:
-            return None
-
-        try:
-            with self.db_manager.connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        "SELECT payload_json FROM nucleo_registry_state WHERE id = 1"
-                    )
-                    row = cur.fetchone()
-            if not row:
-                return None
-            payload = row[0]
-            if isinstance(payload, str):
-                payload = json.loads(payload)
-            if not isinstance(payload, dict):
-                return None
-            version = str(payload.get("version", "2.0") or "2.0")
-            raw_entries = payload.get("nucleos", [])
-            if not isinstance(raw_entries, list):
-                raw_entries = []
-            return {"version": version, "nucleos": raw_entries}
-        except Exception:
-            return None
-
-    def _write_nucleo_reference_payload_to_file(self, payload: dict) -> None:
-        if not isinstance(payload, dict):
-            return
-
-        version = str(payload.get("version", "2.0") or "2.0")
-        raw_entries = payload.get("nucleos", [])
-        if not isinstance(raw_entries, list):
-            raw_entries = []
-
-        file_payload = {
-            "version": version,
-            "nucleos": raw_entries,
-        }
-
-        self.nucleo_reference_file.parent.mkdir(parents=True, exist_ok=True)
-        with self.nucleo_reference_file.open("w", encoding="utf-8") as f:
-            json.dump(file_payload, f, ensure_ascii=False, indent=2)
-
-    def _sync_nucleo_reference_to_db(self, registry: dict) -> None:
-        if self.db_manager is None:
-            return
-
-        entries = list((registry or {}).get("entries", []))
-        version = str((registry or {}).get("version", "2.0") or "2.0")
-        payload = {
-            "version": version,
-            "nucleos": entries,
-        }
-
-        try:
-            with self.db_manager.connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        """
-                        INSERT INTO nucleo_registry_state (id, version, payload_json, updated_at)
-                        VALUES (1, %s, %s::jsonb, NOW())
-                        ON CONFLICT (id)
-                        DO UPDATE SET
-                            version = EXCLUDED.version,
-                            payload_json = EXCLUDED.payload_json,
-                            updated_at = NOW()
-                        """,
-                        (version, json.dumps(payload, ensure_ascii=False)),
-                    )
-                conn.commit()
-        except Exception:
-            return
-
     def _load_nucleo_reference(self) -> dict:
-        db_payload = self._read_nucleo_reference_payload_from_db()
-        if db_payload is not None:
-            try:
-                self._write_nucleo_reference_payload_to_file(db_payload)
-            except Exception:
-                pass
-            return load_nucleo_registry(self.nucleo_reference_file)
-
-        registry = load_nucleo_registry(self.nucleo_reference_file)
-        self._sync_nucleo_reference_to_db(registry)
-        return registry
+        return load_nucleo_registry(self.nucleo_reference_file)
 
     def _get_nucleo_profile(self, nucleo: object) -> dict | None:
         return get_nucleo_profile(self.nucleo_reference, nucleo)
@@ -646,7 +338,6 @@ class WebPipelineService:
             )
 
         self.nucleo_reference = save_nucleo_registry(self.nucleo_reference_file, merged_entries)
-        self._sync_nucleo_reference_to_db(self.nucleo_reference)
         saved_entry = None
         for entry in self.nucleo_reference.get("entries", []):
             if self._normalize_nucleo_key(entry.get("nucleo", "")) == new_key:
@@ -709,27 +400,6 @@ class WebPipelineService:
                     },
                 )
 
-        if self.service_mapping_repository is not None:
-            try:
-                db_services = self.service_mapping_repository.list_services(limit=2000)
-            except Exception:
-                db_services = []
-            for row in db_services:
-                if not bool(row.get("ativo", True)):
-                    continue
-                servico = str(row.get("servico_oficial", "") or "").strip()
-                if not servico:
-                    continue
-                categoria = str(row.get("categoria", "") or "").strip() or "servico_nao_mapeado"
-                if normalizar_texto(servico) == "hidrometro":
-                    categoria = "hidrometro"
-                label = servico.replace("_", " ").strip()
-                catalog_by_servico[servico] = {
-                    "servico": servico,
-                    "categoria": categoria,
-                    "label": label,
-                }
-
         options = sorted(
             catalog_by_servico.values(),
             key=lambda x: (str(x.get("categoria", "") or "").lower(), str(x.get("label", "") or "").lower()),
@@ -767,353 +437,6 @@ class WebPipelineService:
             }
         categoria = "hidrometro" if key == "hidrometro" else "servico_nao_mapeado"
         return {"servico": key, "categoria": categoria, "label": key}
-
-    def list_registered_services(self, search: str = "", limit: int = 500) -> List[dict]:
-        if self.service_mapping_repository is None:
-            return []
-        try:
-            return list(self.service_mapping_repository.list_services(search=search, limit=limit))
-        except Exception:
-            return []
-
-    def list_registered_aliases(self, search: str = "", limit: int = 500) -> List[dict]:
-        if self.service_mapping_repository is None:
-            return []
-        try:
-            return list(self.service_mapping_repository.list_aliases(search=search, limit=limit))
-        except Exception:
-            return []
-
-    def _suggest_service_for_unmapped_term(self, term: object) -> str:
-        raw = str(term or "").strip()
-        if not raw:
-            return ""
-        norm = normalizar_texto(raw)
-        norm = re.sub(r"[^a-z0-9]+", " ", norm).strip()
-        if not norm:
-            return ""
-
-        if norm == "pra":
-            return "PRA"
-        if norm == "pre":
-            return "PRE"
-        if "prolongamento" in norm and "rede" in norm:
-            return "rede_agua"
-        if "ramal" in norm and "esgoto" in norm:
-            return "ramal_esgoto"
-        if "ramal" in norm and "agua" in norm:
-            return "ramal_agua"
-        if "rede" in norm and "esgoto" in norm:
-            return "rede_esgoto"
-        if "rede" in norm and "agua" in norm:
-            return "rede_agua"
-        if "intradomiciliar" in norm or ("ligacao" in norm and "domic" in norm):
-            return "intradomiciliar"
-        if "hidrometr" in norm:
-            return "hidrometro"
-        if "caixa" in norm and "uma" in norm:
-            return "caixa_uma"
-        if "interlig" in norm and "rede" in norm:
-            return "interligacao"
-        if "furo" in norm and "direcional" in norm:
-            return "furo_direcional"
-        if "ades" in norm:
-            return "adesao_agua"
-        if "economia" in norm:
-            return "Economias"
-        if "manutencao" in norm and "poco" in norm and "inspec" in norm:
-            return "manutencao_poco_inspecao"
-        if "poco" in norm and "inspec" in norm:
-            return "manutencao_poco_inspecao"
-        if "caixa" in norm and "inspec" in norm:
-            return "caixa_inspecao"
-        if "caixa" in norm and (
-            "dagua" in norm
-            or ("de" in norm and "agua" in norm)
-            or bool(re.search(r"\bd\s+agua\b", norm))
-        ):
-            return "caixa_dagua"
-        if "caps" in norm or "capeamento" in norm:
-            return "caps"
-        if "serra clip" in norm or ("corte" in norm and "pavimento" in norm):
-            return "corte_pavimento"
-        if "big bag" in norm or ("retirada" in norm and "entulho" in norm):
-            return "retirada_entulho"
-        if "luvas" in norm:
-            return "luvas"
-        if "degraus" in norm or ("retrabalho" in norm and "ramal" in norm):
-            return "servico_complementar"
-        if "recompos" in norm:
-            return "recomposicao_passeio"
-        if "concretagem" in norm and "vala" in norm:
-            return "concretagem_vala"
-        return ""
-
-    def _sanitize_unmapped_alias_term(self, term: object) -> str:
-        raw = str(term or "").strip()
-        if not raw:
-            return ""
-        clean = self._sanitize_institutional_text(raw)
-        clean = re.sub(r"(?i)^(item|servico|serviço)\s*[:\\-]\s*", "", clean).strip(" -")
-        clean = re.sub(r"\s+", " ", clean).strip()
-        if not clean:
-            return ""
-        norm = normalizar_texto(clean)
-        if not norm:
-            return ""
-        generic_noise = {"ok", "na", "n a", "sem", "com", "de", "servico"}
-        if norm in generic_noise:
-            return ""
-        return clean
-
-    def bootstrap_service_aliases(
-        self,
-        *,
-        max_terms: int = 2000,
-        min_count: int = 1,
-    ) -> dict:
-        if self.service_mapping_repository is None:
-            raise RuntimeError("Cadastro de aliases indisponivel no momento.")
-
-        repo = self.service_mapping_repository
-        created_services = 0
-        upserted_aliases = 0
-
-        service_ids: Dict[str, int] = {}
-        for servico_oficial, meta in SERVICE_ALIAS_BOOTSTRAP.items():
-            row = repo.upsert_service(
-                servico_oficial=servico_oficial,
-                categoria=str(meta.get("categoria", "") or "").strip() or "servico_nao_mapeado",
-                unidade_padrao=str(meta.get("unidade_padrao", "") or "").strip(),
-                ativo=True,
-            )
-            if int(row.get("id", 0) or 0):
-                service_ids[servico_oficial] = int(row.get("id", 0) or 0)
-                created_services += 1
-
-        for servico_oficial, meta in SERVICE_ALIAS_BOOTSTRAP.items():
-            service_id = service_ids.get(servico_oficial, 0)
-            if service_id <= 0:
-                continue
-            seen_alias_norms: set[str] = set()
-            for alias in list(meta.get("aliases", []) or []):
-                alias_clean = str(alias or "").strip()
-                if not alias_clean:
-                    continue
-                alias_norm = normalizar_texto(alias_clean)
-                if not alias_norm or alias_norm in seen_alias_norms:
-                    continue
-                seen_alias_norms.add(alias_norm)
-                repo.upsert_alias(alias_clean, service_id, source="bootstrap_catalog", ativo=True)
-                upserted_aliases += 1
-
-        aliases_cleaned = 0
-        aliases_deactivated = 0
-        try:
-            existing_aliases = repo.list_aliases(limit=5000)
-        except Exception:
-            existing_aliases = []
-        for alias_row in existing_aliases:
-            if str(alias_row.get("source", "") or "").strip() != "bootstrap_unmapped":
-                continue
-            alias_id = int(alias_row.get("id", 0) or 0)
-            service_id = int(alias_row.get("service_id", 0) or 0)
-            alias_text = str(alias_row.get("alias_text", "") or "").strip()
-            if alias_id <= 0 or service_id <= 0 or not alias_text:
-                continue
-
-            cleaned_text = self._sanitize_unmapped_alias_term(alias_text)
-            if not cleaned_text:
-                if repo.set_alias_active(alias_id, False):
-                    aliases_deactivated += 1
-                continue
-
-            if cleaned_text == alias_text:
-                continue
-
-            upserted = repo.upsert_alias(
-                cleaned_text,
-                service_id,
-                source="bootstrap_unmapped",
-                ativo=True,
-            )
-            aliases_cleaned += 1
-            old_norm = normalizar_texto(alias_text)
-            new_norm = normalizar_texto(cleaned_text)
-            new_id = int(upserted.get("id", 0) or 0)
-            if old_norm != new_norm and new_id and new_id != alias_id:
-                if repo.set_alias_active(alias_id, False):
-                    aliases_deactivated += 1
-
-        unmapped_terms = repo.list_unmapped_terms_from_management(limit=max_terms, min_count=min_count)
-        auto_mapped_terms = 0
-        for item in unmapped_terms:
-            term = self._sanitize_unmapped_alias_term(item.get("termo", ""))
-            if not term:
-                continue
-            suggested = self._suggest_service_for_unmapped_term(term)
-            if not suggested:
-                continue
-            service_id = service_ids.get(suggested, 0)
-            if service_id <= 0:
-                continue
-            repo.upsert_alias(term, service_id, source="bootstrap_unmapped", ativo=True)
-            auto_mapped_terms += 1
-
-        remap_stats = repo.remap_management_execucao_by_aliases(only_unmapped=False)
-        self.refresh_service_catalog()
-        return {
-            "services_upserted": created_services,
-            "aliases_upserted": upserted_aliases,
-            "unmapped_terms_seen": len(unmapped_terms),
-            "unmapped_terms_auto_mapped": auto_mapped_terms,
-            "aliases_cleaned": aliases_cleaned,
-            "aliases_deactivated": aliases_deactivated,
-            "rows_updated": int(remap_stats.get("rows_updated", 0) or 0),
-            "rows_scanned": int(remap_stats.get("rows_scanned", 0) or 0),
-            "aliases_loaded": int(remap_stats.get("aliases_loaded", 0) or 0),
-        }
-
-    def ensure_registered_service(self, servico: object, categoria: object = "", unidade_padrao: object = "") -> dict:
-        if self.service_mapping_repository is None:
-            raise RuntimeError("Cadastro de servicos indisponivel no momento.")
-        meta = self._manual_service_meta(servico)
-        servico_oficial = str(meta.get("servico", "") or "").strip()
-        if not servico_oficial:
-            raise ValueError("Informe um servico oficial valido.")
-        categoria_final = str(categoria or "").strip() or str(meta.get("categoria", "") or "").strip() or "servico_nao_mapeado"
-        service_row = self.service_mapping_repository.upsert_service(
-            servico_oficial,
-            categoria_final,
-            str(unidade_padrao or "").strip(),
-            ativo=True,
-        )
-        self.refresh_service_catalog()
-        return service_row
-
-    def register_service_alias(
-        self,
-        alias_text: object,
-        servico_oficial: object,
-        categoria: object = "",
-        unidade_padrao: object = "",
-        source: object = "manual",
-    ) -> dict:
-        if self.service_mapping_repository is None:
-            raise RuntimeError("Cadastro de aliases indisponivel no momento.")
-        service_row = self.ensure_registered_service(servico_oficial, categoria, unidade_padrao)
-        alias_clean = str(alias_text or "").strip()
-        if not alias_clean:
-            raise ValueError("Informe um termo para mapear.")
-        alias_row = self.service_mapping_repository.upsert_alias(
-            alias_clean,
-            int(service_row.get("id", 0) or 0),
-            source=str(source or "manual").strip() or "manual",
-            ativo=True,
-        )
-        remap_stats = self.service_mapping_repository.remap_management_execucao_by_aliases(
-            only_unmapped=False
-        )
-        return {"service": service_row, "alias": alias_row, "remap": remap_stats}
-
-    def apply_registered_service_aliases(self, parsed: dict) -> dict:
-        if self.service_mapping_repository is None:
-            return parsed
-        try:
-            alias_map = self.service_mapping_repository.list_alias_map()
-        except Exception:
-            return parsed
-        if not alias_map:
-            return parsed
-
-        timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        applied = []
-
-        def _candidate_terms(row_data: dict) -> List[str]:
-            values = [
-                row_data.get("servico_oficial", ""),
-                row_data.get("servico_normalizado", ""),
-                row_data.get("servico_bruto", ""),
-                row_data.get("item_normalizado", ""),
-                row_data.get("item_original", ""),
-            ]
-            out: List[str] = []
-            seen = set()
-            for value in values:
-                normalized = normalizar_texto(str(value or "")).strip()
-                if not normalized or normalized in seen:
-                    continue
-                seen.add(normalized)
-                out.append(normalized)
-            return out
-
-        for idx, item in enumerate(parsed.get("execucao", [])):
-            if not isinstance(item, dict):
-                continue
-            match = None
-            for term in _candidate_terms(item):
-                candidate = alias_map.get(term)
-                if candidate:
-                    match = candidate
-                    break
-            if not match:
-                continue
-
-            target_service = str(match.get("servico_oficial", "") or "").strip()
-            target_category = str(match.get("categoria", "") or "").strip() or "servico_nao_mapeado"
-            current_service = str(item.get("servico_oficial", "") or "").strip()
-            current_category_item = str(item.get("categoria_item", "") or "").strip()
-            current_category = str(item.get("categoria", "") or "").strip()
-            if (
-                current_service == target_service
-                and current_category_item == target_category
-                and current_category == target_category
-            ):
-                continue
-
-            item.setdefault("servico_original_bruto", str(item.get("servico_bruto", item.get("item_original", "")) or "").strip())
-            item.setdefault("servico_original_normalizado", str(item.get("servico_normalizado", item.get("item_normalizado", "")) or "").strip())
-            item["servico_oficial"] = target_service
-            item["item_normalizado"] = target_service
-            item["categoria_item"] = target_category
-            item["categoria"] = target_category
-            item["regra_disparada"] = "alias_cadastrado"
-            item["corrigido_alias"] = "sim"
-            item["servico_corrigido_alias"] = target_service
-            item["categoria_corrigida_alias"] = target_category
-            item["alias_usado"] = str(match.get("alias_text", "") or "").strip()
-            item["data_correcao_alias"] = timestamp
-            applied.append(
-                {
-                    "id_item": str(item.get("id_item", "") or "").strip(),
-                    "servico": item["servico_oficial"],
-                    "categoria": item["categoria_item"],
-                    "alias": item["alias_usado"],
-                }
-            )
-
-        for row in parsed.get("servicos_nao_mapeados", []):
-            if not isinstance(row, dict):
-                continue
-            match = None
-            for term in _candidate_terms(row):
-                candidate = alias_map.get(term)
-                if candidate:
-                    match = candidate
-                    break
-            if not match:
-                continue
-            row["corrigido_alias"] = "sim"
-            row["servico_corrigido_alias"] = str(match.get("servico_oficial", "") or "").strip()
-            row["categoria_corrigida_alias"] = str(match.get("categoria", "") or "").strip() or "servico_nao_mapeado"
-            row["alias_usado"] = str(match.get("alias_text", "") or "").strip()
-            row["data_correcao_alias"] = timestamp
-
-        if applied:
-            parsed.setdefault("correcoes_aliases", [])
-            parsed["correcoes_aliases"].extend(applied)
-
-        return parsed
     def apply_nucleo_defaults(self, fields: Dict[str, object]) -> Tuple[Dict[str, object], dict]:
         raw_fields = fields or {}
         data: Dict[str, object] = {}
@@ -1470,8 +793,6 @@ class WebPipelineService:
                         if equipe:
                             row["equipe"] = equipe
 
-        self.apply_registered_service_aliases(data)
-
         if manual_corrections:
             self.apply_manual_service_corrections(data, manual_corrections)
 
@@ -1689,8 +1010,6 @@ class WebPipelineService:
             row["equipe"] = self._first_team(row.get("equipe", ""))
             if not include_corrigidos and self._bool_true(row.get("corrigido_manual", "")):
                 continue
-            if not include_corrigidos and self._bool_true(row.get("corrigido_alias", "")):
-                continue
             if not row.get("regra_disparada"):
                 row["regra_disparada"] = "nao_mapeado"
             row.setdefault("id_item", "")
@@ -1813,295 +1132,6 @@ class WebPipelineService:
             parts.append(f"Logradouro: {logradouro}")
         return " | ".join(parts)
 
-    def _write_unmapped_alias_candidates(self, alias_candidates: List[dict]) -> str:
-        candidate_headers = [
-            "termo_candidato",
-            "exemplo_servico_bruto",
-            "ocorrencias",
-            "ultima_ocorrencia",
-            "sugestao_categoria",
-            "servico_corrigido_recorrente",
-            "corrigidos_manuais",
-            "regra_recorrente",
-            "contexto_recorrente",
-            "ultimo_nucleo",
-            "ultimo_municipio",
-            "ultimo_equipe",
-            "recomendacao",
-        ]
-        self.unmapped_candidates_file.parent.mkdir(parents=True, exist_ok=True)
-        with self.unmapped_candidates_file.open("w", encoding="utf-8-sig", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=candidate_headers)
-            writer.writeheader()
-            for row in alias_candidates:
-                writer.writerow(row)
-
-        try:
-            return self.unmapped_candidates_file.resolve().as_uri()
-        except Exception:
-            return ""
-
-    def _build_unmapped_dashboard_from_db(
-        self,
-        *,
-        days: int,
-        runs_limit: int,
-        top_limit: int,
-        recent_limit: int,
-    ) -> dict | None:
-        if self.db_manager is None:
-            return None
-
-        where_sql = """
-            (data_referencia IS NULL OR data_referencia >= CURRENT_DATE - (%s * INTERVAL '1 day'))
-            AND COALESCE(NULLIF(TRIM(servico_normalizado), ''), NULLIF(TRIM(servico_bruto), ''), NULLIF(TRIM(item_normalizado), ''), NULLIF(TRIM(item_original), '')) IS NOT NULL
-            AND (
-                NULLIF(TRIM(servico_oficial), '') IS NULL
-                OR LOWER(TRIM(servico_oficial)) IN ('servico_nao_mapeado', 'nao_mapeado', '-')
-                OR LOWER(TRIM(COALESCE(categoria, ''))) = 'servico_nao_mapeado'
-                OR LOWER(TRIM(COALESCE(categoria_item, ''))) = 'servico_nao_mapeado'
-            )
-        """
-
-        top_rows: List[dict] = []
-        recent_rows: List[dict] = []
-        total_itens = 0
-        termos_distintos = 0
-        runs_com_nao_mapeado = 0
-        ultima_ocorrencia_global = "-"
-
-        try:
-            with self.db_manager.connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        f"""
-                        WITH base AS (
-                            SELECT
-                                id,
-                                data_referencia,
-                                COALESCE(NULLIF(TRIM(servico_normalizado), ''), NULLIF(TRIM(servico_bruto), ''), NULLIF(TRIM(item_normalizado), ''), NULLIF(TRIM(item_original), '')) AS termo,
-                                COALESCE(NULLIF(TRIM(servico_bruto), ''), NULLIF(TRIM(item_original), ''), '') AS servico_bruto_ex,
-                                COALESCE(NULLIF(TRIM(nucleo_oficial), ''), NULLIF(TRIM(nucleo), ''), '') AS nucleo,
-                                COALESCE(NULLIF(TRIM(municipio_oficial), ''), NULLIF(TRIM(municipio), ''), '') AS municipio,
-                                COALESCE(NULLIF(TRIM(equipe), ''), '') AS equipe,
-                                COALESCE(NULLIF(TRIM(logradouro), ''), '') AS logradouro,
-                                COALESCE(NULLIF(TRIM(categoria), ''), NULLIF(TRIM(categoria_item), ''), '') AS sugestao_categoria
-                            FROM management_execucao
-                            WHERE {where_sql}
-                        ),
-                        agg AS (
-                            SELECT
-                                termo,
-                                COUNT(*) AS ocorrencias,
-                                MAX(data_referencia) AS ultima_data
-                            FROM base
-                            GROUP BY termo
-                        ),
-                        sample AS (
-                            SELECT DISTINCT ON (termo)
-                                termo,
-                                nucleo,
-                                municipio,
-                                equipe,
-                                logradouro,
-                                servico_bruto_ex,
-                                sugestao_categoria,
-                                data_referencia
-                            FROM base
-                            ORDER BY termo, data_referencia DESC NULLS LAST, id DESC
-                        )
-                        SELECT
-                            agg.termo,
-                            agg.ocorrencias,
-                            agg.ultima_data,
-                            sample.nucleo,
-                            sample.municipio,
-                            sample.equipe,
-                            sample.logradouro,
-                            sample.servico_bruto_ex,
-                            sample.sugestao_categoria
-                        FROM agg
-                        LEFT JOIN sample ON sample.termo = agg.termo
-                        ORDER BY agg.ocorrencias DESC, agg.ultima_data DESC NULLS LAST, agg.termo ASC
-                        LIMIT %s
-                        """,
-                        (days, top_limit),
-                    )
-                    top_fetched = cur.fetchall() or []
-
-                    cur.execute(
-                        f"""
-                        SELECT
-                            COUNT(*) AS total_itens,
-                            COUNT(DISTINCT termo) AS termos_distintos,
-                            COUNT(DISTINCT data_referencia) AS runs_com_nao_mapeado,
-                            MAX(data_referencia) AS ultima_data
-                        FROM (
-                            SELECT
-                                data_referencia,
-                                COALESCE(NULLIF(TRIM(servico_normalizado), ''), NULLIF(TRIM(servico_bruto), ''), NULLIF(TRIM(item_normalizado), ''), NULLIF(TRIM(item_original), '')) AS termo
-                            FROM management_execucao
-                            WHERE {where_sql}
-                        ) t
-                        """,
-                        (days,),
-                    )
-                    summary_row = cur.fetchone()
-
-                    cur.execute(
-                        f"""
-                        SELECT
-                            data_referencia,
-                            COALESCE(NULLIF(TRIM(nucleo_oficial), ''), NULLIF(TRIM(nucleo), ''), '') AS nucleo,
-                            COALESCE(NULLIF(TRIM(municipio_oficial), ''), NULLIF(TRIM(municipio), ''), '') AS municipio,
-                            COALESCE(NULLIF(TRIM(equipe), ''), '') AS equipe,
-                            COALESCE(NULLIF(TRIM(logradouro), ''), '') AS logradouro,
-                            COALESCE(NULLIF(TRIM(servico_normalizado), ''), NULLIF(TRIM(servico_bruto), ''), NULLIF(TRIM(item_normalizado), ''), NULLIF(TRIM(item_original), '')) AS termo,
-                            COALESCE(NULLIF(TRIM(servico_bruto), ''), '') AS servico_bruto,
-                            COALESCE(NULLIF(TRIM(categoria), ''), NULLIF(TRIM(categoria_item), ''), '') AS sugestao_categoria,
-                            quantidade,
-                            unidade
-                        FROM management_execucao
-                        WHERE {where_sql}
-                        ORDER BY data_referencia DESC NULLS LAST, id DESC
-                        LIMIT %s
-                        """,
-                        (days, recent_limit),
-                    )
-                    recent_fetched = cur.fetchall() or []
-        except Exception:
-            return None
-
-        for item in top_fetched:
-            termo, ocorrencias, ultima_data, nucleo, municipio, equipe, logradouro, servico_bruto_ex, sugestao_categoria = item
-            ultima_text = "-"
-            if isinstance(ultima_data, (date, datetime)):
-                ultima_text = (
-                    ultima_data.strftime("%d/%m/%Y")
-                    if isinstance(ultima_data, date) and not isinstance(ultima_data, datetime)
-                    else ultima_data.strftime("%d/%m/%Y %H:%M")
-                )
-            context_parts = []
-            if str(nucleo or "").strip():
-                context_parts.append(f"Nucleo: {str(nucleo).strip()}")
-            if str(municipio or "").strip():
-                context_parts.append(f"Municipio: {str(municipio).strip()}")
-            if str(equipe or "").strip():
-                context_parts.append(f"Equipe: {self._first_team(equipe)}")
-            if str(logradouro or "").strip():
-                context_parts.append(f"Logradouro: {str(logradouro).strip()}")
-
-            top_rows.append(
-                {
-                    "termo": str(termo or "").strip(),
-                    "ocorrencias": int(ocorrencias or 0),
-                    "ultima_ocorrencia": ultima_text,
-                    "ultimo_nucleo": str(nucleo or "").strip(),
-                    "ultimo_municipio": str(municipio or "").strip(),
-                    "ultimo_equipe": self._first_team(equipe),
-                    "ultimo_logradouro": str(logradouro or "").strip(),
-                    "contexto_recorrente": " | ".join(context_parts),
-                    "exemplo_servico_bruto": str(servico_bruto_ex or "").strip(),
-                    "sugestao_categoria_recorrente": str(sugestao_categoria or "").strip(),
-                    "regra_recorrente": "db_master_execucao",
-                    "corrigidos_manuais": 0,
-                    "nao_corrigidos": int(ocorrencias or 0),
-                    "servico_corrigido_recorrente": "",
-                }
-            )
-
-        if summary_row:
-            total_itens = int(summary_row[0] or 0)
-            termos_distintos = int(summary_row[1] or 0)
-            runs_com_nao_mapeado = int(summary_row[2] or 0)
-            last_dt = summary_row[3]
-            if isinstance(last_dt, (date, datetime)):
-                ultima_ocorrencia_global = (
-                    last_dt.strftime("%d/%m/%Y")
-                    if isinstance(last_dt, date) and not isinstance(last_dt, datetime)
-                    else last_dt.strftime("%d/%m/%Y %H:%M")
-                )
-
-        for item in recent_fetched:
-            data_ref, nucleo, municipio, equipe, logradouro, termo, servico_bruto, sugestao_categoria, quantidade, unidade = item
-            processed_at = "-"
-            if isinstance(data_ref, (date, datetime)):
-                processed_at = (
-                    data_ref.strftime("%d/%m/%Y")
-                    if isinstance(data_ref, date) and not isinstance(data_ref, datetime)
-                    else data_ref.strftime("%d/%m/%Y %H:%M")
-                )
-            ctx = self._format_context_label(
-                {
-                    "nucleo": nucleo,
-                    "municipio": municipio,
-                    "equipe": equipe,
-                    "logradouro": logradouro,
-                }
-            )
-            recent_rows.append(
-                {
-                    "termo": str(termo or "").strip(),
-                    "servico_bruto": str(servico_bruto or "").strip(),
-                    "servico_normalizado": str(termo or "").strip(),
-                    "mensagem_original": "",
-                    "quantidade": str(quantidade or "").strip(),
-                    "unidade": str(unidade or "").strip(),
-                    "nucleo": str(nucleo or "").strip(),
-                    "municipio": str(municipio or "").strip(),
-                    "equipe": self._first_team(equipe),
-                    "logradouro": str(logradouro or "").strip(),
-                    "sugestao_categoria": str(sugestao_categoria or "").strip(),
-                    "regra_disparada": "db_master_execucao",
-                    "corrigido_manual": "nao",
-                    "servico_corrigido_manual": "",
-                    "data_obra": processed_at,
-                    "processed_at": processed_at,
-                    "contexto": ctx,
-                }
-            )
-
-        alias_candidates: List[dict] = []
-        for row in top_rows:
-            recommendation = "revisar_manual"
-            if row.get("sugestao_categoria_recorrente"):
-                recommendation = f"avaliar_categoria:{row['sugestao_categoria_recorrente']}"
-            alias_candidates.append(
-                {
-                    "termo_candidato": row.get("termo", ""),
-                    "exemplo_servico_bruto": row.get("exemplo_servico_bruto", ""),
-                    "ocorrencias": row.get("ocorrencias", 0),
-                    "ultima_ocorrencia": row.get("ultima_ocorrencia", "-"),
-                    "sugestao_categoria": row.get("sugestao_categoria_recorrente", ""),
-                    "servico_corrigido_recorrente": "",
-                    "corrigidos_manuais": 0,
-                    "regra_recorrente": "db_master_execucao",
-                    "contexto_recorrente": row.get("contexto_recorrente", ""),
-                    "ultimo_nucleo": row.get("ultimo_nucleo", ""),
-                    "ultimo_municipio": row.get("ultimo_municipio", ""),
-                    "ultimo_equipe": row.get("ultimo_equipe", ""),
-                    "recomendacao": recommendation,
-                }
-            )
-
-        candidates_uri = self._write_unmapped_alias_candidates(alias_candidates)
-
-        return {
-            "window_days": days,
-            "recent_runs": runs_limit,
-            "runs_consideradas": runs_com_nao_mapeado,
-            "runs_com_nao_mapeado": runs_com_nao_mapeado,
-            "total_itens": total_itens,
-            "termos_distintos": termos_distintos,
-            "ultima_ocorrencia_global": ultima_ocorrencia_global,
-            "top_terms": top_rows,
-            "recent_items": recent_rows,
-            "alias_candidates": alias_candidates[:top_limit],
-            "alias_candidates_count": len(alias_candidates),
-            "alias_candidates_path": str(self.unmapped_candidates_file.resolve()),
-            "alias_candidates_uri": candidates_uri,
-        }
-
     def build_unmapped_dashboard(
         self,
         window_days: int = 30,
@@ -2113,18 +1143,6 @@ class WebPipelineService:
         runs_limit = self._safe_int(recent_runs, default=120, min_value=1, max_value=5000)
         top_limit = self._safe_int(top_terms, default=20, min_value=5, max_value=100)
         recent_limit = self._safe_int(recent_items_limit, default=20, min_value=5, max_value=200)
-
-        db_dashboard = self._build_unmapped_dashboard_from_db(
-            days=days,
-            runs_limit=runs_limit,
-            top_limit=top_limit,
-            recent_limit=recent_limit,
-        )
-        if db_dashboard and (
-            int(db_dashboard.get("total_itens", 0) or 0) > 0
-            or int(db_dashboard.get("termos_distintos", 0) or 0) > 0
-        ):
-            return db_dashboard
 
         all_history = self.read_history(limit=max(runs_limit * 3, 500))
         cutoff = datetime.now() - timedelta(days=days)
@@ -2316,7 +1334,33 @@ class WebPipelineService:
                 }
             )
 
-        candidates_uri = self._write_unmapped_alias_candidates(alias_candidates)
+        candidate_headers = [
+            "termo_candidato",
+            "exemplo_servico_bruto",
+            "ocorrencias",
+            "ultima_ocorrencia",
+            "sugestao_categoria",
+            "servico_corrigido_recorrente",
+            "corrigidos_manuais",
+            "regra_recorrente",
+            "contexto_recorrente",
+            "ultimo_nucleo",
+            "ultimo_municipio",
+            "ultimo_equipe",
+            "recomendacao",
+        ]
+        self.unmapped_candidates_file.parent.mkdir(parents=True, exist_ok=True)
+        with self.unmapped_candidates_file.open("w", encoding="utf-8-sig", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=candidate_headers)
+            writer.writeheader()
+            for row in alias_candidates:
+                writer.writerow(row)
+
+        candidates_uri = ""
+        try:
+            candidates_uri = self.unmapped_candidates_file.resolve().as_uri()
+        except Exception:
+            candidates_uri = ""
 
         return {
             "window_days": days,
@@ -3621,8 +2665,6 @@ class WebPipelineService:
             "nao mapeado": "Serviço não mapeado",
         }
         service_map = {
-            "pra": "PRA",
-            "pre": "PRE",
             "hidrometro": "Instalação de hidrômetro",
             "hidrometros": "Instalação de hidrômetros",
             "hidrometros instalados": "Instalação de hidrômetros",
@@ -3633,13 +2675,10 @@ class WebPipelineService:
             "ligacao intradomiciliar": "Ligação intradomiciliar",
             "ligacao intradomiciliares": "Ligações intradomiciliares",
             "rede agua": "Rede de Água",
-            "rede_agua": "Rede de Água",
             "rede de agua": "Rede de Água",
             "prolongamento rede agua": "Prolongamento de Rede de Água",
             "prolongamento de rede": "Prolongamento de Rede de Água",
             "prolongamento de rede agua": "Prolongamento de Rede de Água",
-            "rede esgoto": "Rede de Esgoto",
-            "rede_esgoto": "Rede de Esgoto",
             "ramal agua": "Ramal de Água",
             "ramais agua": "Ramais de Água",
             "ramal esgoto": "Ramal de esgoto",
@@ -3657,7 +2696,6 @@ class WebPipelineService:
             "instalacao de caixas d agua": "Instalação de Caixas d'água",
             "adesoes realizadas": "Adesões realizadas",
             "caixas dagua instaladas": "Instalação de Caixas d'água",
-            "economias": "Economias",
             "luvas executadas": "Luvas executadas",
             "embutida": "Instalação de caixas UMA (embutida)",
             "mureta": "Instalação de caixas UMA (mureta)",
@@ -3678,11 +2716,6 @@ class WebPipelineService:
             "interligacao": "Interligação",
             "caixa_uma": "Caixa UMA",
             "caixa uma": "Caixa UMA",
-            "ligacao_agua": "Ligação de Água",
-            "adesao_agua": "Adesão de Água",
-            "caixa_dagua": "Caixa d'água",
-            "economias": "Economias",
-            "rede_esgoto": "Rede de Esgoto",
             "caixa_inspecao": "Caixa de inspeção",
             "recomposicao": "Recomposição",
             "apoio_operacional": "Apoio operacional",
@@ -4011,7 +3044,6 @@ class WebPipelineService:
         obra_to = self._parse_date_flexible(raw_filters.get("obra_to", ""))
         processed_from = self._parse_date_flexible(raw_filters.get("processed_from", ""))
         processed_to = self._parse_date_flexible(raw_filters.get("processed_to", ""))
-        contract_filter = normalizar_texto(str(raw_filters.get("contrato", "") or "").strip())
         nucleo_filter = normalizar_texto(str(raw_filters.get("nucleo", "") or "").strip())
         equipe_filter = normalizar_texto(str(raw_filters.get("equipe", "") or "").strip())
         top_n = self._safe_int(raw_filters.get("top_n", 10), default=10, min_value=3, max_value=50)
@@ -4040,15 +3072,6 @@ class WebPipelineService:
                 continue
             if obra_to and (not obra_dt or obra_dt > obra_to):
                 continue
-            if contract_filter:
-                contract_probe = " ".join(
-                    [
-                        str(row.get("contract_label", "") or "").strip(),
-                        str(row.get("contract_id", "") or "").strip(),
-                    ]
-                )
-                if not self._match_filter_text(contract_probe, contract_filter):
-                    continue
 
             candidate_runs.append(
                 {

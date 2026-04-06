@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-hero compact">
+  <div class="page-hero-grid">
+    <div>
+      <div class="hero-eyebrow">Autenticacao</div>
+      <h2 class="hero-title">Entrar na plataforma</h2>
+      <p class="hero-subtitle">Use seu email e senha para acessar os modulos de operacao, contratos e relatorios com sessao autenticada.</p>
+    </div>
+    <div class="hero-stat-grid">
+      <div class="hero-stat">
+        <div class="hero-stat-label">Acesso protegido</div>
+        <div class="hero-stat-value">100%</div>
+        <div class="hero-stat-subtitle">Paginas principais exigem login</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">Sessao</div>
+        <div class="hero-stat-value">Web</div>
+        <div class="hero-stat-subtitle">Fluxo simples para navegacao</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% if error_message %}
+  <div class="notice error">{{ error_message }}</div>
+{% endif %}
+
+<section class="section">
+  <h3>Login</h3>
+  <div class="body">
+    <form method="post" action="{{ url_for('web_login') }}">
+      <input type="hidden" name="next" value="{{ next_url }}">
+      <div class="grid-2">
+        <div class="field">
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" value="{{ form_data.email }}" placeholder="voce@empresa.com" required>
+        </div>
+        <div class="field">
+          <label for="password">Senha</label>
+          <input id="password" name="password" type="password" placeholder="Digite sua senha" required>
+        </div>
+      </div>
+      <p class="muted">Ainda nao possui conta? <a href="{{ url_for('web_register', next=next_url) }}">Criar cadastro</a>.</p>
+      <div class="actions">
+        <button type="submit">Entrar</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}

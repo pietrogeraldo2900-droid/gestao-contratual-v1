@@ -1,0 +1,111 @@
+{
+  "version": "2.0",
+  "nucleos": [
+    {
+      "nucleo": "Cerejas",
+      "municipio": "Jandira",
+      "status": "ativo",
+      "aliases": [
+        "Travessa das Cerejas"
+      ],
+      "observacoes": "",
+      "logradouro_principal": "Travessa das Cerejas",
+      "logradouros_padrao": [
+        "Travessa das Cerejas"
+      ],
+      "equipes_padrao": [],
+      "created_at": "2026-03-16 00:00:00",
+      "updated_at": "2026-03-16 00:00:00"
+    },
+    {
+      "nucleo": "José Bonifácio",
+      "municipio": "Jandira",
+      "status": "ativo",
+      "aliases": [
+        "Jose Bonifacio"
+      ],
+      "observacoes": "",
+      "logradouro_principal": "",
+      "logradouros_padrao": [],
+      "equipes_padrao": [],
+      "created_at": "2026-03-16 00:00:00",
+      "updated_at": "2026-03-16 21:25:16"
+    },
+    {
+      "nucleo": "Mississipi",
+      "municipio": "Barueri",
+      "status": "ativo",
+      "aliases": [
+        "Mississippi",
+        "Missisipi",
+        "Viela Mississipi",
+        "Mississipi - Caixa UMA",
+        "Mississipi - Esgoto",
+        "Viela 1",
+        "Viela 7"
+      ],
+      "observacoes": "",
+      "logradouro_principal": "",
+      "logradouros_padrao": [],
+      "equipes_padrao": [],
+      "created_at": "2026-03-16 00:00:00",
+      "updated_at": "2026-03-16 21:40:41"
+    },
+    {
+      "nucleo": "Patrocínio",
+      "municipio": "Carapicuíba",
+      "status": "ativo",
+      "aliases": [
+        "Patrocinio"
+      ],
+      "observacoes": "",
+      "logradouro_principal": "",
+      "logradouros_padrao": [],
+      "equipes_padrao": [],
+      "created_at": "2026-03-16 00:00:00",
+      "updated_at": "2026-03-16 00:00:00"
+    },
+    {
+      "nucleo": "Santa Terezinha",
+      "municipio": "Carapicuíba",
+      "status": "ativo",
+      "aliases": [
+        "Santa Teresinha"
+      ],
+      "observacoes": "",
+      "logradouro_principal": "Av. Deputado Emílio Carlos",
+      "logradouros_padrao": [
+        "Av. Deputado Emílio Carlos"
+      ],
+      "equipes_padrao": [],
+      "created_at": "2026-03-16 00:00:00",
+      "updated_at": "2026-03-16 00:00:00"
+    },
+    {
+      "nucleo": "Savoy",
+      "municipio": "Carapicuíba",
+      "status": "ativo",
+      "aliases": [],
+      "observacoes": "",
+      "logradouro_principal": "Rua General Carneiro",
+      "logradouros_padrao": [
+        "Rua General Carneiro"
+      ],
+      "equipes_padrao": [],
+      "created_at": "2026-03-18 13:50:09",
+      "updated_at": "2026-03-18 13:50:09"
+    },
+    {
+      "nucleo": "Vila Dirce",
+      "municipio": "Carapicuíba",
+      "status": "inativo",
+      "aliases": [],
+      "observacoes": "Confirmar municipio oficial antes de usar como referencia automatica.",
+      "logradouro_principal": "",
+      "logradouros_padrao": [],
+      "equipes_padrao": [],
+      "created_at": "2026-03-16 00:00:00",
+      "updated_at": "2026-03-16 21:25:31"
+    }
+  ]
+}

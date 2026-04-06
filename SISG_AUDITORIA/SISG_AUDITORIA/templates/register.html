@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-hero compact">
+  <div class="page-hero-grid">
+    <div>
+      <div class="hero-eyebrow">Cadastro</div>
+      <h2 class="hero-title">Criar nova conta</h2>
+      <p class="hero-subtitle">Cadastre um usuario para acessar a interface web com autenticacao e manter o backend atual intacto.</p>
+    </div>
+    <div class="hero-stat-grid">
+      <div class="hero-stat">
+        <div class="hero-stat-label">Seguranca</div>
+        <div class="hero-stat-value">bcrypt</div>
+        <div class="hero-stat-subtitle">Senha protegida no banco</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">Token</div>
+        <div class="hero-stat-value">JWT</div>
+        <div class="hero-stat-subtitle">Pronto para expansao futura</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% if error_message %}
+  <div class="notice error">{{ error_message }}</div>
+{% endif %}
+
+<section class="section">
+  <h3>Cadastro de usuario</h3>
+  <div class="body">
+    <form method="post" action="{{ url_for('web_register') }}">
+      <input type="hidden" name="next" value="{{ next_url }}">
+      <div class="grid-2">
+        <div class="field">
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" value="{{ form_data.email }}" placeholder="voce@empresa.com" required>
+        </div>
+        <div class="field">
+          <label for="password">Senha</label>
+          <input id="password" name="password" type="password" placeholder="Minimo 8 caracteres" required>
+        </div>
+        <div class="field">
+          <label for="confirm_password">Confirmar senha</label>
+          <input id="confirm_password" name="confirm_password" type="password" placeholder="Repita a senha" required>
+        </div>
+      </div>
+      <p class="muted">Ja possui conta? <a href="{{ url_for('web_login', next=next_url) }}">Fazer login</a>.</p>
+      <div class="actions">
+        <button type="submit">Criar conta</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}

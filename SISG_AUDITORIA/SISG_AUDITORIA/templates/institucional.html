@@ -1,0 +1,107 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<section class="page-hero compact">
+  <div class="page-hero-grid">
+    <div>
+      <div class="hero-eyebrow">Síntese institucional</div>
+      <h2 class="hero-title">Relatório institucional</h2>
+      <p class="hero-subtitle">Monte uma versão executiva do período com indicadores, panorama operacional e análise por núcleo em uma apresentação mais limpa, pronta para revisão e exportação.</p>
+      <div class="hero-chip-row">
+        <span class="hero-chip">Minuta executiva</span>
+        <span class="hero-chip">Prévia técnica separada</span>
+        <span class="hero-chip">Exportação HTML e DOCX</span>
+      </div>
+    </div>
+    <div class="hero-stat-grid">
+      <div class="hero-stat">
+        <div class="hero-stat-label">Período</div>
+        <div class="hero-stat-value">{{ report.relatorio_final.header.periodo if report and report.relatorio_final is defined else '-' }}</div>
+        <div class="hero-stat-subtitle">Recorte institucional ativo</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">Quantitativo real</div>
+        <div class="hero-stat-value">{{ report.relatorio_final.indicadores_principais.total_volume_fmt if report and report.relatorio_final is defined else 0 }}</div>
+        <div class="hero-stat-subtitle">Volume consolidado no recorte</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<form method="get" action="{{ url_for('institucional') }}" class="section">
+  <h3>Filtros de geração</h3>
+  <div class="body grid-2">
+    <div class="field">
+      <label>Período da obra (de)</label>
+      <input type="date" name="obra_from" value="{{ obra_from }}">
+    </div>
+    <div class="field">
+      <label>Período da obra (até)</label>
+      <input type="date" name="obra_to" value="{{ obra_to }}">
+    </div>
+
+    <div class="field">
+      <label>Processado em (de)</label>
+      <input type="date" name="processed_from" value="{{ processed_from }}">
+    </div>
+    <div class="field">
+      <label>Processado em (até)</label>
+      <input type="date" name="processed_to" value="{{ processed_to }}">
+    </div>
+
+    <div class="field">
+      <label>Núcleo</label>
+      <input name="nucleo" value="{{ nucleo }}" placeholder="Ex.: Mississipi">
+    </div>
+    <div class="field">
+      <label>Município</label>
+      <input name="municipio" value="{{ municipio }}" placeholder="Ex.: Carapicuíba">
+    </div>
+
+    <div class="field">
+      <label>Equipe</label>
+      <input name="equipe" value="{{ equipe }}" placeholder="Ex.: Weslyn">
+    </div>
+    <div class="field">
+      <label>Status</label>
+      <select name="status">
+        <option value="" {% if not status_filter %}selected{% endif %}>Todos</option>
+        <option value="sucesso" {% if status_filter == 'sucesso' %}selected{% endif %}>Sucesso</option>
+        <option value="erro" {% if status_filter == 'erro' %}selected{% endif %}>Erro</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Alertas</label>
+      <select name="alertas">
+        <option value="" {% if not alertas_filter %}selected{% endif %}>Todos</option>
+        <option value="com_alerta" {% if alertas_filter == 'com_alerta' %}selected{% endif %}>Com alerta</option>
+        <option value="sem_alerta" {% if alertas_filter == 'sem_alerta' %}selected{% endif %}>Sem alerta</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Top N</label>
+      <input type="number" min="3" max="50" name="top_n" value="{{ top_n }}">
+    </div>
+  </div>
+  <div class="body" style="padding-top:0;">
+    <div class="actions" style="margin-top:0;">
+      <button type="submit">Gerar minuta</button>
+      <a href="{{ url_for('institucional') }}"><button type="button" class="secondary">Limpar filtros</button></a>
+      <a href="{{ url_for('institucional_export', formato='html', obra_from=obra_from, obra_to=obra_to, processed_from=processed_from, processed_to=processed_to, nucleo=nucleo, municipio=municipio, equipe=equipe, status=status_filter, alertas=alertas_filter, top_n=top_n) }}">
+        <button type="button" class="secondary">Exportar HTML</button>
+      </a>
+      <a href="{{ url_for('institucional_export', formato='docx', obra_from=obra_from, obra_to=obra_to, processed_from=processed_from, processed_to=processed_to, nucleo=nucleo, municipio=municipio, equipe=equipe, status=status_filter, alertas=alertas_filter, top_n=top_n) }}">
+        <button type="button" class="secondary">Exportar DOCX</button>
+      </a>
+    </div>
+  </div>
+</form>
+
+{% if not report.has_data %}
+  <div class="notice warning">Nenhum processamento encontrado para os filtros aplicados.</div>
+{% endif %}
+
+{% set show_previa_tecnica = true %}
+{% include "institucional_sections.html" %}
+{% endblock %}
+

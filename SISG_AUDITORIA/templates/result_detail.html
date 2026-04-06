@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-hero compact">
+  <div class="page-hero-grid">
+    <div>
+      <div class="hero-eyebrow">Detalhe do resultado</div>
+      <h2 class="hero-title">Resultado do processamento</h2>
+      <p class="hero-subtitle">Consulte os metadados do processamento e acesse individualmente os arquivos gerados pelo pipeline.</p>
+      <div class="hero-chip-row">
+        <span class="hero-chip">{{ row.process_type }}</span>
+        <span class="hero-chip">{{ row.status_level|upper }}</span>
+        {% if row.contract_label %}
+          <span class="hero-chip">{{ row.contract_label }}</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="hero-stat-grid">
+      <div class="hero-stat">
+        <div class="hero-stat-label">Arquivos</div>
+        <div class="hero-stat-value">{{ row.generated_files|length }}</div>
+        <div class="hero-stat-subtitle">Itens vinculados a este processamento</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">Processado em</div>
+        <div class="hero-stat-value" style="font-size:20px;">{{ row.processed_at or '-' }}</div>
+        <div class="hero-stat-subtitle">{{ row.output_name or 'Sem pasta de saida' }}</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="actions">
+  <a href="{{ url_for('results_list') }}"><button type="button" class="secondary">Voltar para resultados</button></a>
+  {% if row.primary_download_relative_path %}
+    <a href="{{ url_for('result_file', relative_path=row.primary_download_relative_path, download=1) }}"><button type="button">Baixar principal</button></a>
+  {% endif %}
+</div>
+
+<div class="grid-2">
+  <section class="section">
+    <h3>Contexto do processamento</h3>
+    <div class="body">
+      <div class="confirm-grid">
+        <div class="confirm-row row-ok">
+          <div class="confirm-label">Processo</div>
+          <div class="confirm-state is-ok">ATIVO</div>
+          <div class="confirm-value">{{ row.process_type }}</div>
+        </div>
+        <div class="confirm-row {% if row.status_level == 'erro' %}row-missing{% else %}row-ok{% endif %}">
+          <div class="confirm-label">Status</div>
+          <div class="confirm-state {% if row.status_level == 'erro' %}is-missing{% else %}is-ok{% endif %}">{{ row.status_level|upper }}</div>
+          <div class="confirm-value">{{ row.status }}</div>
+        </div>
+        <div class="confirm-row row-ok">
+          <div class="confirm-label">Contrato</div>
+          <div class="confirm-state is-ok">LINK</div>
+          <div class="confirm-value">
+            {% if row.contract_label %}
+              {{ row.contract_label }}
+            {% elif row.contract_id %}
+              Contrato #{{ row.contract_id }}
+            {% else %}
+              Nao informado
+            {% endif %}
+          </div>
+        </div>
+        <div class="confirm-row row-ok">
+          <div class="confirm-label">Nucleo</div>
+          <div class="confirm-state is-ok">BASE</div>
+          <div class="confirm-value">{{ row.nucleo or '-' }}</div>
+        </div>
+        <div class="confirm-row row-ok">
+          <div class="confirm-label">Municipio</div>
+          <div class="confirm-state is-ok">BASE</div>
+          <div class="confirm-value">{{ row.municipio or '-' }}</div>
+        </div>
+        <div class="confirm-row row-ok">
+          <div class="confirm-label">Equipe</div>
+          <div class="confirm-state is-ok">BASE</div>
+          <div class="confirm-value">{{ row.equipe or '-' }}</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h3>Resumo de saídas</h3>
+    <div class="body">
+      <div class="kpi-grid">
+        <div class="kpi-card executive">
+          <div class="kpi-title">Relatorios</div>
+          <div class="kpi-value">{{ row.report_files|length }}</div>
+          <div class="kpi-subtitle">Arquivos textuais e documentos.</div>
+        </div>
+        <div class="kpi-card executive">
+          <div class="kpi-title">Planilhas</div>
+          <div class="kpi-value">{{ row.spreadsheet_files|length }}</div>
+          <div class="kpi-subtitle">Arquivos CSV e planilhas consolidadas.</div>
+        </div>
+      </div>
+      <p class="muted">Pasta de saida: {{ row.output_dir or '-' }}</p>
+      <p class="muted">Base gerencial: {{ row.base_gerencial_path or '-' }}</p>
+    </div>
+  </section>
+</div>
+
+<section class="section">
+  <h3>Arquivos gerados</h3>
+  <div class="body">
+    {% if row.generated_files %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Arquivo</th>
+              <th>Categoria</th>
+              <th>Caminho relativo</th>
+              <th>Acoes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for file in row.generated_files %}
+              <tr>
+                <td>{{ file.name }}</td>
+                <td>{{ file.category or '-' }}</td>
+                <td><span class="mono">{{ file.relative_path or '-' }}</span></td>
+                <td>
+                  <div class="actions" style="margin-top:0;">
+                    {% if file.relative_path %}
+                      <a href="{{ url_for('result_file', relative_path=file.relative_path) }}"><button type="button" class="secondary small">Visualizar</button></a>
+                      <a href="{{ url_for('result_file', relative_path=file.relative_path, download=1) }}"><button type="button" class="small">Baixar</button></a>
+                    {% else %}
+                      <span class="muted">Indisponivel</span>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="dashboard-empty">Este processamento nao possui arquivos indexados no momento.</div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
