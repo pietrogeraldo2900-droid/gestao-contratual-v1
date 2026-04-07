@@ -2486,6 +2486,22 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
 
         contract_label = _contract_label_for(filters["contrato"])
 
+        # Mantem o radar coerente com os cards de contrato (nome amigavel, sem codigo bruto).
+        if isinstance(dashboard, dict):
+            radar = dashboard.get("radar_risco_contratos")
+            if isinstance(radar, dict):
+                items = radar.get("items")
+                if isinstance(items, list):
+                    for item in items:
+                        if not isinstance(item, dict):
+                            continue
+                        raw_contract = str(item.get("contract_label") or "").strip()
+                        if not raw_contract:
+                            item["contract_label"] = "Sem contrato"
+                            continue
+                        friendly_label = _contract_label_for(raw_contract)
+                        item["contract_label"] = friendly_label or raw_contract
+
         # Fallback legado apenas quando o repositório/banco não está disponível.
         if dashboard is None:
             dashboard = service.build_management_layer(
