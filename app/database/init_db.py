@@ -89,6 +89,49 @@ def init_db(db: DatabaseManager) -> None:
         )
         """,
         """
+        CREATE TABLE IF NOT EXISTS inspections (
+            id BIGSERIAL PRIMARY KEY,
+            contract_id BIGINT REFERENCES contracts(id) ON DELETE SET NULL,
+            titulo VARCHAR(255) NOT NULL,
+            data_vistoria DATE NOT NULL,
+            periodo VARCHAR(40),
+            nucleo VARCHAR(180),
+            municipio VARCHAR(180),
+            local_vistoria TEXT,
+            equipe VARCHAR(180),
+            fiscal_nome VARCHAR(180),
+            fiscal_contato VARCHAR(120),
+            responsavel_nome VARCHAR(180),
+            responsavel_contato VARCHAR(120),
+            status VARCHAR(40) NOT NULL DEFAULT 'aberta',
+            prioridade VARCHAR(20) NOT NULL DEFAULT 'media',
+            resultado VARCHAR(20) NOT NULL DEFAULT 'pendente',
+            score_geral NUMERIC(5,2) NOT NULL DEFAULT 0,
+            observacoes TEXT,
+            created_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS inspection_items (
+            id BIGSERIAL PRIMARY KEY,
+            inspection_id BIGINT NOT NULL REFERENCES inspections(id) ON DELETE CASCADE,
+            ordem INTEGER NOT NULL DEFAULT 0,
+            area VARCHAR(120),
+            item_titulo VARCHAR(255) NOT NULL,
+            descricao TEXT,
+            status VARCHAR(30) NOT NULL DEFAULT 'pendente',
+            severidade VARCHAR(20) NOT NULL DEFAULT 'baixa',
+            prazo_ajuste DATE,
+            responsavel_ajuste VARCHAR(180),
+            valor_multa NUMERIC(14,2),
+            evidencia_ref TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        """,
+        """
         CREATE TABLE IF NOT EXISTS processing_history (
             id BIGSERIAL PRIMARY KEY,
             processed_at VARCHAR(40) NOT NULL,
@@ -236,6 +279,12 @@ def init_db(db: DatabaseManager) -> None:
         "CREATE INDEX IF NOT EXISTS idx_contracts_created_at ON contracts(created_at DESC)",
         "CREATE INDEX IF NOT EXISTS idx_reports_contract_id ON reports(contract_id)",
         "CREATE INDEX IF NOT EXISTS idx_reports_created_at ON reports(created_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_inspections_contract_id ON inspections(contract_id)",
+        "CREATE INDEX IF NOT EXISTS idx_inspections_status ON inspections(status)",
+        "CREATE INDEX IF NOT EXISTS idx_inspections_data ON inspections(data_vistoria DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_inspection_items_inspection_id ON inspection_items(inspection_id)",
+        "CREATE INDEX IF NOT EXISTS idx_inspection_items_status ON inspection_items(status)",
+        "CREATE INDEX IF NOT EXISTS idx_inspection_items_severidade ON inspection_items(severidade)",
         "CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at DESC)",
         "CREATE INDEX IF NOT EXISTS idx_users_status ON users(status)",
         "CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)",

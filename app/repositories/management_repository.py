@@ -226,6 +226,147 @@ class ManagementRepository:
         self._db = db
         self._master_dir = Path(master_dir)
 
+    def _load_contract_name_map(self) -> dict[str, str]:
+        mapping: dict[str, str] = {}
+        if self._db is None:
+            return mapping
+
+        cursor_kwargs = {}
+        dict_factory = _dict_row_factory()
+        if dict_factory is not None:
+            cursor_kwargs["row_factory"] = dict_factory
+
+        with self._db.connection() as conn:
+            with conn.cursor(**cursor_kwargs) as cur:
+                cur.execute(
+                    """
+                    SELECT
+                        id,
+                        COALESCE(
+                            NULLIF(numero_contrato, ''),
+                            NULLIF(contract_code, ''),
+                            NULLIF(title, '')
+                        ) AS contract_key,
+                        COALESCE(
+                            NULLIF(nome_contrato, ''),
+                            NULLIF(title, ''),
+                            NULLIF(numero_contrato, ''),
+                            NULLIF(contract_code, '')
+                        ) AS contract_name
+                    FROM contracts
+                    """
+                )
+                rows = cur.fetchall() or []
+
+        for row in rows:
+            contract_name = _safe_text(row.get("contract_name"))
+            if not contract_name:
+                continue
+
+            contract_key = _safe_text(row.get("contract_key"))
+            if contract_key:
+                mapping[_normalize_lookup(contract_key)] = contract_name
+
+            contract_id = _safe_text(row.get("id"))
+            if contract_id:
+                mapping[f"id:{contract_id}"] = contract_name
+
+        return mapping
+
+    def _contract_display_name(self, contract_raw: object, contract_map: dict[str, str]) -> str:
+        raw = _safe_text(contract_raw)
+        if not raw:
+            return ""
+
+        by_key = contract_map.get(_normalize_lookup(raw))
+        if by_key:
+            return by_key
+
+        if raw.isdigit():
+            by_id = contract_map.get(f"id:{raw}")
+            if by_id:
+                return by_id
+
+        return raw
+
+    @staticmethod
+    def _date_key(value: object) -> str:
+        if isinstance(value, date):
+            return value.isoformat()
+        return _safe_text(value)
+
+    def _dedupe_execucao_rows(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        seen: set[tuple[Any, ...]] = set()
+        deduped: list[dict[str, Any]] = []
+        for row in rows:
+            key = (
+                self._date_key(row.get("data_referencia")),
+                _normalize(row.get("contrato")),
+                _normalize(row.get("id_frente")),
+                _normalize(row.get("id_item")),
+                _normalize(_pick_first_text(row.get("nucleo_oficial"), row.get("nucleo"))),
+                _normalize(_pick_first_text(row.get("municipio_oficial"), row.get("municipio"))),
+                _normalize(row.get("equipe")),
+                _normalize(
+                    _pick_first_text(
+                        row.get("servico_oficial"),
+                        row.get("servico_normalizado"),
+                        row.get("servico_bruto"),
+                        row.get("item_original"),
+                    )
+                ),
+                _normalize(_pick_first_text(row.get("categoria"), row.get("categoria_item"))),
+                round(float(row.get("quantidade", 0) or 0.0), 6),
+                _normalize_unit(row.get("unidade")),
+                _normalize(row.get("logradouro")),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(row)
+        return deduped
+
+    def _dedupe_frentes_rows(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        seen: set[tuple[Any, ...]] = set()
+        deduped: list[dict[str, Any]] = []
+        for row in rows:
+            key = (
+                self._date_key(row.get("data_referencia")),
+                _normalize(row.get("contrato")),
+                _normalize(row.get("id_frente")),
+                _normalize(_pick_first_text(row.get("nucleo_oficial"), row.get("nucleo"))),
+                _normalize(_pick_first_text(row.get("municipio_oficial"), row.get("municipio"))),
+                _normalize(row.get("equipe")),
+                _normalize(row.get("status_frente")),
+                _normalize(row.get("logradouro")),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(row)
+        return deduped
+
+    def _dedupe_ocorr_rows(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        seen: set[tuple[Any, ...]] = set()
+        deduped: list[dict[str, Any]] = []
+        for row in rows:
+            key = (
+                self._date_key(row.get("data_referencia")),
+                _normalize(row.get("contrato")),
+                _normalize(row.get("id_frente")),
+                _normalize(row.get("id_ocorrencia")),
+                _normalize(_pick_first_text(row.get("nucleo_oficial"), row.get("nucleo"))),
+                _normalize(_pick_first_text(row.get("municipio_oficial"), row.get("municipio"))),
+                _normalize(row.get("equipe")),
+                _normalize(_pick_first_text(row.get("tipo_ocorrencia"), row.get("descricao"))),
+                _normalize(row.get("logradouro")),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(row)
+        return deduped
+
     def _pick_csv(self, preferred: str, fallback: str) -> Path | None:
         p1 = self._master_dir / preferred
         if p1.exists() and p1.is_file():
@@ -548,6 +689,7 @@ class ManagementRepository:
                         contrato,
                         nucleo,
                         nucleo_oficial,
+                        logradouro,
                         municipio,
                         municipio_oficial,
                         equipe,
@@ -572,6 +714,7 @@ class ManagementRepository:
                         contrato,
                         nucleo,
                         nucleo_oficial,
+                        logradouro,
                         municipio,
                         municipio_oficial,
                         equipe,
@@ -589,6 +732,7 @@ class ManagementRepository:
                         contrato,
                         nucleo,
                         nucleo_oficial,
+                        logradouro,
                         municipio,
                         municipio_oficial,
                         equipe,
@@ -941,6 +1085,13 @@ class ManagementRepository:
         frentes_filtered = [row for row in frentes_rows if self._filter_row(row, filters)]
         ocorr_filtered = [row for row in ocorr_rows if self._filter_row(row, filters)]
 
+        # Deduplicacao defensiva para neutralizar reimports de testes sem apagar historico bruto.
+        exec_filtered = self._dedupe_execucao_rows(exec_filtered)
+        frentes_filtered = self._dedupe_frentes_rows(frentes_filtered)
+        ocorr_filtered = self._dedupe_ocorr_rows(ocorr_filtered)
+
+        contract_name_map = self._load_contract_name_map()
+
         if filters.status == "erro":
             exec_filtered = []
             frentes_filtered = []
@@ -1078,8 +1229,11 @@ class ManagementRepository:
         contract_stats: dict[str, dict[str, Any]] = {}
 
         def _contract_bucket(value: object) -> str:
-            label = _safe_text(value)
-            return label if label else "Sem contrato"
+            raw = _safe_text(value)
+            if not raw:
+                return "Sem contrato"
+            friendly = self._contract_display_name(raw, contract_name_map)
+            return friendly if friendly else raw
 
         def _ensure_contract_stat(contract_label: str) -> dict[str, Any]:
             item = contract_stats.get(contract_label)
@@ -1503,9 +1657,13 @@ class ManagementRepository:
 
         base_sql = """
             SELECT
+                id,
+                id_item,
+                id_frente,
                 data_referencia,
                 contrato,
                 COALESCE(NULLIF(nucleo_oficial, ''), nucleo, '-') AS nucleo_view,
+                logradouro,
                 COALESCE(NULLIF(municipio_oficial, ''), municipio, '-') AS municipio_view,
                 equipe,
                 servico_oficial,
@@ -1533,6 +1691,9 @@ class ManagementRepository:
                 cur.execute(base_sql, params)
                 rows = cur.fetchall() or []
 
+        rows = self._dedupe_execucao_rows(rows)
+        contract_name_map = self._load_contract_name_map()
+
         parsed_rows: list[dict[str, Any]] = []
         for row in rows:
             dt = row.get("data_referencia")
@@ -1547,12 +1708,15 @@ class ManagementRepository:
 
             quantidade = float(row.get("quantidade", 0) or 0.0)
             quantidade_fmt = _display_number(quantidade)
+            contrato_raw = _safe_text(row.get("contrato"))
+            contrato_nome = self._contract_display_name(contrato_raw, contract_name_map)
 
             parsed_rows.append(
                 {
                     "data_referencia": data_label,
                     "data_referencia_iso": data_input,
-                    "contrato": _safe_text(row.get("contrato")) or "-",
+                    "contrato": contrato_nome or contrato_raw or "-",
+                    "contrato_codigo": contrato_raw or "-",
                     "nucleo": _safe_text(row.get("nucleo_view")) or "-",
                     "municipio": _safe_text(row.get("municipio_view")) or "-",
                     "equipe": _safe_text(row.get("equipe")) or "-",

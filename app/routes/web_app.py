@@ -15,6 +15,7 @@ from app.database import build_database_manager, init_db
 from app.repositories import (
     AdminAuditRepository,
     ContractRepository,
+    InspectionRepository,
     ManagementRepository,
     ReportRepository,
     ServiceMappingRepository,
@@ -25,6 +26,7 @@ from app.repositories.user_repository import UserAlreadyExistsError
 from app.routes.auth_api import register_auth_routes
 from app.routes.contracts_api import register_contract_routes
 from app.services.contract_service import ContractService, ContractValidationError
+from app.services.inspection_service import InspectionService, InspectionValidationError
 from app.services.report_service import ReportService, create_report_service
 from app.services.user_service import UserAuthError, UserService, UserValidationError
 from app.utils.jwt_utils import generate_jwt_token
@@ -230,6 +232,10 @@ def _resolve_permission_for_endpoint(endpoint: str) -> str | None:
         return "historico"
     if endpoint in {"results_list", "result_detail", "result_file", "base_mestra_list", "base_mestra_file"}:
         return "resultados"
+    if endpoint in {"vistorias_list", "vistorias_new", "vistorias_detail", "vistorias_report"}:
+        return "vistorias"
+    if endpoint in {"vistorias_create", "vistorias_status_update"}:
+        return "vistorias_edicao"
     if endpoint in {"web_contracts_list", "web_contracts_new", "web_contracts_create"}:
         return "contratos"
     if endpoint in {"nucleos", "nucleos_save"}:
@@ -282,6 +288,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     contract_service: ContractService | None = None
     report_service: ReportService | None = None
     user_service: UserService | None = None
+    inspection_service: InspectionService | None = None
     management_repository: ManagementRepository | None = None
     admin_audit_repository: AdminAuditRepository | None = None
     service_mapping_repository: ServiceMappingRepository | None = None
@@ -292,11 +299,13 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         user_repository = UserRepository(db_manager)
         contract_repository = ContractRepository(db_manager)
         report_repository = ReportRepository(db_manager)
+        inspection_repository = InspectionRepository(db_manager)
         admin_audit_repository = AdminAuditRepository(db_manager)
         service_mapping_repository = ServiceMappingRepository(db_manager)
         user_service = UserService(user_repository)
         contract_service = ContractService(contract_repository)
         report_service = ReportService(report_repository, contract_repository)
+        inspection_service = InspectionService(inspection_repository)
         if settings.contracts_auto_init_schema:
             try:
                 init_db(db_manager)
@@ -319,6 +328,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     app.config["MANAGEMENT_REPOSITORY"] = management_repository
     app.config["ADMIN_AUDIT_REPOSITORY"] = admin_audit_repository
     app.config["SERVICE_MAPPING_REPOSITORY"] = service_mapping_repository
+    app.config["INSPECTION_SERVICE"] = inspection_service
 
     protected_web_endpoints = {
         "dashboard",
@@ -331,6 +341,12 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         "result_file",
         "base_mestra_list",
         "base_mestra_file",
+        "vistorias_list",
+        "vistorias_new",
+        "vistorias_create",
+        "vistorias_detail",
+        "vistorias_status_update",
+        "vistorias_report",
         "web_contracts_list",
         "web_contracts_new",
         "web_contracts_create",
@@ -384,6 +400,13 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     def _active_report_service() -> ReportService | None:
         candidate = app.config.get("REPORT_SERVICE")
         required = ("count_reports", "count_recent_reports", "list_recent_reports")
+        if candidate is not None and all(callable(getattr(candidate, name, None)) for name in required):
+            return candidate  # type: ignore[return-value]
+        return None
+
+    def _active_inspection_service() -> InspectionService | None:
+        candidate = app.config.get("INSPECTION_SERVICE")
+        required = ("list_inspections", "count_inspections", "create_inspection", "get_inspection_with_items")
         if candidate is not None and all(callable(getattr(candidate, name, None)) for name in required):
             return candidate  # type: ignore[return-value]
         return None
@@ -1041,6 +1064,13 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             return candidate  # type: ignore[return-value]
         return None
 
+    def _deny_if_no_permission(permission: str):
+        role = normalize_role(session.get(SESSION_USER_ROLE_KEY, ""))
+        if can_access(role, permission):
+            return None
+        flash("Acesso restrito para o seu perfil.", "warning")
+        return redirect(url_for("dashboard"))
+
     @app.context_processor
     def _inject_web_auth_context():
         user_email = str(session.get(SESSION_USER_EMAIL_KEY, "") or "").strip()
@@ -1697,6 +1727,323 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             candidate,
             as_attachment=download,
             download_name=candidate.name,
+        )
+
+    def _safe_iso_date(raw: object):
+        text = str(raw or "").strip()
+        if not text:
+            return None
+        try:
+            return datetime.fromisoformat(text[:10]).date()
+        except Exception:
+            return None
+
+    def _extract_inspection_items_from_form(form) -> list[dict[str, object]]:
+        areas = form.getlist("item_area[]")
+        titles = form.getlist("item_titulo[]")
+        descrs = form.getlist("item_descricao[]")
+        statuses = form.getlist("item_status[]")
+        severities = form.getlist("item_severidade[]")
+        prazos = form.getlist("item_prazo[]")
+        responsaveis = form.getlist("item_responsavel[]")
+        multas = form.getlist("item_multa[]")
+        evidencias = form.getlist("item_evidencia[]")
+
+        max_len = max(
+            len(areas),
+            len(titles),
+            len(descrs),
+            len(statuses),
+            len(severities),
+            len(prazos),
+            len(responsaveis),
+            len(multas),
+            len(evidencias),
+            0,
+        )
+        items: list[dict[str, object]] = []
+        for idx in range(max_len):
+            item = {
+                "area": areas[idx] if idx < len(areas) else "",
+                "item_titulo": titles[idx] if idx < len(titles) else "",
+                "descricao": descrs[idx] if idx < len(descrs) else "",
+                "status": statuses[idx] if idx < len(statuses) else "pendente",
+                "severidade": severities[idx] if idx < len(severities) else "baixa",
+                "prazo_ajuste": _safe_iso_date(prazos[idx] if idx < len(prazos) else ""),
+                "responsavel_ajuste": responsaveis[idx] if idx < len(responsaveis) else "",
+                "valor_multa": multas[idx] if idx < len(multas) else "",
+                "evidencia_ref": evidencias[idx] if idx < len(evidencias) else "",
+            }
+            items.append(item)
+        return items
+
+    def _render_vistoria_form(
+        form_data: Dict[str, str] | None = None,
+        items: list[dict[str, object]] | None = None,
+        error_message: str = "",
+    ):
+        defaults = {
+            "contract_id": "",
+            "titulo": "",
+            "data_vistoria": datetime.now().strftime("%Y-%m-%d"),
+            "periodo": "Diurno",
+            "nucleo": "",
+            "municipio": "",
+            "local_vistoria": "",
+            "equipe": "",
+            "fiscal_nome": "",
+            "fiscal_contato": "",
+            "responsavel_nome": "",
+            "responsavel_contato": "",
+            "status": "aberta",
+            "prioridade": "media",
+            "resultado": "pendente",
+            "score_geral": "0",
+            "observacoes": "",
+        }
+        payload = dict(defaults)
+        payload.update(dict(form_data or {}))
+        item_rows = list(items or [])
+        if not item_rows:
+            item_rows = [
+                {
+                    "area": "",
+                    "item_titulo": "",
+                    "descricao": "",
+                    "status": "pendente",
+                    "severidade": "baixa",
+                    "prazo_ajuste": "",
+                    "responsavel_ajuste": "",
+                    "valor_multa": "",
+                    "evidencia_ref": "",
+                }
+                for _ in range(4)
+            ]
+        return render_template(
+            "vistoria_form.html",
+            title="Nova vistoria",
+            form_data=payload,
+            items=item_rows,
+            error_message=str(error_message or ""),
+            contract_options=_build_contract_options(),
+            status_options=["aberta", "em_andamento", "concluida", "cancelada"],
+            prioridade_options=["baixa", "media", "alta", "critica"],
+            resultado_options=["pendente", "conforme", "parcial", "nao_conforme"],
+            item_status_options=["pendente", "conforme", "nao_conforme", "observacao"],
+            item_severity_options=["baixa", "media", "alta", "critica"],
+        )
+
+    @app.get("/vistorias")
+    def vistorias_list():
+        denied = _deny_if_no_permission("vistorias")
+        if denied is not None:
+            return denied
+
+        inspections_service = _active_inspection_service()
+        if inspections_service is None:
+            return (
+                render_template(
+                    "vistorias_list.html",
+                    title="Vistorias",
+                    rows=[],
+                    filters={"status": "", "contract_id": "", "date_from": "", "date_to": "", "q": ""},
+                    stats={"total": 0, "aberta": 0, "em_andamento": 0, "concluida": 0},
+                    contract_options=[],
+                    error_message=_auth_unavailable_message("Modulo de vistorias"),
+                ),
+                503,
+            )
+
+        filters = {
+            "status": str(request.args.get("status", "") or "").strip().lower(),
+            "contract_id": str(request.args.get("contract_id", "") or "").strip(),
+            "date_from": str(request.args.get("date_from", "") or "").strip(),
+            "date_to": str(request.args.get("date_to", "") or "").strip(),
+            "q": str(request.args.get("q", "") or "").strip(),
+        }
+
+        contract_id = int(filters["contract_id"]) if filters["contract_id"].isdigit() else None
+        try:
+            inspections = inspections_service.list_inspections(
+                limit=300,
+                contract_id=contract_id,
+                status=filters["status"],
+                date_from=filters["date_from"],
+                date_to=filters["date_to"],
+                query=filters["q"],
+            )
+            rows = [item.to_dict() for item in inspections]
+            stats = {
+                "total": inspections_service.count_inspections(contract_id=contract_id),
+                "aberta": inspections_service.count_inspections(contract_id=contract_id, status="aberta"),
+                "em_andamento": inspections_service.count_inspections(contract_id=contract_id, status="em_andamento"),
+                "concluida": inspections_service.count_inspections(contract_id=contract_id, status="concluida"),
+            }
+        except Exception as exc:
+            app.logger.warning("Falha ao carregar vistorias: %s", exc)
+            return (
+                render_template(
+                    "vistorias_list.html",
+                    title="Vistorias",
+                    rows=[],
+                    filters=filters,
+                    stats={"total": 0, "aberta": 0, "em_andamento": 0, "concluida": 0},
+                    contract_options=_build_contract_options(),
+                    error_message="Nao foi possivel carregar as vistorias agora. Tente novamente em instantes.",
+                ),
+                500,
+            )
+
+        return render_template(
+            "vistorias_list.html",
+            title="Vistorias",
+            rows=rows,
+            filters=filters,
+            stats=stats,
+            error_message="",
+            contract_options=_build_contract_options(),
+        )
+
+    @app.get("/vistorias/nova")
+    def vistorias_new():
+        denied = _deny_if_no_permission("vistorias_edicao")
+        if denied is not None:
+            return denied
+
+        inspections_service = _active_inspection_service()
+        if inspections_service is None:
+            return _render_vistoria_form(error_message=_auth_unavailable_message("Modulo de vistorias")), 503
+        _ = inspections_service
+        return _render_vistoria_form()
+
+    @app.post("/vistorias")
+    def vistorias_create():
+        denied = _deny_if_no_permission("vistorias_edicao")
+        if denied is not None:
+            return denied
+
+        inspections_service = _active_inspection_service()
+        if inspections_service is None:
+            return _render_vistoria_form(error_message=_auth_unavailable_message("Modulo de vistorias")), 503
+
+        payload = {
+            "contract_id": str(request.form.get("contract_id", "") or "").strip(),
+            "titulo": str(request.form.get("titulo", "") or "").strip(),
+            "data_vistoria": str(request.form.get("data_vistoria", "") or "").strip(),
+            "periodo": str(request.form.get("periodo", "") or "").strip(),
+            "nucleo": str(request.form.get("nucleo", "") or "").strip(),
+            "municipio": str(request.form.get("municipio", "") or "").strip(),
+            "local_vistoria": str(request.form.get("local_vistoria", "") or "").strip(),
+            "equipe": str(request.form.get("equipe", "") or "").strip(),
+            "fiscal_nome": str(request.form.get("fiscal_nome", "") or "").strip(),
+            "fiscal_contato": str(request.form.get("fiscal_contato", "") or "").strip(),
+            "responsavel_nome": str(request.form.get("responsavel_nome", "") or "").strip(),
+            "responsavel_contato": str(request.form.get("responsavel_contato", "") or "").strip(),
+            "status": str(request.form.get("status", "aberta") or "aberta").strip().lower(),
+            "prioridade": str(request.form.get("prioridade", "media") or "media").strip().lower(),
+            "resultado": str(request.form.get("resultado", "pendente") or "pendente").strip().lower(),
+            "score_geral": str(request.form.get("score_geral", "0") or "0").strip(),
+            "observacoes": str(request.form.get("observacoes", "") or "").strip(),
+        }
+        items = _extract_inspection_items_from_form(request.form)
+        created_by = session.get(SESSION_USER_ID_KEY)
+        try:
+            created = inspections_service.create_inspection(
+                payload,
+                items,
+                created_by=int(created_by) if str(created_by or "").strip() else None,
+            )
+        except InspectionValidationError as exc:
+            return _render_vistoria_form(form_data=payload, items=items, error_message=str(exc)), 400
+        except Exception as exc:
+            app.logger.warning("Falha ao criar vistoria: %s", exc)
+            return (
+                _render_vistoria_form(
+                    form_data=payload,
+                    items=items,
+                    error_message="Nao foi possivel salvar a vistoria agora. Tente novamente.",
+                ),
+                500,
+            )
+
+        flash("Vistoria criada com sucesso.", "success")
+        return redirect(url_for("vistorias_detail", inspection_id=created.id))
+
+    @app.get("/vistorias/<int:inspection_id>")
+    def vistorias_detail(inspection_id: int):
+        denied = _deny_if_no_permission("vistorias")
+        if denied is not None:
+            return denied
+
+        inspections_service = _active_inspection_service()
+        if inspections_service is None:
+            return abort(503)
+
+        inspection, items = inspections_service.get_inspection_with_items(inspection_id)
+        if inspection is None:
+            abort(404)
+
+        rows = [item.to_dict() for item in items]
+        item_totals = {
+            "total": len(rows),
+            "pendente": sum(1 for item in rows if str(item.get("status", "") or "") == "pendente"),
+            "nao_conforme": sum(1 for item in rows if str(item.get("status", "") or "") == "nao_conforme"),
+            "conforme": sum(1 for item in rows if str(item.get("status", "") or "") == "conforme"),
+        }
+        return render_template(
+            "vistoria_detail.html",
+            title=f"Vistoria #{inspection.id}",
+            inspection=inspection.to_dict(),
+            items=rows,
+            item_totals=item_totals,
+            status_options=["aberta", "em_andamento", "concluida", "cancelada"],
+        )
+
+    @app.post("/vistorias/<int:inspection_id>/status")
+    def vistorias_status_update(inspection_id: int):
+        denied = _deny_if_no_permission("vistorias_edicao")
+        if denied is not None:
+            return denied
+
+        inspections_service = _active_inspection_service()
+        if inspections_service is None:
+            abort(503)
+
+        status = str(request.form.get("status", "") or "").strip().lower()
+        try:
+            changed = inspections_service.update_inspection_status(inspection_id, status)
+        except InspectionValidationError as exc:
+            flash(str(exc), "error")
+            return redirect(url_for("vistorias_detail", inspection_id=inspection_id))
+        except Exception as exc:
+            app.logger.warning("Falha ao atualizar status da vistoria %s: %s", inspection_id, exc)
+            flash("Nao foi possivel atualizar o status agora.", "error")
+            return redirect(url_for("vistorias_detail", inspection_id=inspection_id))
+
+        if changed:
+            flash("Status atualizado com sucesso.", "success")
+        else:
+            flash("Nenhuma alteracao foi aplicada.", "warning")
+        return redirect(url_for("vistorias_detail", inspection_id=inspection_id))
+
+    @app.get("/vistorias/<int:inspection_id>/relatorio")
+    def vistorias_report(inspection_id: int):
+        denied = _deny_if_no_permission("vistorias")
+        if denied is not None:
+            return denied
+
+        inspections_service = _active_inspection_service()
+        if inspections_service is None:
+            abort(503)
+        inspection, items = inspections_service.get_inspection_with_items(inspection_id)
+        if inspection is None:
+            abort(404)
+
+        return render_template(
+            "vistoria_report.html",
+            title=f"Relatorio de vistoria #{inspection.id}",
+            inspection=inspection.to_dict(),
+            items=[item.to_dict() for item in items],
         )
 
     def _render_contract_form(
@@ -2463,7 +2810,12 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                 return raw.split(" - ", 1)[1].strip() or raw
             return raw
 
+        def _contract_label_key(value: object) -> str:
+            label = _contract_label_for(value)
+            return " ".join(label.casefold().split())
+
         card_values_seen: set[str] = set()
+        card_labels_seen: set[str] = set()
         contract_cards = []
         for item in catalog_options:
             contract_id = str(item.get("id", "") or "").strip()
@@ -2475,14 +2827,24 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             card_value = next((v for v in candidates if v in contract_options), candidates[0])
             if card_value in card_values_seen:
                 continue
+            card_label = _contract_label_for(card_value)
+            label_key = _contract_label_key(card_label)
+            if not card_label or label_key in card_labels_seen:
+                continue
             card_values_seen.add(card_value)
-            contract_cards.append({"value": card_value, "label": _contract_label_for(card_value)})
+            card_labels_seen.add(label_key)
+            contract_cards.append({"value": card_value, "label": card_label})
 
         for raw in contract_options:
             if raw in card_values_seen:
                 continue
+            card_label = _contract_label_for(raw)
+            label_key = _contract_label_key(card_label)
+            if not card_label or label_key in card_labels_seen:
+                continue
             card_values_seen.add(raw)
-            contract_cards.append({"value": raw, "label": _contract_label_for(raw)})
+            card_labels_seen.add(label_key)
+            contract_cards.append({"value": raw, "label": card_label})
 
         contract_label = _contract_label_for(filters["contrato"])
 

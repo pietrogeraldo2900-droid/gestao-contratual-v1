@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="section">
+  <h3>Relatório de vistoria #{{ inspection.id }}</h3>
+  <div class="body">
+    <p class="muted">Documento de leitura rápida para validação em campo e acompanhamento contratual.</p>
+    <div class="grid-2">
+      <div class="field"><label>Título</label><input value="{{ inspection.titulo or '-' }}" disabled></div>
+      <div class="field"><label>Data</label><input value="{{ inspection.data_vistoria or '-' }}" disabled></div>
+      <div class="field"><label>Contrato</label><input value="{{ inspection.contract_label or '-' }}" disabled></div>
+      <div class="field"><label>Status</label><input value="{{ inspection.status or '-' }}" disabled></div>
+      <div class="field"><label>Núcleo</label><input value="{{ inspection.nucleo or '-' }}" disabled></div>
+      <div class="field"><label>Município</label><input value="{{ inspection.municipio or '-' }}" disabled></div>
+      <div class="field"><label>Equipe</label><input value="{{ inspection.equipe or '-' }}" disabled></div>
+      <div class="field"><label>Resultado</label><input value="{{ inspection.resultado or '-' }}" disabled></div>
+    </div>
+    <div class="field">
+      <label>Local da vistoria</label>
+      <input value="{{ inspection.local_vistoria or '-' }}" disabled>
+    </div>
+    <div class="field">
+      <label>Observações</label>
+      <textarea disabled>{{ inspection.observacoes or '-' }}</textarea>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <h3>Checklist consolidado</h3>
+  <div class="body">
+    {% if items %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Área</th>
+              <th>Item</th>
+              <th>Status</th>
+              <th>Severidade</th>
+              <th>Prazo</th>
+              <th>Responsável</th>
+              <th>Multa</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ item.area or '-' }}</td>
+                <td>
+                  <strong>{{ item.item_titulo or '-' }}</strong>
+                  {% if item.descricao %}<div class="muted">{{ item.descricao }}</div>{% endif %}
+                </td>
+                <td>{{ item.status or '-' }}</td>
+                <td>{{ item.severidade or '-' }}</td>
+                <td>{{ item.prazo_ajuste or '-' }}</td>
+                <td>{{ item.responsavel_ajuste or '-' }}</td>
+                <td>R$ {{ item.valor_multa or '0' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">Sem itens registrados.</p>
+    {% endif %}
+  </div>
+</section>
+
+<div class="actions">
+  <button type="button" onclick="window.print()">Imprimir</button>
+  <a href="{{ url_for('vistorias_detail', inspection_id=inspection.id) }}"><button type="button" class="secondary">Voltar</button></a>
+</div>
+{% endblock %}
+

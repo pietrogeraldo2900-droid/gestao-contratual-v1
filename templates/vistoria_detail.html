@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-hero compact">
+  <div class="page-hero-grid">
+    <div>
+      <div class="hero-eyebrow">Fiscalização em andamento</div>
+      <h2 class="hero-title">{{ inspection.titulo or ('Vistoria #' ~ inspection.id) }}</h2>
+      <p class="hero-subtitle">
+        {{ inspection.contract_label or 'Sem contrato vinculado' }} • {{ inspection.data_vistoria or '-' }} •
+        {{ inspection.nucleo or 'Núcleo não informado' }}
+      </p>
+    </div>
+    <div class="hero-stat-grid">
+      <div class="hero-stat">
+        <div class="hero-stat-label">Itens</div>
+        <div class="hero-stat-value">{{ item_totals.total or 0 }}</div>
+        <div class="hero-stat-subtitle">Checklist total</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">Não conformes</div>
+        <div class="hero-stat-value">{{ item_totals.nao_conforme or 0 }}</div>
+        <div class="hero-stat-subtitle">Pontos críticos</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="actions">
+  <a href="{{ url_for('vistorias_report', inspection_id=inspection.id) }}"><button type="button">Visualizar relatório</button></a>
+  <a href="{{ url_for('vistorias_list') }}"><button type="button" class="secondary">Voltar à lista</button></a>
+</div>
+
+<section class="section">
+  <h3>Resumo da vistoria</h3>
+  <div class="body">
+    <div class="grid-2">
+      <div class="field"><label>Contrato</label><input value="{{ inspection.contract_label or '-' }}" disabled></div>
+      <div class="field"><label>Status</label><input value="{{ inspection.status or '-' }}" disabled></div>
+      <div class="field"><label>Prioridade</label><input value="{{ inspection.prioridade or '-' }}" disabled></div>
+      <div class="field"><label>Resultado</label><input value="{{ inspection.resultado or '-' }}" disabled></div>
+      <div class="field"><label>Município</label><input value="{{ inspection.municipio or '-' }}" disabled></div>
+      <div class="field"><label>Equipe</label><input value="{{ inspection.equipe or '-' }}" disabled></div>
+      <div class="field"><label>Fiscal</label><input value="{{ inspection.fiscal_nome or '-' }}" disabled></div>
+      <div class="field"><label>Responsável local</label><input value="{{ inspection.responsavel_nome or '-' }}" disabled></div>
+    </div>
+    <div class="field">
+      <label>Observações</label>
+      <textarea disabled>{{ inspection.observacoes or '-' }}</textarea>
+    </div>
+  </div>
+</section>
+
+{% if can_access('vistorias_edicao') %}
+  <section class="section">
+    <h3>Atualizar status</h3>
+    <div class="body">
+      <form method="post" action="{{ url_for('vistorias_status_update', inspection_id=inspection.id) }}" class="actions">
+        <select name="status" style="max-width:260px;">
+          {% for value in status_options %}
+            <option value="{{ value }}" {% if inspection.status == value %}selected{% endif %}>{{ value }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit">Salvar status</button>
+      </form>
+    </div>
+  </section>
+{% endif %}
+
+<section class="section">
+  <h3>Itens da vistoria</h3>
+  <div class="body">
+    {% if items %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Área</th>
+              <th>Item</th>
+              <th>Status</th>
+              <th>Severidade</th>
+              <th>Prazo</th>
+              <th>Responsável</th>
+              <th>Multa</th>
+              <th>Evidência</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items %}
+              <tr>
+                <td>{{ item.area or '-' }}</td>
+                <td>
+                  <strong>{{ item.item_titulo or '-' }}</strong>
+                  {% if item.descricao %}<div class="muted">{{ item.descricao }}</div>{% endif %}
+                </td>
+                <td>{{ item.status or '-' }}</td>
+                <td>{{ item.severidade or '-' }}</td>
+                <td>{{ item.prazo_ajuste or '-' }}</td>
+                <td>{{ item.responsavel_ajuste or '-' }}</td>
+                <td>R$ {{ item.valor_multa or '0' }}</td>
+                <td>{{ item.evidencia_ref or '-' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">Nenhum item registrado nesta vistoria.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

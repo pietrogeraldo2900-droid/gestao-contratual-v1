@@ -17,6 +17,7 @@
 {% set results_endpoints = ['results_list', 'result_detail', 'result_file'] %}
 {% set base_mestra_endpoints = ['base_mestra_list', 'base_mestra_file'] %}
 {% set history_endpoints = ['history'] %}
+{% set vistorias_endpoints = ['vistorias_list', 'vistorias_new', 'vistorias_create', 'vistorias_detail', 'vistorias_status_update', 'vistorias_report'] %}
 {% set gerencial_endpoints = ['gerencial'] %}
 {% set institucional_endpoints = ['institucional', 'institucional_export'] %}
 {% set nucleos_endpoints = ['nucleos', 'nucleos_save'] %}
@@ -37,6 +38,12 @@
   'generate': 'Entradas',
   'history': 'Historico',
   'results_list': 'Resultados gerados',
+  'vistorias_list': 'Vistorias',
+  'vistorias_new': 'Nova vistoria',
+  'vistorias_create': 'Nova vistoria',
+  'vistorias_detail': 'Detalhes da vistoria',
+  'vistorias_status_update': 'Detalhes da vistoria',
+  'vistorias_report': 'Relatorio de vistoria',
   'base_mestra_list': 'Base Mestra',
   'base_mestra_file': 'Base Mestra',
   'result_detail': 'Resultado do processamento',
@@ -60,6 +67,12 @@
   'nova_entrada_redirect': 'Entrada operacional para processamento de mensagens e geracao de documentos.',
   'history': 'Historico de processamentos com filtros e acompanhamento operacional.',
   'results_list': 'Saidas geradas pelo pipeline para visualizacao e download dentro da plataforma.',
+  'vistorias_list': 'Inspecoes de campo para fiscalizacao contratual com acompanhamento por status e severidade.',
+  'vistorias_new': 'Registro guiado de vistoria com checklist operacional e evidencias de campo.',
+  'vistorias_create': 'Registro guiado de vistoria com checklist operacional e evidencias de campo.',
+  'vistorias_detail': 'Acompanhe itens conformes e nao conformes, atualize status e emita o relatorio consolidado.',
+  'vistorias_status_update': 'Acompanhe itens conformes e nao conformes, atualize status e emita o relatorio consolidado.',
+  'vistorias_report': 'Versao de leitura executiva da vistoria para compartilhamento em campo e auditoria.',
   'base_mestra_list': 'Acesso central aos arquivos oficiais da Base Mestra para auditoria e conciliacao externa.',
   'result_detail': 'Detalhes do processamento selecionado e acesso aos arquivos gerados.',
   'gerencial': 'Leitura analitica com indicadores consolidados do sistema.',
@@ -101,6 +114,14 @@
                 <svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"></path><path d="M15 3v4h4"></path><path d="M9 13h6"></path><path d="M9 17h6"></path></svg>
               </span>
               <span class="nav-link-label">Entradas</span>
+            </a>
+            {% endif %}
+            {% if can_access('vistorias') %}
+            <a href="{{ url_for('vistorias_list') }}" class="sidebar-link nav-link {% if endpoint in vistorias_endpoints %}active is-active{% endif %}" {% if endpoint in vistorias_endpoints %}aria-current="page"{% endif %}>
+              <span class="nav-link-icon">
+                <svg viewBox="0 0 24 24"><path d="M9 6h11"></path><path d="M9 12h11"></path><path d="M9 18h11"></path><path d="M4 6h.01"></path><path d="M4 12h.01"></path><path d="M4 18h.01"></path></svg>
+              </span>
+              <span class="nav-link-label">Vistorias</span>
             </a>
             {% endif %}
             {% if can_access('historico') %}

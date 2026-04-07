@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-hero compact">
+  <div class="page-hero-grid">
+    <div>
+      <div class="hero-eyebrow">Fiscalizacao contratual</div>
+      <h2 class="hero-title">Vistorias de campo</h2>
+      <p class="hero-subtitle">Registre inspeções operacionais, acompanhe não conformidades e mantenha evidências auditáveis por contrato.</p>
+    </div>
+    <div class="hero-stat-grid">
+      <div class="hero-stat">
+        <div class="hero-stat-label">Total</div>
+        <div class="hero-stat-value">{{ stats.total or 0 }}</div>
+        <div class="hero-stat-subtitle">Vistorias cadastradas</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">Concluídas</div>
+        <div class="hero-stat-value">{{ stats.concluida or 0 }}</div>
+        <div class="hero-stat-subtitle">Execução finalizada</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% if error_message %}
+  <div class="notice warning">{{ error_message }}</div>
+{% endif %}
+
+<div class="actions">
+  {% if can_access('vistorias_edicao') %}
+    <a href="{{ url_for('vistorias_new') }}"><button type="button">Nova vistoria</button></a>
+  {% endif %}
+  <a href="{{ url_for('dashboard') }}"><button type="button" class="secondary">Voltar ao dashboard</button></a>
+</div>
+
+<section class="section">
+  <h3>Filtros de consulta</h3>
+  <div class="body">
+    <form method="get" action="{{ url_for('vistorias_list') }}" class="grid-2" style="margin-bottom:0;">
+      <div class="field">
+        <label>Contrato</label>
+        <select name="contract_id">
+          <option value="">Todos</option>
+          {% for option in contract_options %}
+            <option value="{{ option.id }}" {% if filters.contract_id == option.id %}selected{% endif %}>{{ option.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label>Status</label>
+        <select name="status">
+          <option value="">Todos</option>
+          <option value="aberta" {% if filters.status == 'aberta' %}selected{% endif %}>Aberta</option>
+          <option value="em_andamento" {% if filters.status == 'em_andamento' %}selected{% endif %}>Em andamento</option>
+          <option value="concluida" {% if filters.status == 'concluida' %}selected{% endif %}>Concluída</option>
+          <option value="cancelada" {% if filters.status == 'cancelada' %}selected{% endif %}>Cancelada</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Data (de)</label>
+        <input type="date" name="date_from" value="{{ filters.date_from }}">
+      </div>
+      <div class="field">
+        <label>Data (até)</label>
+        <input type="date" name="date_to" value="{{ filters.date_to }}">
+      </div>
+      <div class="field">
+        <label>Busca rápida</label>
+        <input type="text" name="q" value="{{ filters.q }}" placeholder="Título, núcleo, município, local">
+      </div>
+      <div class="actions" style="align-items:flex-end;">
+        <button type="submit">Aplicar filtros</button>
+        <a href="{{ url_for('vistorias_list') }}"><button type="button" class="secondary">Limpar</button></a>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="section">
+  <h3>Registros de vistoria</h3>
+  <div class="body">
+    {% if rows %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Título</th>
+              <th>Contrato</th>
+              <th>Núcleo</th>
+              <th>Equipe</th>
+              <th>Status</th>
+              <th>Prioridade</th>
+              <th>Resultado</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr>
+                <td>{{ row.data_vistoria or '-' }}</td>
+                <td>{{ row.titulo or '-' }}</td>
+                <td>{{ row.contract_label or '-' }}</td>
+                <td>{{ row.nucleo or '-' }}</td>
+                <td>{{ row.equipe or '-' }}</td>
+                <td><span class="badge info">{{ row.status or '-' }}</span></td>
+                <td>{{ row.prioridade or '-' }}</td>
+                <td>{{ row.resultado or '-' }}</td>
+                <td><a href="{{ url_for('vistorias_detail', inspection_id=row.id) }}">Abrir</a></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">Nenhuma vistoria encontrada no filtro aplicado.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
