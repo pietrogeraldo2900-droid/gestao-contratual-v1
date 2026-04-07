@@ -38,9 +38,17 @@ def _parse_date(value: object) -> date | None:
 
 
 def _parse_number(value: object) -> float:
-    raw = _safe_text(value).replace(".", "").replace(",", ".")
+    raw = _safe_text(value).replace(" ", "")
     if not raw:
         return 0.0
+    if "," in raw and "." in raw:
+        # "1.234,56" -> 1234.56 / "1,234.56" -> 1234.56
+        if raw.rfind(",") > raw.rfind("."):
+            raw = raw.replace(".", "").replace(",", ".")
+        else:
+            raw = raw.replace(",", "")
+    elif "," in raw:
+        raw = raw.replace(",", ".")
     try:
         return float(raw)
     except Exception:
@@ -1025,11 +1033,27 @@ class ManagementRepository:
             municipios_set.add(municipio)
 
             servico_lookup = _normalize_lookup(servico)
-            if "prolongamento" in servico_lookup and "esgoto" in servico_lookup:
+
+            # PRA/PRE can arrive as normalized acronyms ("pra"/"pre"), legacy names
+            # ("prolongamento ...") or direct service labels ("rede agua"/"rede esgoto").
+            is_pre = (
+                servico_lookup == "pre"
+                or ("prolongamento" in servico_lookup and "esgoto" in servico_lookup)
+                or servico_lookup in {"rede esgoto", "rede de esgoto"}
+            )
+            is_pra = (
+                servico_lookup == "pra"
+                or (
+                    "prolongamento" in servico_lookup
+                    and "esgoto" not in servico_lookup
+                    and ("agua" in servico_lookup or "rede" in servico_lookup)
+                )
+                or servico_lookup in {"rede agua", "rede de agua"}
+            )
+
+            if is_pre:
                 prolongamento_rede_esgoto_total += peso
-            elif "prolongamento" in servico_lookup and (
-                "agua" in servico_lookup or "rede" in servico_lookup
-            ):
+            elif is_pra:
                 prolongamento_rede_agua_total += peso
 
             is_ligacao_like = (
