@@ -2894,7 +2894,7 @@ class WebPipelineService:
         tmp_file = self.history_file.with_suffix(self.history_file.suffix + ".tmp")
         try:
             with tmp_file.open("w", encoding="utf-8-sig", newline="") as f:
-                writer = csv.DictWriter(f, fieldnames=headers)
+                writer = csv.DictWriter(f, fieldnames=headers, extrasaction="ignore")
                 writer.writeheader()
                 if migrated:
                     writer.writerows(migrated)
@@ -3027,7 +3027,7 @@ class WebPipelineService:
 
         exists = self.history_file.exists() and self.history_file.stat().st_size > 0
         with self.history_file.open("a", encoding="utf-8-sig", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=headers)
+            writer = csv.DictWriter(f, fieldnames=headers, extrasaction="ignore")
             if not exists:
                 writer.writeheader()
             clean = {}

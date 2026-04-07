@@ -606,6 +606,69 @@ EXECUCAO:
         self.assertTrue(unmapped_rows)
         self.assertTrue(any(str(r.get("corrigido_manual", "") or "").strip() == "sim" for r in unmapped_rows))
 
+    def test_generate_nao_quebra_com_campos_extras_de_alias_no_parsed(self):
+        mensagem = """
+RDO - 11/03/2026
+
+NUCLEO: Mississipi
+LOGRADOURO: Viela 04
+MUNICIPIO: Carapicuiba
+EQUIPE: Equipe 03
+
+EXECUCAO:
+- 2 un servico estranhissimo xyz
+""".strip()
+        service = self.app.config["PIPELINE_SERVICE"]
+        parsed, parser_mode = service.parse_message(mensagem, source_name="teste_alias_extras.txt")
+        draft_id = service.save_draft(
+            {
+                "raw_message": mensagem,
+                "parsed": parsed,
+                "parser_mode": parser_mode,
+            }
+        )
+        original_apply = service.apply_registered_service_aliases
+
+        def _inject_alias_audit_fields(self_service, parsed):
+            parsed = original_apply(parsed)
+            if parsed.get("execucao"):
+                parsed["execucao"][0]["servico_original_bruto"] = "Servico Estranhissimo XYZ"
+                parsed["execucao"][0]["servico_original_normalizado"] = "servico estranhissimo xyz"
+                parsed["execucao"][0]["corrigido_alias"] = "sim"
+                parsed["execucao"][0]["servico_corrigido_alias"] = "hidrometro"
+                parsed["execucao"][0]["categoria_corrigida_alias"] = "hidrometro"
+                parsed["execucao"][0]["alias_usado"] = "Servico Estranhissimo XYZ"
+                parsed["execucao"][0]["data_correcao_alias"] = "07/04/2026 21:00:00"
+            if parsed.get("servicos_nao_mapeados"):
+                parsed["servicos_nao_mapeados"][0]["corrigido_alias"] = "sim"
+                parsed["servicos_nao_mapeados"][0]["servico_corrigido_alias"] = "hidrometro"
+                parsed["servicos_nao_mapeados"][0]["categoria_corrigida_alias"] = "hidrometro"
+                parsed["servicos_nao_mapeados"][0]["alias_usado"] = "Servico Estranhissimo XYZ"
+                parsed["servicos_nao_mapeados"][0]["data_correcao_alias"] = "07/04/2026 21:00:00"
+                parsed["servicos_nao_mapeados"][0]["servico_original_bruto"] = "Servico Estranhissimo XYZ"
+                parsed["servicos_nao_mapeados"][0]["servico_original_normalizado"] = "servico estranhissimo xyz"
+            return parsed
+
+        service.apply_registered_service_aliases = _inject_alias_audit_fields.__get__(
+            service, service.__class__
+        )
+        try:
+            result = service.generate_from_draft(
+                draft_id=draft_id,
+                overrides={
+                    "data": "11/03/2026",
+                    "nucleo": "Mississipi",
+                    "logradouro": "Viela 04",
+                    "municipio": "Carapicuiba",
+                    "equipe": "Equipe 03",
+                },
+            )
+        finally:
+            service.apply_registered_service_aliases = original_apply
+
+        self.assertEqual(result.get("status"), "sucesso")
+        self.assertTrue(Path(str(result.get("files", {}).get("execucao_csv", ""))).exists())
+
     def test_review_e_resultado_mantem_apenas_primeira_equipe(self):
         mensagem = """
 RDO - 11/03/2026

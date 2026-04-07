@@ -985,14 +985,25 @@ def save_parsed_outputs(parsed: dict, output_dir: Path) -> None:
             csv_path.write_text("", encoding="utf-8-sig")
             return
         cleaned_rows = []
+        fieldnames: List[str] = []
+        seen_fields = set()
         for row in rows:
             clean_row = dict(row)
             clean_row["equipe"] = extrair_primeira_equipe(clean_row.get("equipe", ""))
-            cleaned_rows.append(normalize_row_numbers(clean_row))
+            normalized = normalize_row_numbers(clean_row)
+            cleaned_rows.append(normalized)
+            for key in normalized.keys():
+                if key in seen_fields:
+                    continue
+                seen_fields.add(key)
+                fieldnames.append(key)
         with csv_path.open("w", encoding="utf-8-sig", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=list(cleaned_rows[0].keys()))
+            writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
             writer.writeheader()
-            writer.writerows(cleaned_rows)
+            for row in cleaned_rows:
+                # Defensive write: keep only declared columns even if a row receives
+                # extra audit keys later in the pipeline (e.g. alias correction metadata).
+                writer.writerow({field: row.get(field, "") for field in fieldnames})
 
     write_csv("frentes.csv", parsed["frentes"])
     write_csv("execucao.csv", parsed["execucao"])
