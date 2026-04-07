@@ -909,6 +909,46 @@ EXECUCAO:
             candidates = list(csv.DictReader(f))
         self.assertTrue(any(str(r.get("termo_candidato", "") or "").strip() == "termo novo x" for r in candidates))
 
+    def test_write_unmapped_alias_candidates_ignora_campos_extras_de_alias(self):
+        service = self.app.config["PIPELINE_SERVICE"]
+        rows = [
+            {
+                "termo_candidato": "caixa d agua",
+                "exemplo_servico_bruto": "Caixa d'água: 1 un",
+                "ocorrencias": 2,
+                "ultima_ocorrencia": "07/04/2026 20:00",
+                "sugestao_categoria": "caixa_dagua",
+                "servico_corrigido_recorrente": "caixa_dagua",
+                "corrigidos_manuais": 1,
+                "regra_recorrente": "alias_cadastrado",
+                "contexto_recorrente": "Nucleo: Bonanca | Municipio: Osasco",
+                "ultimo_nucleo": "Bonanca",
+                "ultimo_municipio": "Osasco",
+                "ultimo_equipe": "Mario",
+                "recomendacao": "avaliar_alias_para:caixa_dagua",
+                # Campos extras que nao pertencem ao CSV de candidatos (caso real da falha)
+                "corrigido_alias": "sim",
+                "servico_corrigido_alias": "caixa_dagua",
+                "categoria_corrigida_alias": "caixa_dagua",
+                "alias_usado": "Caixa d agua",
+                "data_correcao_alias": "07/04/2026 20:00:00",
+                "servico_original_bruto": "Caixa d'água",
+                "servico_original_normalizado": "caixa d agua",
+            }
+        ]
+
+        uri = service._write_unmapped_alias_candidates(rows)
+        self.assertTrue(uri)
+        self.assertTrue(service.unmapped_candidates_file.exists())
+
+        with service.unmapped_candidates_file.open("r", encoding="utf-8-sig", newline="") as f:
+            saved = list(csv.DictReader(f))
+
+        self.assertEqual(len(saved), 1)
+        self.assertEqual(saved[0].get("termo_candidato"), "caixa d agua")
+        self.assertEqual(saved[0].get("exemplo_servico_bruto"), "Caixa d'água: 1 un")
+        self.assertNotIn("corrigido_alias", saved[0])
+
 
     def test_history_page_loads(self):
         resp = self.client.get("/history")

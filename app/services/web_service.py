@@ -151,7 +151,9 @@ SERVICE_ALIAS_BOOTSTRAP: dict[str, dict[str, object]] = {
         "categoria": "caixa_dagua",
         "unidade_padrao": "un",
         "aliases": [
+            "Caixa d'água",
             "Instalacao de caixa dagua",
+            "Instalacao de caixa d'agua",
             "Instalacao de caixa de agua",
             "Caixa dagua",
             "Caixa dagua instalada",
@@ -1848,10 +1850,11 @@ class WebPipelineService:
         ]
         self.unmapped_candidates_file.parent.mkdir(parents=True, exist_ok=True)
         with self.unmapped_candidates_file.open("w", encoding="utf-8-sig", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=candidate_headers)
+            writer = csv.DictWriter(f, fieldnames=candidate_headers, extrasaction="ignore")
             writer.writeheader()
             for row in alias_candidates:
-                writer.writerow(row)
+                clean_row = {h: row.get(h, "") for h in candidate_headers}
+                writer.writerow(clean_row)
 
         try:
             return self.unmapped_candidates_file.resolve().as_uri()
