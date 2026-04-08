@@ -275,6 +275,33 @@ class ManagementRepository:
     def __init__(self, db: Optional[DatabaseManager], master_dir: Path):
         self._db = db
         self._master_dir = Path(master_dir)
+        self._execucao_diametro_col: Optional[bool] = None
+
+    def _has_management_execucao_diametro(self) -> bool:
+        if self._db is None:
+            return False
+        if self._execucao_diametro_col is not None:
+            return self._execucao_diametro_col
+        try:
+            with self._db.connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        SELECT EXISTS (
+                            SELECT 1
+                            FROM information_schema.columns
+                            WHERE table_schema = current_schema()
+                              AND table_name = 'management_execucao'
+                              AND column_name = 'diametro_mm'
+                        )
+                        """
+                    )
+                    row = cur.fetchone()
+                    self._execucao_diametro_col = bool(row[0]) if row else False
+        except Exception:
+            # Mantem compatibilidade silenciosa com bancos legados.
+            self._execucao_diametro_col = False
+        return bool(self._execucao_diametro_col)
 
     def _load_contract_name_map(self) -> dict[str, str]:
         mapping: dict[str, str] = {}
@@ -515,6 +542,7 @@ class ManagementRepository:
     def _sync_master_tables(self) -> dict[str, int]:
         if self._db is None:
             raise RuntimeError("database_manager_unavailable")
+        has_diametro_column = self._has_management_execucao_diametro()
 
         exec_csv = self._pick_csv("base_mestra_execucao.csv", "execucao.csv")
         frentes_csv = self._pick_csv("base_mestra_frentes.csv", "frentes.csv")
@@ -652,27 +680,51 @@ class ManagementRepository:
             try:
                 with conn.cursor() as cur:
                     if exec_values:
-                        cur.executemany(
-                            """
-                            INSERT INTO management_execucao (
-                                source_uid, id_item, id_frente, data_referencia, contrato, programa,
-                                nucleo, logradouro, municipio, equipe, servico_oficial,
-                                servico_normalizado, servico_bruto, diametro_mm, item_normalizado, item_original,
-                                categoria, categoria_item, quantidade, unidade, arquivo_origem,
-                                nucleo_oficial, municipio_oficial, nucleo_status_cadastro
-                            ) VALUES (
-                                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                                %s, %s, %s, %s
+                        if has_diametro_column:
+                            cur.executemany(
+                                """
+                                INSERT INTO management_execucao (
+                                    source_uid, id_item, id_frente, data_referencia, contrato, programa,
+                                    nucleo, logradouro, municipio, equipe, servico_oficial,
+                                    servico_normalizado, servico_bruto, diametro_mm, item_normalizado, item_original,
+                                    categoria, categoria_item, quantidade, unidade, arquivo_origem,
+                                    nucleo_oficial, municipio_oficial, nucleo_status_cadastro
+                                ) VALUES (
+                                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                                    %s, %s, %s, %s
+                                )
+                                ON CONFLICT (source_uid) DO UPDATE SET
+                                    contrato = CASE
+                                        WHEN COALESCE(management_execucao.contrato, '') = '' THEN EXCLUDED.contrato
+                                        ELSE management_execucao.contrato
+                                    END
+                                """,
+                                exec_values,
                             )
-                            ON CONFLICT (source_uid) DO UPDATE SET
-                                contrato = CASE
-                                    WHEN COALESCE(management_execucao.contrato, '') = '' THEN EXCLUDED.contrato
-                                    ELSE management_execucao.contrato
-                                END
-                            """,
-                            exec_values,
-                        )
+                        else:
+                            exec_values_legacy = [row[:13] + row[14:] for row in exec_values]
+                            cur.executemany(
+                                """
+                                INSERT INTO management_execucao (
+                                    source_uid, id_item, id_frente, data_referencia, contrato, programa,
+                                    nucleo, logradouro, municipio, equipe, servico_oficial,
+                                    servico_normalizado, servico_bruto, item_normalizado, item_original,
+                                    categoria, categoria_item, quantidade, unidade, arquivo_origem,
+                                    nucleo_oficial, municipio_oficial, nucleo_status_cadastro
+                                ) VALUES (
+                                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                                    %s, %s, %s
+                                )
+                                ON CONFLICT (source_uid) DO UPDATE SET
+                                    contrato = CASE
+                                        WHEN COALESCE(management_execucao.contrato, '') = '' THEN EXCLUDED.contrato
+                                        ELSE management_execucao.contrato
+                                    END
+                                """,
+                                exec_values_legacy,
+                            )
                     if frentes_values:
                         cur.executemany(
                             """
@@ -728,6 +780,7 @@ class ManagementRepository:
     def _load_rows_from_database(self) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
         if self._db is None:
             raise RuntimeError("database_manager_unavailable")
+        has_diametro_column = self._has_management_execucao_diametro()
 
         exec_rows: list[dict[str, Any]] = []
         frentes_rows: list[dict[str, Any]] = []
@@ -740,8 +793,9 @@ class ManagementRepository:
 
         with self._db.connection() as conn:
             with conn.cursor(**cursor_kwargs) as cur:
+                diametro_select = "diametro_mm" if has_diametro_column else "NULL::INTEGER AS diametro_mm"
                 cur.execute(
-                    """
+                    f"""
                     SELECT
                         id_item,
                         id_frente,
@@ -756,7 +810,7 @@ class ManagementRepository:
                         servico_oficial,
                         servico_normalizado,
                         servico_bruto,
-                        diametro_mm,
+                        {diametro_select},
                         item_normalizado,
                         item_original,
                         categoria,
