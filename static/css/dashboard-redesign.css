@@ -4236,6 +4236,10 @@ body.auth-shell-mode .gerencial-page-v4 .pgm4-service-mode button.is-active {
   color: #f5f9ff;
 }
 
+body.auth-shell-mode .gerencial-page-v4 [data-service-mode][hidden] {
+  display: none !important;
+}
+
 body.auth-shell-mode .gerencial-page-v4 .pgm4-side-stack {
   display: grid;
   gap: 10px;

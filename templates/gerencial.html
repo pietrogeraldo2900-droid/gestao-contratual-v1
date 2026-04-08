@@ -425,8 +425,8 @@
       });
       root.querySelectorAll('[data-service-mode]').forEach(function (list) {
         const visible = list.getAttribute('data-service-mode') === mode;
-        if (visible) list.removeAttribute('hidden');
-        else list.setAttribute('hidden', '');
+        list.hidden = !visible;
+        list.style.display = visible ? 'grid' : 'none';
       });
     }
 
