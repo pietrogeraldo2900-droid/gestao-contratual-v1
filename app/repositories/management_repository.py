@@ -55,6 +55,19 @@ def _parse_number(value: object) -> float:
         return 0.0
 
 
+def _parse_optional_int(value: object, min_value: int = 0, max_value: int = 10000) -> int | None:
+    raw = _safe_text(value)
+    if not raw:
+        return None
+    try:
+        parsed = int(float(raw.replace(",", ".")))
+    except Exception:
+        return None
+    if parsed < min_value or parsed > max_value:
+        return None
+    return parsed
+
+
 def _display_number(value: float) -> str:
     if abs(value - round(value)) < 1e-9:
         return str(int(round(value)))
@@ -78,6 +91,26 @@ def _normalize_lookup(value: object) -> str:
     text = "".join(ch for ch in unicodedata.normalize("NFKD", text) if not unicodedata.combining(ch))
     text = re.sub(r"[^a-z0-9]+", " ", text)
     return re.sub(r"\s+", " ", text).strip()
+
+
+def _normalize_contract_candidate(value: object) -> str:
+    raw = _safe_text(value)
+    if not raw:
+        return ""
+    text = raw.replace("\u2013", "-").replace("\u2014", "-")
+    text = re.sub(r"\s*-\s*", " - ", text)
+    text = re.sub(r"\s+", " ", text).strip(" -:\t")
+    if not text:
+        return ""
+
+    match = re.match(r"^\s*al\s*[- ]*\d+\s*-\s*(.+?)\s*$", text, flags=re.IGNORECASE)
+    if not match:
+        match = re.match(r"^\s*al\s*[- ]*\d+\s+(.+?)\s*$", text, flags=re.IGNORECASE)
+    if match:
+        candidate = re.sub(r"\s+", " ", str(match.group(1) or "")).strip(" -:\t")
+        if candidate:
+            return candidate
+    return text
 
 
 def _normalize_unit(value: object) -> str:
@@ -161,6 +194,23 @@ def _canonical_service_label(value: object) -> str:
     if lookup.startswith("interligacao"):
         return "Execução de interligação de rede"
     return text
+
+
+def _service_label_with_diameter(row: dict[str, Any]) -> str:
+    base_label = _canonical_service_label(
+        _pick_first_text(
+            row.get("servico_oficial"),
+            row.get("servico_normalizado"),
+            row.get("servico_bruto"),
+            row.get("item_normalizado"),
+            row.get("item_original"),
+        )
+    )
+    base_norm = _normalize_lookup(base_label).replace(" ", "_")
+    diametro_mm = _parse_optional_int(row.get("diametro_mm"), min_value=10, max_value=400)
+    if diametro_mm is not None and base_norm in {"pra", "pre"}:
+        return f"{base_label.upper()} Ø{diametro_mm}"
+    return base_label
 
 
 def _pick_first_text(*values: object) -> str:
@@ -266,10 +316,13 @@ class ManagementRepository:
             contract_key = _safe_text(row.get("contract_key"))
             if contract_key:
                 mapping[_normalize_lookup(contract_key)] = contract_name
+                mapping[_normalize_lookup(_normalize_contract_candidate(contract_key))] = contract_name
 
             contract_id = _safe_text(row.get("id"))
             if contract_id:
                 mapping[f"id:{contract_id}"] = contract_name
+
+            mapping[_normalize_lookup(contract_name)] = contract_name
 
         return mapping
 
@@ -287,7 +340,12 @@ class ManagementRepository:
             if by_id:
                 return by_id
 
-        return raw
+        normalized_candidate = _normalize_contract_candidate(raw)
+        by_candidate = contract_map.get(_normalize_lookup(normalized_candidate))
+        if by_candidate:
+            return by_candidate
+
+        return normalized_candidate or raw
 
     @staticmethod
     def _date_key(value: object) -> str:
@@ -408,6 +466,7 @@ class ManagementRepository:
                     "servico_oficial": _safe_text(row.get("servico_oficial")),
                     "servico_normalizado": _safe_text(row.get("servico_normalizado")),
                     "servico_bruto": _safe_text(row.get("servico_bruto")),
+                    "diametro_mm": _parse_optional_int(row.get("diametro_mm"), min_value=10, max_value=400),
                     "item_normalizado": _safe_text(row.get("item_normalizado")),
                     "item_original": _safe_text(row.get("item_original")),
                     "categoria": _safe_text(row.get("categoria")),
@@ -504,6 +563,7 @@ class ManagementRepository:
                     _safe_text(row.get("servico_oficial")),
                     _safe_text(row.get("servico_normalizado")),
                     _safe_text(row.get("servico_bruto")),
+                    _parse_optional_int(row.get("diametro_mm"), min_value=10, max_value=400),
                     _safe_text(row.get("item_normalizado")),
                     _safe_text(row.get("item_original")),
                     _safe_text(row.get("categoria")),
@@ -597,13 +657,13 @@ class ManagementRepository:
                             INSERT INTO management_execucao (
                                 source_uid, id_item, id_frente, data_referencia, contrato, programa,
                                 nucleo, logradouro, municipio, equipe, servico_oficial,
-                                servico_normalizado, servico_bruto, item_normalizado, item_original,
+                                servico_normalizado, servico_bruto, diametro_mm, item_normalizado, item_original,
                                 categoria, categoria_item, quantidade, unidade, arquivo_origem,
                                 nucleo_oficial, municipio_oficial, nucleo_status_cadastro
                             ) VALUES (
                                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
                                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                                %s, %s, %s
+                                %s, %s, %s, %s
                             )
                             ON CONFLICT (source_uid) DO UPDATE SET
                                 contrato = CASE
@@ -696,6 +756,7 @@ class ManagementRepository:
                         servico_oficial,
                         servico_normalizado,
                         servico_bruto,
+                        diametro_mm,
                         item_normalizado,
                         item_original,
                         categoria,
@@ -1151,14 +1212,7 @@ class ManagementRepository:
             equipe = _safe_text(row.get("equipe")) or "-"
             municipio = _pick_first_text(row.get("municipio_oficial"), row.get("municipio")) or "-"
             categoria = _pick_first_text(row.get("categoria"), row.get("categoria_item")) or "-"
-            servico = _pick_first_text(
-                row.get("servico_oficial"),
-                row.get("servico_normalizado"),
-                row.get("servico_bruto"),
-                row.get("item_normalizado"),
-                row.get("item_original"),
-            )
-            servico = _canonical_service_label(servico)
+            servico = _service_label_with_diameter(row)
             quantidade = float(row.get("quantidade", 0) or 0)
             unidade = _safe_text(row.get("unidade"))
             peso = quantidade if quantidade > 0 else 1.0
@@ -1189,11 +1243,13 @@ class ManagementRepository:
             # ("prolongamento ...") or direct service labels ("rede agua"/"rede esgoto").
             is_pre = (
                 servico_lookup == "pre"
+                or servico_lookup.startswith("pre ")
                 or ("prolongamento" in servico_lookup and "esgoto" in servico_lookup)
                 or servico_lookup in {"rede esgoto", "rede de esgoto"}
             )
             is_pra = (
                 servico_lookup == "pra"
+                or servico_lookup.startswith("pra ")
                 or (
                     "prolongamento" in servico_lookup
                     and "esgoto" not in servico_lookup
@@ -1757,16 +1813,29 @@ class ManagementRepository:
             "servicos": "SELECT DISTINCT COALESCE(NULLIF(servico_oficial, ''), NULLIF(servico_normalizado, ''), NULLIF(servico_bruto, ''), NULLIF(item_original, '')) AS value FROM management_execucao WHERE COALESCE(NULLIF(servico_oficial, ''), NULLIF(servico_normalizado, ''), NULLIF(servico_bruto, ''), NULLIF(item_original, '')) IS NOT NULL ORDER BY value LIMIT 800",
         }
 
+        contract_name_map = self._load_contract_name_map()
+
         with self._db.connection() as conn:
             with conn.cursor(**cursor_kwargs) as cur:
                 for key, sql in queries.items():
                     cur.execute(sql)
                     rows = cur.fetchall() or []
                     clean_values = []
+                    seen_contracts: set[str] = set()
                     for row in rows:
                         value = _safe_text(row.get("value"))
                         if value:
-                            clean_values.append(value)
+                            if key == "contratos":
+                                contract_label = self._contract_display_name(value, contract_name_map)
+                                label_key = _normalize_lookup(contract_label)
+                                if not contract_label or not label_key or label_key in seen_contracts:
+                                    continue
+                                seen_contracts.add(label_key)
+                                clean_values.append(contract_label)
+                            else:
+                                clean_values.append(value)
+                    if key == "contratos":
+                        clean_values.sort(key=_normalize_lookup)
                     options[key] = clean_values
 
         return options

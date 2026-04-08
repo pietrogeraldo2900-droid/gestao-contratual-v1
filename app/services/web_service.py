@@ -1031,6 +1031,37 @@ class WebPipelineService:
         timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         applied = []
 
+        def _extract_diametro_mm(row_data: dict) -> int | None:
+            raw = row_data.get("diametro_mm")
+            try:
+                value = int(str(raw or "").strip())
+            except Exception:
+                value = 0
+            if 10 <= value <= 400:
+                return value
+
+            text_probe = " ".join(
+                str(row_data.get(key, "") or "").strip()
+                for key in ("servico_bruto", "item_original", "servico_original_bruto")
+            )
+            for pattern in (
+                r"(?:Ø|ø)\s*(\d{1,3})\b",
+                r"\bdn\s*(\d{1,3})\b",
+                r"\bdiam(?:etro)?\.?\s*(\d{1,3})\b",
+                r"\b(?:pead|pvc)\s*(\d{1,3})\b",
+                r"\b(?:pra|pre)\s*(?:[-_/]|(?:\u00D8|\u00F8|Ã˜|Ã¸)|\?)?\s*(\d{1,3})\b",
+            ):
+                match = re.search(pattern, text_probe, flags=re.IGNORECASE)
+                if not match:
+                    continue
+                try:
+                    value = int(str(match.group(1) or "").strip())
+                except Exception:
+                    continue
+                if 10 <= value <= 400:
+                    return value
+            return None
+
         def _candidate_terms(row_data: dict) -> List[str]:
             values = [
                 row_data.get("servico_oficial", ""),
@@ -1085,6 +1116,14 @@ class WebPipelineService:
             item["categoria_corrigida_alias"] = target_category
             item["alias_usado"] = str(match.get("alias_text", "") or "").strip()
             item["data_correcao_alias"] = timestamp
+            target_norm = normalizar_texto(target_service).replace(" ", "_")
+            if target_norm in {"pra", "pre"}:
+                diametro_mm = _extract_diametro_mm(item)
+                if diametro_mm is not None:
+                    item["diametro_mm"] = diametro_mm
+                    item["servico_bruto"] = f"{target_service.upper()} Ø{diametro_mm}"
+                else:
+                    item["servico_bruto"] = target_service.upper()
             applied.append(
                 {
                     "id_item": str(item.get("id_item", "") or "").strip(),

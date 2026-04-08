@@ -144,11 +144,35 @@ def _extract_contract_from_rdo_line(line: str) -> str:
     text = str(line or "").strip()
     if not text:
         return ""
-    match = re.match(r"^\s*rdo\s*[-\u2013\u2014:]\s*(.+?)\s*$", text, flags=re.IGNORECASE)
+    text = text.replace("\u2013", "-").replace("\u2014", "-").replace("\u2212", "-")
+    text = re.sub(r"\s*-\s*", " - ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    match = re.match(r"^\s*rdo\s*[-:]\s*(.+?)\s*$", text, flags=re.IGNORECASE)
     if not match:
         return ""
     contract = match.group(1).strip(" -:\t")
-    return contract
+    return _normalize_contract_value(contract)
+
+
+def _normalize_contract_value(value: object) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    text = text.replace("\u2013", "-").replace("\u2014", "-")
+    text = re.sub(r"\s*-\s*", " - ", text)
+    text = re.sub(r"\s+", " ", text).strip(" -:\t")
+    if not text:
+        return ""
+
+    # Ex.: "AL 33 - Oeste 1" -> "Oeste 1"
+    match = re.match(r"^\s*al\s*[- ]*\d+\s*-\s*(.+?)\s*$", text, flags=re.IGNORECASE)
+    if not match:
+        match = re.match(r"^\s*al\s*[- ]*\d+\s+(.+?)\s*$", text, flags=re.IGNORECASE)
+    if match:
+        candidate = re.sub(r"\s+", " ", str(match.group(1) or "")).strip(" -:\t")
+        if candidate:
+            return candidate
+    return text
 
 
 def _strip_emphasis(text: str) -> str:
@@ -226,7 +250,7 @@ def extrair_escopos_modelo_oficial(texto: str) -> Dict[str, object]:
                     continue
                 if campo == "contrato":
                     if valor:
-                        contrato = valor
+                        contrato = _normalize_contract_value(valor)
                     secao_atual = None
                     continue
 
@@ -335,7 +359,10 @@ def extrair_blocos_mensagem(texto: str) -> Dict[str, object]:
             valor = valor.strip()
             campo = _canonical_field(rotulo)
             if campo:
-                resultado[campo] = valor
+                if campo == "contrato":
+                    resultado[campo] = _normalize_contract_value(valor)
+                else:
+                    resultado[campo] = valor
                 campos_detectados.add(campo)
                 secao_atual = None
                 continue
@@ -377,6 +404,45 @@ def extrair_blocos_mensagem(texto: str) -> Dict[str, object]:
         and has_context_field
     )
     return resultado
+
+
+def _extrair_diametro_mm(servico_texto: str) -> Optional[int]:
+    texto = str(servico_texto or "").strip()
+    if not texto:
+        return None
+
+    patterns = (
+        r"(?:Ø|ø)\s*(\d{1,3})\b",
+        r"\bdn\s*(\d{1,3})\b",
+        r"\bdiam(?:etro)?\.?\s*(\d{1,3})\b",
+        r"\b(?:pead|pvc)\s*(\d{1,3})\b",
+        r"\b(?:pra|pre)\s*(?:[-_/]|(?:\u00D8|\u00F8|Ã˜|Ã¸)|\?)?\s*(\d{1,3})\b",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, texto, flags=re.IGNORECASE)
+        if not match:
+            continue
+        try:
+            diametro = int(str(match.group(1) or "").strip())
+        except Exception:
+            continue
+        if 10 <= diametro <= 400:
+            return diametro
+    return None
+
+
+def _is_servico_pra_pre(servico_oficial: str) -> bool:
+    normalized = normalizar_texto(servico_oficial).replace(" ", "_")
+    return normalized in {"pra", "pre"}
+
+
+def _formatar_servico_pra_pre(servico_oficial: str, diametro_mm: Optional[int], fallback: str) -> str:
+    base = str(servico_oficial or "").strip().upper() or str(fallback or "").strip()
+    if not base:
+        return ""
+    if diametro_mm and _is_servico_pra_pre(servico_oficial):
+        return f"{base} Ø{int(diametro_mm)}"
+    return base
 
 
 def parsear_linha_execucao(linha: str) -> Dict[str, object]:
@@ -424,6 +490,7 @@ def parsear_linha_execucao(linha: str) -> Dict[str, object]:
         detalhe = detalhe.strip(" -:;,." )
         if detalhe:
             servico = detalhe
+    diametro_mm = _extrair_diametro_mm(servico)
 
     return {
         "mensagem_original": original,
@@ -431,6 +498,7 @@ def parsear_linha_execucao(linha: str) -> Dict[str, object]:
         "unidade": normalizar_unidade(unidade) if unidade else "",
         "servico_bruto": servico,
         "servico_normalizado": normalizar_texto(servico),
+        "diametro_mm": diametro_mm,
     }
 
 
@@ -645,7 +713,11 @@ class OfficialMessageParser:
             return None
 
         data = str(scoped_payload.get("data", "") or "").strip() or str(blocos.get("data", "") or "").strip()
-        contrato = str(scoped_payload.get("contrato", "") or "").strip() or str(blocos.get("contrato", "") or "").strip() or self.contrato_padrao
+        contrato = _normalize_contract_value(
+            str(scoped_payload.get("contrato", "") or "").strip()
+            or str(blocos.get("contrato", "") or "").strip()
+            or self.contrato_padrao
+        )
         programa = self.programa_padrao
 
         scope_candidates = scoped_candidates
@@ -734,6 +806,15 @@ class OfficialMessageParser:
                 mensagem_origem = str(parsed.get("mensagem_original", "")).strip()
                 if mensagem_origem and not mensagem_origem.startswith(("-", "\u2022", "*")):
                     mensagem_origem = f"- {mensagem_origem}"
+                diametro_mm = parsed.get("diametro_mm")
+                servico_oficial_mapeado = str(mapeamento.get("servico_oficial", "") or "").strip()
+                servico_bruto_saida = str(parsed.get("servico_bruto", "") or "").strip()
+                if _is_servico_pra_pre(servico_oficial_mapeado):
+                    servico_bruto_saida = _formatar_servico_pra_pre(
+                        servico_oficial_mapeado,
+                        diametro_mm if isinstance(diametro_mm, int) else None,
+                        servico_bruto_saida,
+                    )
 
                 exec_counter += 1
                 exec_item = {
@@ -759,11 +840,12 @@ class OfficialMessageParser:
                     "observacao_item": "",
                     "arquivo_origem": source_name,
                     "mensagem_origem": mensagem_origem,
-                    "servico_bruto": parsed["servico_bruto"],
+                    "servico_bruto": servico_bruto_saida,
                     "servico_normalizado": parsed["servico_normalizado"],
                     "servico_oficial": mapeamento["servico_oficial"],
                     "categoria": mapeamento["categoria"],
                     "regra_disparada": mapeamento["regra_disparada"],
+                    "diametro_mm": diametro_mm if isinstance(diametro_mm, int) else None,
                 }
                 execucao.append(exec_item)
 

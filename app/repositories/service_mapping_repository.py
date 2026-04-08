@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from app.core.input_layer import normalizar_texto
@@ -44,6 +45,38 @@ def _candidate_terms_from_row(row: dict[str, Any]) -> list[str]:
         seen.add(norm)
         out.append(norm)
     return out
+
+
+def _extract_diametro_mm_from_row(row: dict[str, Any]) -> int | None:
+    raw = row.get("diametro_mm")
+    try:
+        value = int(str(raw or "").strip())
+    except Exception:
+        value = 0
+    if 10 <= value <= 400:
+        return value
+
+    probe = " ".join(
+        str(row.get(key, "") or "").strip()
+        for key in ("servico_bruto", "item_original", "servico_normalizado")
+    )
+    for pattern in (
+        r"(?:Ø|ø)\s*(\d{1,3})\b",
+        r"\bdn\s*(\d{1,3})\b",
+        r"\bdiam(?:etro)?\.?\s*(\d{1,3})\b",
+        r"\b(?:pead|pvc)\s*(\d{1,3})\b",
+        r"\b(?:pra|pre)\s*(?:[-_/]|(?:\u00D8|\u00F8|Ã˜|Ã¸)|\?)?\s*(\d{1,3})\b",
+    ):
+        match = re.search(pattern, probe, flags=re.IGNORECASE)
+        if not match:
+            continue
+        try:
+            value = int(str(match.group(1) or "").strip())
+        except Exception:
+            continue
+        if 10 <= value <= 400:
+            return value
+    return None
 
 
 class ServiceMappingRepository:
@@ -360,6 +393,7 @@ class ServiceMappingRepository:
             categoria_item,
             servico_normalizado,
             servico_bruto,
+            diametro_mm,
             item_normalizado,
             item_original
         FROM management_execucao
@@ -378,7 +412,7 @@ class ServiceMappingRepository:
                 cur.execute(sql, (limit_value,))
                 rows = [_row_to_dict(row) for row in (cur.fetchall() or [])]
 
-        updates: list[tuple[str, str, str, int]] = []
+        updates: list[tuple[str, str, str, int | None, str, int]] = []
         for row in rows:
             row_id = int(row.get("id", 0) or 0)
             if row_id <= 0:
@@ -401,15 +435,26 @@ class ServiceMappingRepository:
             current_service = str(row.get("servico_oficial", "") or "").strip()
             current_category = str(row.get("categoria", "") or "").strip()
             current_category_item = str(row.get("categoria_item", "") or "").strip()
+            current_servico_bruto = str(row.get("servico_bruto", "") or "").strip()
+
+            target_norm = _normalize_alias(target_service).replace(" ", "_")
+            diametro_mm = _extract_diametro_mm_from_row(row)
+            target_servico_bruto = current_servico_bruto
+            if target_norm in {"pra", "pre"}:
+                if diametro_mm is not None:
+                    target_servico_bruto = f"{target_service.upper()} Ø{diametro_mm}"
+                elif not target_servico_bruto:
+                    target_servico_bruto = target_service.upper()
 
             if (
                 current_service == target_service
                 and current_category == target_category
                 and current_category_item == target_category
+                and current_servico_bruto == target_servico_bruto
             ):
                 continue
 
-            updates.append((target_service, target_category, target_category, row_id))
+            updates.append((target_service, target_category, target_category, diametro_mm, target_servico_bruto, row_id))
 
         if not updates:
             return {
@@ -426,7 +471,9 @@ class ServiceMappingRepository:
                     SET
                         servico_oficial = %s,
                         categoria = %s,
-                        categoria_item = %s
+                        categoria_item = %s,
+                        diametro_mm = COALESCE(%s, diametro_mm),
+                        servico_bruto = %s
                     WHERE id = %s
                     """,
                     updates,

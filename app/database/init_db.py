@@ -192,6 +192,7 @@ def init_db(db: DatabaseManager) -> None:
             servico_oficial VARCHAR(255),
             servico_normalizado VARCHAR(255),
             servico_bruto TEXT,
+            diametro_mm INTEGER,
             item_normalizado TEXT,
             item_original TEXT,
             categoria VARCHAR(180),
@@ -206,6 +207,7 @@ def init_db(db: DatabaseManager) -> None:
         """,
         "ALTER TABLE management_execucao ADD COLUMN IF NOT EXISTS servico_normalizado VARCHAR(255)",
         "ALTER TABLE management_execucao ADD COLUMN IF NOT EXISTS servico_bruto TEXT",
+        "ALTER TABLE management_execucao ADD COLUMN IF NOT EXISTS diametro_mm INTEGER",
         "ALTER TABLE management_execucao ADD COLUMN IF NOT EXISTS item_normalizado TEXT",
         "ALTER TABLE management_execucao ADD COLUMN IF NOT EXISTS item_original TEXT",
         """
@@ -316,16 +318,22 @@ def init_db(db: DatabaseManager) -> None:
             COALESCE(NULLIF(nucleo_oficial, ''), NULLIF(nucleo, ''), 'Nao informado') AS nucleo,
             COALESCE(NULLIF(municipio_oficial, ''), NULLIF(municipio, ''), 'Nao informado') AS municipio,
             COALESCE(NULLIF(equipe, ''), 'Nao informado') AS equipe,
-            COALESCE(
-                NULLIF(servico_oficial, ''),
-                NULLIF(servico_normalizado, ''),
-                NULLIF(servico_bruto, ''),
-                NULLIF(item_original, ''),
-                'servico_nao_mapeado'
-            ) AS servico,
+            CASE
+                WHEN UPPER(COALESCE(NULLIF(servico_oficial, ''), '')) IN ('PRA', 'PRE')
+                    AND diametro_mm IS NOT NULL
+                    THEN UPPER(COALESCE(NULLIF(servico_oficial, ''), '')) || ' Ø' || diametro_mm::TEXT
+                ELSE COALESCE(
+                    NULLIF(servico_oficial, ''),
+                    NULLIF(servico_normalizado, ''),
+                    NULLIF(servico_bruto, ''),
+                    NULLIF(item_original, ''),
+                    'servico_nao_mapeado'
+                )
+            END AS servico,
             COALESCE(NULLIF(categoria, ''), NULLIF(categoria_item, ''), 'servico_nao_mapeado') AS categoria,
             quantidade,
             COALESCE(NULLIF(unidade, ''), 'un') AS unidade,
+            diametro_mm,
             CASE
                 WHEN COALESCE(NULLIF(servico_oficial, ''), '') IN ('', '-', 'servico_nao_mapeado', 'nao_mapeado')
                     THEN FALSE
@@ -359,25 +367,35 @@ def init_db(db: DatabaseManager) -> None:
         """
         CREATE OR REPLACE VIEW vw_bi_ranking_servico AS
         SELECT
-            COALESCE(
-                NULLIF(servico_oficial, ''),
-                NULLIF(servico_normalizado, ''),
-                NULLIF(servico_bruto, ''),
-                NULLIF(item_original, ''),
-                'servico_nao_mapeado'
-            ) AS servico,
+            CASE
+                WHEN UPPER(COALESCE(NULLIF(servico_oficial, ''), '')) IN ('PRA', 'PRE')
+                    AND diametro_mm IS NOT NULL
+                    THEN UPPER(COALESCE(NULLIF(servico_oficial, ''), '')) || ' Ø' || diametro_mm::TEXT
+                ELSE COALESCE(
+                    NULLIF(servico_oficial, ''),
+                    NULLIF(servico_normalizado, ''),
+                    NULLIF(servico_bruto, ''),
+                    NULLIF(item_original, ''),
+                    'servico_nao_mapeado'
+                )
+            END AS servico,
             COALESCE(NULLIF(unidade, ''), 'un') AS unidade,
             COUNT(*)::BIGINT AS registros_execucao,
             COALESCE(SUM(quantidade), 0)::NUMERIC(18,3) AS volume_total
         FROM management_execucao
         GROUP BY
-            COALESCE(
-                NULLIF(servico_oficial, ''),
-                NULLIF(servico_normalizado, ''),
-                NULLIF(servico_bruto, ''),
-                NULLIF(item_original, ''),
-                'servico_nao_mapeado'
-            ),
+            CASE
+                WHEN UPPER(COALESCE(NULLIF(servico_oficial, ''), '')) IN ('PRA', 'PRE')
+                    AND diametro_mm IS NOT NULL
+                    THEN UPPER(COALESCE(NULLIF(servico_oficial, ''), '')) || ' Ø' || diametro_mm::TEXT
+                ELSE COALESCE(
+                    NULLIF(servico_oficial, ''),
+                    NULLIF(servico_normalizado, ''),
+                    NULLIF(servico_bruto, ''),
+                    NULLIF(item_original, ''),
+                    'servico_nao_mapeado'
+                )
+            END,
             COALESCE(NULLIF(unidade, ''), 'un')
         """,
         """
