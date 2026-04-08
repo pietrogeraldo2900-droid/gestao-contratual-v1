@@ -209,7 +209,7 @@ def _service_label_with_diameter(row: dict[str, Any]) -> str:
     base_norm = _normalize_lookup(base_label).replace(" ", "_")
     diametro_mm = _parse_optional_int(row.get("diametro_mm"), min_value=10, max_value=400)
     if diametro_mm is not None and base_norm in {"pra", "pre"}:
-        return f"{base_label.upper()} Ø{diametro_mm}"
+        return f"{base_label.upper()} \u00D8{diametro_mm}"
     return base_label
 
 
@@ -839,15 +839,26 @@ class ManagementRepository:
             return False
         return True
 
-    def _filter_row(self, row: dict[str, Any], filters: _Filters) -> bool:
+    def _filter_row(
+        self,
+        row: dict[str, Any],
+        filters: _Filters,
+        contract_name_map: dict[str, str] | None = None,
+    ) -> bool:
         dt = row.get("data_referencia")
         if not self._filter_by_date(dt, filters):
             return False
         contrato = _safe_text(row.get("contrato"))
+        contrato_friendly = self._contract_display_name(contrato, contract_name_map or {})
+        contrato_candidate = _normalize_contract_candidate(contrato)
         nucleo = _safe_text(row.get("nucleo_oficial")) or _safe_text(row.get("nucleo"))
         municipio = _safe_text(row.get("municipio_oficial")) or _safe_text(row.get("municipio"))
         equipe = _safe_text(row.get("equipe"))
-        if not _match(contrato, filters.contrato):
+        if filters.contrato and not (
+            _match(contrato, filters.contrato)
+            or _match(contrato_friendly, filters.contrato)
+            or _match(contrato_candidate, filters.contrato)
+        ):
             return False
         if not _match(nucleo, filters.nucleo):
             return False
@@ -900,8 +911,23 @@ class ManagementRepository:
         exec_where_parts: list[str] = []
         exec_params: list[Any] = []
         if filters.contrato:
-            exec_where_parts.append("COALESCE(contrato, '') ILIKE %s")
-            exec_params.append(f"%{filters.contrato}%")
+            contract_variants: set[str] = {filters.contrato}
+            contract_candidate = _normalize_contract_candidate(filters.contrato)
+            if contract_candidate:
+                contract_variants.add(contract_candidate)
+            contract_name_map = self._load_contract_name_map()
+            probe_norm = _normalize_lookup(filters.contrato)
+            for key_norm, display_name in contract_name_map.items():
+                if key_norm.startswith("id:"):
+                    continue
+                display_norm = _normalize_lookup(display_name)
+                if probe_norm and (probe_norm in key_norm or probe_norm in display_norm):
+                    contract_variants.add(display_name)
+                    if re.fullmatch(r"\d+", key_norm):
+                        contract_variants.add(key_norm)
+            placeholders = ["COALESCE(contrato, '') ILIKE %s" for _ in contract_variants]
+            exec_where_parts.append(f"({' OR '.join(placeholders)})")
+            exec_params.extend([f"%{variant}%" for variant in sorted(contract_variants)])
         if filters.obra_from:
             exec_where_parts.append("data_referencia >= %s")
             exec_params.append(filters.obra_from)
@@ -922,8 +948,23 @@ class ManagementRepository:
         date_where_parts: list[str] = []
         date_params: list[Any] = []
         if filters.contrato:
-            date_where_parts.append("COALESCE(contrato, '') ILIKE %s")
-            date_params.append(f"%{filters.contrato}%")
+            contract_variants: set[str] = {filters.contrato}
+            contract_candidate = _normalize_contract_candidate(filters.contrato)
+            if contract_candidate:
+                contract_variants.add(contract_candidate)
+            contract_name_map = self._load_contract_name_map()
+            probe_norm = _normalize_lookup(filters.contrato)
+            for key_norm, display_name in contract_name_map.items():
+                if key_norm.startswith("id:"):
+                    continue
+                display_norm = _normalize_lookup(display_name)
+                if probe_norm and (probe_norm in key_norm or probe_norm in display_norm):
+                    contract_variants.add(display_name)
+                    if re.fullmatch(r"\d+", key_norm):
+                        contract_variants.add(key_norm)
+            placeholders = ["COALESCE(contrato, '') ILIKE %s" for _ in contract_variants]
+            date_where_parts.append(f"({' OR '.join(placeholders)})")
+            date_params.extend([f"%{variant}%" for variant in sorted(contract_variants)])
         if filters.obra_from:
             date_where_parts.append("data_referencia >= %s")
             date_params.append(filters.obra_from)
@@ -1142,16 +1183,16 @@ class ManagementRepository:
             source_kind = "master_csv"
             exec_rows, frentes_rows, ocorr_rows = self._load_rows_from_master_csv()
 
-        exec_filtered = [row for row in exec_rows if self._filter_row(row, filters)]
-        frentes_filtered = [row for row in frentes_rows if self._filter_row(row, filters)]
-        ocorr_filtered = [row for row in ocorr_rows if self._filter_row(row, filters)]
+        contract_name_map = self._load_contract_name_map()
+
+        exec_filtered = [row for row in exec_rows if self._filter_row(row, filters, contract_name_map)]
+        frentes_filtered = [row for row in frentes_rows if self._filter_row(row, filters, contract_name_map)]
+        ocorr_filtered = [row for row in ocorr_rows if self._filter_row(row, filters, contract_name_map)]
 
         # Deduplicacao defensiva para neutralizar reimports de testes sem apagar historico bruto.
         exec_filtered = self._dedupe_execucao_rows(exec_filtered)
         frentes_filtered = self._dedupe_frentes_rows(frentes_filtered)
         ocorr_filtered = self._dedupe_ocorr_rows(ocorr_filtered)
-
-        contract_name_map = self._load_contract_name_map()
 
         if filters.status == "erro":
             exec_filtered = []
@@ -1665,8 +1706,23 @@ class ManagementRepository:
 
         contrato = _safe_text(filters.get("contrato"))
         if contrato:
-            where_parts.append("contrato ILIKE %s")
-            params.append(f"%{contrato}%")
+            contract_variants: set[str] = {contrato}
+            contract_candidate = _normalize_contract_candidate(contrato)
+            if contract_candidate:
+                contract_variants.add(contract_candidate)
+            contract_name_map = self._load_contract_name_map()
+            probe_norm = _normalize_lookup(contrato)
+            for key_norm, display_name in contract_name_map.items():
+                if key_norm.startswith("id:"):
+                    continue
+                display_norm = _normalize_lookup(display_name)
+                if probe_norm and (probe_norm in key_norm or probe_norm in display_norm):
+                    contract_variants.add(display_name)
+                    if re.fullmatch(r"\d+", key_norm):
+                        contract_variants.add(key_norm)
+            placeholders = ["contrato ILIKE %s" for _ in contract_variants]
+            where_parts.append(f"({' OR '.join(placeholders)})")
+            params.extend([f"%{variant}%" for variant in sorted(contract_variants)])
 
         nucleo = _safe_text(filters.get("nucleo"))
         if nucleo:

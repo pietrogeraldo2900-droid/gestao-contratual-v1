@@ -2,6 +2,7 @@
 
 import csv
 import io
+import re
 from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -2806,9 +2807,18 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                 return ""
             if raw in display_map:
                 return display_map[raw]
-            if " - " in raw:
-                return raw.split(" - ", 1)[1].strip() or raw
-            return raw
+            normalized = raw.replace("\u2013", "-").replace("\u2014", "-")
+            normalized = " ".join(normalized.split())
+            match = re.match(r"^\s*al\s*[- ]*\d+\s*-\s*(.+?)\s*$", normalized, flags=re.IGNORECASE)
+            if not match:
+                match = re.match(r"^\s*al\s*[- ]*\d+\s+(.+?)\s*$", normalized, flags=re.IGNORECASE)
+            if match:
+                candidate = str(match.group(1) or "").strip(" -:\t")
+                if candidate:
+                    return candidate
+            if " - " in normalized:
+                return normalized.split(" - ", 1)[1].strip() or normalized
+            return normalized or raw
 
         def _contract_label_key(value: object) -> str:
             label = _contract_label_for(value)
