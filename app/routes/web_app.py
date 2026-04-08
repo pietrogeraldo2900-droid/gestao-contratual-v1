@@ -2831,7 +2831,8 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             contract_id = str(item.get("id", "") or "").strip()
             full_label = str(item.get("label", "") or "").strip()
             numero = full_label.split(" - ", 1)[0].strip() if " - " in full_label else ""
-            candidates = [v for v in (numero, full_label, contract_id) if v]
+            friendly_label = _contract_label_for(full_label)
+            candidates = [v for v in (friendly_label, numero, full_label, contract_id) if v]
             if not candidates:
                 continue
             card_value = next((v for v in candidates if v in contract_options), candidates[0])
