@@ -1,0 +1,57 @@
+{
+  "mode": "apply",
+  "timestamp": "2026-04-08T18:17:42",
+  "before": {
+    "total_execucao": 295,
+    "total_frentes": 124,
+    "total_ocorrencias": 82,
+    "duplicados_execucao": 0,
+    "duplicados_frentes": 0,
+    "duplicados_ocorrencias": 0,
+    "servico_oficial_vazio": 0,
+    "servico_nao_mapeado": 0,
+    "categoria_vazia_ou_incompleta": 0,
+    "variacoes_servico_mesma_chave": [],
+    "top_termos_nao_mapeados": [],
+    "contratos_sem_correspondencia": []
+  },
+  "after": {
+    "total_execucao": 295,
+    "total_frentes": 124,
+    "total_ocorrencias": 82,
+    "duplicados_execucao": 0,
+    "duplicados_frentes": 0,
+    "duplicados_ocorrencias": 0,
+    "servico_oficial_vazio": 0,
+    "servico_nao_mapeado": 0,
+    "categoria_vazia_ou_incompleta": 0,
+    "variacoes_servico_mesma_chave": [],
+    "top_termos_nao_mapeados": [],
+    "contratos_sem_correspondencia": []
+  },
+  "changes": {
+    "contracts_normalized": {
+      "management_execucao": 291,
+      "management_frentes": 121,
+      "management_ocorrencias": 82,
+      "processing_history": 79
+    },
+    "duplicates_deleted": {
+      "deleted_execucao": 0,
+      "deleted_frentes": 0,
+      "deleted_ocorrencias": 0
+    },
+    "service_defaults": {
+      "servico_vazio_para_nao_mapeado": 0,
+      "categoria_vazia_preenchida": 0
+    },
+    "alias_remap": {
+      "aliases_loaded": 0,
+      "rows_scanned": 0,
+      "rows_updated": 0,
+      "skipped_reason": "coluna diametro_mm ausente em management_execucao"
+    },
+    "category_sync_rows": 9
+  },
+  "contracts_catalog_size": 3
+}
