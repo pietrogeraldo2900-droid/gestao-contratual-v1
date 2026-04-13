@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any
 
 from app.models.inspection import Inspection, InspectionItem
@@ -18,6 +18,14 @@ class InspectionService:
     _ALLOWED_PRIORITY = {"baixa", "media", "alta", "critica"}
     _ALLOWED_ITEM_STATUS = {"pendente", "conforme", "nao_conforme", "observacao"}
     _ALLOWED_ITEM_SEVERITY = {"baixa", "media", "alta", "critica"}
+    _ALLOWED_DIVERGENCE_STATUS = {
+        "sem_divergencia",
+        "a_maior",
+        "a_menor",
+        "nao_verificado",
+        "novo_nao_declarado",
+        "nao_executado",
+    }
 
     def __init__(self, repository: InspectionRepository):
         self._repository = repository
@@ -54,6 +62,15 @@ class InspectionService:
         except (InvalidOperation, ValueError):
             raise InspectionValidationError(f"{field_label} deve ser numerico.")
 
+    def _parse_optional_decimal(self, raw: object, field_label: str) -> Decimal | None:
+        text = str(raw if raw is not None else "").strip().replace(",", ".")
+        if not text:
+            return None
+        try:
+            return Decimal(text)
+        except (InvalidOperation, ValueError):
+            raise InspectionValidationError(f"{field_label} deve ser numerico.")
+
     def _parse_optional_int(self, raw: object) -> int | None:
         text = str(raw or "").strip()
         if not text:
@@ -62,6 +79,38 @@ class InspectionService:
             return int(text)
         except Exception:
             raise InspectionValidationError("Contrato invalido.")
+
+    def _build_divergence_metrics(
+        self,
+        *,
+        quantidade_declarada: Decimal,
+        quantidade_verificada: Decimal,
+        verificado_informado: bool,
+    ) -> tuple[Decimal, Decimal, str]:
+        diff = quantidade_verificada - quantidade_declarada
+        abs_diff = abs(diff)
+        if not verificado_informado:
+            status = "nao_verificado"
+        elif quantidade_declarada == quantidade_verificada:
+            status = "sem_divergencia"
+        elif quantidade_declarada == Decimal("0") and quantidade_verificada > Decimal("0"):
+            status = "novo_nao_declarado"
+        elif quantidade_declarada > Decimal("0") and quantidade_verificada == Decimal("0"):
+            status = "nao_executado"
+        elif quantidade_verificada > quantidade_declarada:
+            status = "a_maior"
+        else:
+            status = "a_menor"
+
+        if quantidade_declarada == Decimal("0"):
+            percentual = Decimal("100") if quantidade_verificada != Decimal("0") else Decimal("0")
+        else:
+            percentual = (abs_diff / abs(quantidade_declarada)) * Decimal("100")
+        percentual = percentual.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        if status not in self._ALLOWED_DIVERGENCE_STATUS:
+            status = "sem_divergencia"
+        return abs_diff, percentual, status
 
     def _build_item_payloads(self, raw_items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         items: list[dict[str, Any]] = []
@@ -88,6 +137,29 @@ class InspectionService:
             )
             prazo_ajuste = self._parse_optional_date((raw or {}).get("prazo_ajuste"), "Prazo do item")
             valor_multa = self._parse_decimal((raw or {}).get("valor_multa"), "Valor da multa", default="0")
+            quantidade_declarada = self._parse_decimal(
+                (raw or {}).get("quantidade_declarada"),
+                "Quantidade declarada",
+                default="0",
+            )
+            quantidade_verificada_raw = self._parse_optional_decimal(
+                (raw or {}).get("quantidade_verificada"),
+                "Quantidade verificada",
+            )
+            verificado_informado = quantidade_verificada_raw is not None
+            quantidade_verificada = quantidade_verificada_raw if quantidade_verificada_raw is not None else Decimal("0")
+            if quantidade_declarada < 0:
+                raise InspectionValidationError("Quantidade declarada nao pode ser negativa.")
+            if quantidade_verificada < 0:
+                raise InspectionValidationError("Quantidade verificada nao pode ser negativa.")
+
+            # Regra central: a base oficial e sempre derivada da conferencia do fiscal.
+            quantidade_oficial = quantidade_verificada
+            divergencia_absoluta, divergencia_percentual, divergencia_status = self._build_divergence_metrics(
+                quantidade_declarada=quantidade_declarada,
+                quantidade_verificada=quantidade_verificada,
+                verificado_informado=verificado_informado,
+            )
             items.append(
                 {
                     "area": area,
@@ -99,6 +171,13 @@ class InspectionService:
                     "responsavel_ajuste": str((raw or {}).get("responsavel_ajuste", "") or "").strip(),
                     "valor_multa": valor_multa,
                     "evidencia_ref": str((raw or {}).get("evidencia_ref", "") or "").strip(),
+                    "quantidade_declarada": quantidade_declarada,
+                    "quantidade_verificada": quantidade_verificada,
+                    "quantidade_oficial": quantidade_oficial,
+                    "verificado_informado": verificado_informado,
+                    "divergencia_absoluta": divergencia_absoluta,
+                    "divergencia_percentual": divergencia_percentual,
+                    "divergencia_status": divergencia_status,
                 }
             )
         return items
@@ -108,6 +187,7 @@ class InspectionService:
         *,
         limit: int = 200,
         contract_id: int | None = None,
+        contract_ids: list[int] | None = None,
         status: str = "",
         date_from: object = "",
         date_to: object = "",
@@ -116,20 +196,45 @@ class InspectionService:
         status_norm = str(status or "").strip().lower()
         if status_norm and status_norm not in self._ALLOWED_STATUS:
             status_norm = ""
+        normalized_contract_ids: list[int] | None = None
+        if contract_ids is not None:
+            normalized_contract_ids = []
+            for value in list(contract_ids or []):
+                try:
+                    parsed = int(value)
+                except Exception:
+                    continue
+                if parsed > 0:
+                    normalized_contract_ids.append(parsed)
         return self._repository.list_inspections(
             limit=max(1, min(int(limit), 1000)),
             contract_id=int(contract_id) if contract_id else None,
+            contract_ids=normalized_contract_ids,
             status=status_norm,
             date_from=self._parse_optional_date(date_from, "Data inicial"),
             date_to=self._parse_optional_date(date_to, "Data final"),
             query=str(query or "").strip(),
         )
 
-    def count_inspections(self, *, contract_id: int | None = None, status: str = "") -> int:
+    def count_inspections(self, *, contract_id: int | None = None, contract_ids: list[int] | None = None, status: str = "") -> int:
         status_norm = str(status or "").strip().lower()
         if status_norm and status_norm not in self._ALLOWED_STATUS:
             status_norm = ""
-        return self._repository.count_inspections(contract_id=contract_id, status=status_norm)
+        normalized_contract_ids: list[int] | None = None
+        if contract_ids is not None:
+            normalized_contract_ids = []
+            for value in list(contract_ids or []):
+                try:
+                    parsed = int(value)
+                except Exception:
+                    continue
+                if parsed > 0:
+                    normalized_contract_ids.append(parsed)
+        return self._repository.count_inspections(
+            contract_id=contract_id,
+            contract_ids=normalized_contract_ids,
+            status=status_norm,
+        )
 
     def get_inspection_with_items(self, inspection_id: int) -> tuple[Inspection | None, list[InspectionItem]]:
         inspection = self._repository.get_inspection(int(inspection_id))
@@ -168,6 +273,8 @@ class InspectionService:
             raise InspectionValidationError("Score geral nao pode ser negativo.")
 
         contract_id = self._parse_optional_int(payload.get("contract_id"))
+        if not contract_id:
+            raise InspectionValidationError("Informe o contrato da vistoria.")
         items = self._build_item_payloads(list(raw_items or []))
         if not items:
             raise InspectionValidationError("Inclua pelo menos um item na vistoria.")
@@ -198,6 +305,11 @@ class InspectionService:
         status_norm = self._normalize_enum(status, self._ALLOWED_STATUS, "Status", "aberta")
         return self._repository.update_inspection_status(int(inspection_id), status_norm)
 
+    def delete_inspection(self, inspection_id: int) -> bool:
+        delete_inspection = getattr(self._repository, "delete_inspection", None)
+        if not callable(delete_inspection):
+            return False
+        return bool(delete_inspection(int(inspection_id)))
+
 
 __all__ = ["InspectionService", "InspectionValidationError"]
-

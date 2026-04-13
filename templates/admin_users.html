@@ -3,7 +3,7 @@
 <section class="section">
   <h3>Gestao de usuarios</h3>
   <div class="body">
-    <p class="muted">Aprove, rejeite, desative ou ajuste o papel dos usuarios cadastrados.</p>
+    <p class="muted">Aprove, rejeite, desative e vincule usuarios a contratadas/contratos conforme o perfil.</p>
     {% if error_message %}
       <div class="notice warning">{{ error_message }}</div>
     {% endif %}
@@ -34,6 +34,8 @@
           <th>Email</th>
           <th>Status</th>
           <th>Papel</th>
+          <th>Contratada</th>
+          <th>Contratos autorizados</th>
           <th>Criado em</th>
           <th>Ultimo login</th>
           <th>Acoes</th>
@@ -41,10 +43,19 @@
       </thead>
       <tbody>
         {% for user in users %}
+          {% set user_contract_ids = user.authorized_contract_ids if user.authorized_contract_ids is defined else [] %}
           <tr>
             <td>{{ user.email }}</td>
             <td>{{ user.status or '-' }}</td>
             <td>{{ user.role or '-' }}</td>
+            <td>{{ user.contractor_name or '-' }}</td>
+            <td>
+              {% if user_contract_ids %}
+                {{ user_contract_ids | join(', ') }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
             <td>{{ user.created_at }}</td>
             <td>{{ user.last_login_at or '-' }}</td>
             <td>
@@ -52,11 +63,26 @@
                 {% if user.status == 'pending' %}
                   <form method="post" action="{{ url_for('admin_users_update', user_id=user.id) }}">
                     <input type="hidden" name="action" value="approve">
-                    <select name="role" required>
-                      {% for role in roles %}
-                        <option value="{{ role }}">{{ role }}</option>
-                      {% endfor %}
-                    </select>
+                    <div class="field">
+                      <label>Papel</label>
+                      <select name="role" required>
+                        {% for role in roles %}
+                          <option value="{{ role }}">{{ role }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label>Contratada (somente perfil contratada)</label>
+                      <input type="text" name="contractor_name" value="{{ user.contractor_name or '' }}" list="contractor-options">
+                    </div>
+                    <div class="field">
+                      <label>Contratos autorizados</label>
+                      <select name="contract_ids" multiple size="5">
+                        {% for contract in contract_options %}
+                          <option value="{{ contract.id }}">{{ contract.label }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
                     <button type="submit">Aprovar</button>
                   </form>
                   <form method="post" action="{{ url_for('admin_users_update', user_id=user.id) }}">
@@ -66,13 +92,46 @@
                 {% else %}
                   <form method="post" action="{{ url_for('admin_users_update', user_id=user.id) }}">
                     <input type="hidden" name="action" value="set_role">
-                    <select name="role">
-                      {% for role in roles %}
-                        <option value="{{ role }}" {% if user.role == role %}selected{% endif %}>{{ role }}</option>
-                      {% endfor %}
-                    </select>
+                    <div class="field">
+                      <label>Papel</label>
+                      <select name="role">
+                        {% for role in roles %}
+                          <option value="{{ role }}" {% if user.role == role %}selected{% endif %}>{{ role }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label>Contratada (somente perfil contratada)</label>
+                      <input type="text" name="contractor_name" value="{{ user.contractor_name or '' }}" list="contractor-options">
+                    </div>
+                    <div class="field">
+                      <label>Contratos autorizados</label>
+                      <select name="contract_ids" multiple size="5">
+                        {% for contract in contract_options %}
+                          <option value="{{ contract.id }}" {% if contract.id|int in user_contract_ids %}selected{% endif %}>{{ contract.label }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
                     <button type="submit">Atualizar papel</button>
                   </form>
+
+                  <form method="post" action="{{ url_for('admin_users_update', user_id=user.id) }}">
+                    <input type="hidden" name="action" value="set_scope">
+                    <div class="field">
+                      <label>Contratada (somente perfil contratada)</label>
+                      <input type="text" name="contractor_name" value="{{ user.contractor_name or '' }}" list="contractor-options">
+                    </div>
+                    <div class="field">
+                      <label>Contratos autorizados</label>
+                      <select name="contract_ids" multiple size="5">
+                        {% for contract in contract_options %}
+                          <option value="{{ contract.id }}" {% if contract.id|int in user_contract_ids %}selected{% endif %}>{{ contract.label }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <button type="submit">Atualizar vinculos</button>
+                  </form>
+
                   {% if user.status == 'disabled' %}
                     <form method="post" action="{{ url_for('admin_users_update', user_id=user.id) }}">
                       <input type="hidden" name="action" value="activate">
@@ -89,10 +148,15 @@
             </td>
           </tr>
         {% else %}
-          <tr><td colspan="6">Nenhum usuario encontrado.</td></tr>
+          <tr><td colspan="8">Nenhum usuario encontrado.</td></tr>
         {% endfor %}
       </tbody>
     </table>
+    <datalist id="contractor-options">
+      {% for item in contractor_options %}
+        <option value="{{ item }}"></option>
+      {% endfor %}
+    </datalist>
   </div>
 </section>
 {% endblock %}

@@ -5,7 +5,7 @@
     <div>
       <div class="hero-eyebrow">Vistoria operacional</div>
       <h2 class="hero-title">Nova vistoria</h2>
-      <p class="hero-subtitle">Fluxo de inspeção em campo com registro de itens, severidade e encaminhamentos por contrato.</p>
+      <p class="hero-subtitle">Fluxo de inspecao em campo com registro de itens, severidade e encaminhamentos por contrato.</p>
     </div>
     <div class="hero-stat-grid">
       <div class="hero-stat">
@@ -32,8 +32,8 @@
     <div class="body">
       <div class="grid-2">
         <div class="field">
-          <label>Contrato</label>
-          <select name="contract_id">
+          <label>Contrato *</label>
+          <select name="contract_id" required>
             <option value="">Selecionar contrato</option>
             {% for option in contract_options %}
               <option value="{{ option.id }}" {% if form_data.contract_id == option.id %}selected{% endif %}>{{ option.label }}</option>
@@ -41,31 +41,31 @@
           </select>
         </div>
         <div class="field">
-          <label>Título da vistoria *</label>
-          <input type="text" name="titulo" value="{{ form_data.titulo }}" required placeholder="Ex.: Vistoria semanal núcleo Mississipi">
+          <label>Titulo da vistoria *</label>
+          <input type="text" name="titulo" value="{{ form_data.titulo }}" required placeholder="Ex.: Vistoria semanal nucleo Mississipi">
         </div>
         <div class="field">
           <label>Data da vistoria *</label>
           <input type="date" name="data_vistoria" value="{{ form_data.data_vistoria }}" required>
         </div>
         <div class="field">
-          <label>Período</label>
+          <label>Periodo</label>
           <input type="text" name="periodo" value="{{ form_data.periodo }}" placeholder="Ex.: Diurno">
         </div>
         <div class="field">
-          <label>Núcleo</label>
+          <label>Nucleo</label>
           <input type="text" name="nucleo" value="{{ form_data.nucleo }}">
         </div>
         <div class="field">
-          <label>Município</label>
+          <label>Municipio</label>
           <input type="text" name="municipio" value="{{ form_data.municipio }}">
         </div>
         <div class="field">
           <label>Local da vistoria</label>
-          <input type="text" name="local_vistoria" value="{{ form_data.local_vistoria }}" placeholder="Rua / trecho / ponto de referência">
+          <input type="text" name="local_vistoria" value="{{ form_data.local_vistoria }}" placeholder="Rua / trecho / ponto de referencia">
         </div>
         <div class="field">
-          <label>Equipe responsável</label>
+          <label>Equipe responsavel</label>
           <input type="text" name="equipe" value="{{ form_data.equipe }}">
         </div>
         <div class="field">
@@ -77,11 +77,11 @@
           <input type="text" name="fiscal_contato" value="{{ form_data.fiscal_contato }}">
         </div>
         <div class="field">
-          <label>Responsável local</label>
+          <label>Responsavel local</label>
           <input type="text" name="responsavel_nome" value="{{ form_data.responsavel_nome }}">
         </div>
         <div class="field">
-          <label>Contato responsável</label>
+          <label>Contato responsavel</label>
           <input type="text" name="responsavel_contato" value="{{ form_data.responsavel_contato }}">
         </div>
         <div class="field">
@@ -114,8 +114,8 @@
         </div>
       </div>
       <div class="field">
-        <label>Observações gerais</label>
-        <textarea name="observacoes" placeholder="Pontos de atenção e resumo executivo da vistoria">{{ form_data.observacoes }}</textarea>
+        <label>Observacoes gerais</label>
+        <textarea name="observacoes" placeholder="Pontos de atencao e resumo executivo da vistoria">{{ form_data.observacoes }}</textarea>
       </div>
     </div>
   </section>
@@ -123,20 +123,23 @@
   <section class="section">
     <h3>Checklist de itens</h3>
     <div class="body">
-      <p class="muted">Preencha os itens observados no campo. Linhas sem título são ignoradas automaticamente.</p>
+      <p class="muted">Preencha os itens observados no campo. Linhas sem titulo sao ignoradas automaticamente.</p>
+      <p class="muted">Regra oficial: a base oficial considera apenas a quantidade verificada pelo fiscal.</p>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Área</th>
+              <th>Area</th>
               <th>Item *</th>
-              <th>Descrição</th>
+              <th>Descricao</th>
+              <th>Qtd declarada</th>
+              <th>Qtd verificada (fiscal)</th>
               <th>Status</th>
               <th>Severidade</th>
               <th>Prazo</th>
-              <th>Responsável</th>
+              <th>Responsavel</th>
               <th>Multa (R$)</th>
-              <th>Evidência</th>
+              <th>Evidencia</th>
             </tr>
           </thead>
           <tbody>
@@ -145,6 +148,8 @@
                 <td><input type="text" name="item_area[]" value="{{ item.area }}"></td>
                 <td><input type="text" name="item_titulo[]" value="{{ item.item_titulo }}"></td>
                 <td><input type="text" name="item_descricao[]" value="{{ item.descricao }}"></td>
+                <td><input type="number" min="0" step="0.001" name="item_qtd_declarada[]" value="{{ item.quantidade_declarada or '0' }}"></td>
+                <td><input type="number" min="0" step="0.001" name="item_qtd_verificada[]" value="{{ item.quantidade_verificada or '' }}"></td>
                 <td>
                   <select name="item_status[]">
                     {% for value in item_status_options %}
@@ -177,4 +182,3 @@
   </div>
 </form>
 {% endblock %}
-

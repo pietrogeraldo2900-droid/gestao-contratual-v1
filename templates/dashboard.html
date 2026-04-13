@@ -18,7 +18,9 @@
       <span class="sr-only">Dashboard operacional</span>
     </div>
     <div class="mk-hero-actions">
+      {% if can_access('contratos') %}
       <a href="{{ url_for('web_contracts_new') }}" class="mk-btn mk-btn-primary">Novo contrato</a>
+      {% endif %}
       <a href="{{ url_for('results_list') }}" class="mk-btn mk-btn-ghost">Resultados</a>
     </div>
   </header>
@@ -39,7 +41,7 @@
           <path d="M16 3v4"></path>
         </svg>
       </div>
-      <p class="mk-kpi-label">Contratos</p>
+      <p class="mk-kpi-label">{% if can_access('contratos') %}Contratos{% else %}Base contratual{% endif %}</p>
       <p class="mk-kpi-value">{{ total_contracts }}</p>
       <div class="mk-kpi-detail">
         <p class="mk-kpi-detail-title">Base contratual</p>
@@ -130,6 +132,7 @@
         <h2 class="mk-panel-title">Acoes rapidas</h2>
       </div>
       <div class="mk-action-list">
+        {% if can_access('contratos') %}
         <a href="{{ url_for('web_contracts_new') }}" class="mk-action-item">
           <span class="mk-action-icon">
             <svg viewBox="0 0 24 24" fill="none">
@@ -142,6 +145,7 @@
             <small>Criar um novo cadastro contratual.</small>
           </span>
         </a>
+        {% endif %}
         <a href="{{ url_for('results_list') }}" class="mk-action-item">
           <span class="mk-action-icon">
             <svg viewBox="0 0 24 24" fill="none">

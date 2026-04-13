@@ -191,6 +191,25 @@ Pastas tratadas como runtime/local (nao codigo-fonte):
 
 `.gitignore` impede versionamento de caches e dados gerados, preservando `.gitkeep` quando aplicavel.
 
+## Conferencia Operacional (base oficial)
+
+Regra central implementada:
+
+- A declaracao da contratada **nao** compoe a base oficial.
+- A base oficial e composta **apenas** pela quantidade verificada pelo fiscal.
+
+Modelagem aplicada em `inspection_items`:
+
+- `quantidade_declarada`
+- `quantidade_verificada`
+- `quantidade_oficial` (sincronizada automaticamente com `quantidade_verificada`)
+- `divergencia_absoluta`, `divergencia_percentual`, `divergencia_status`
+
+Protecao estrutural:
+
+- `CHECK (quantidade_oficial = quantidade_verificada)`
+- Trigger de sincronizacao `trg_inspection_items_sync_oficial`
+
 ## Camada BI (MVP)
 
 O sistema agora cria automaticamente views de BI (somente leitura) no startup do schema:
@@ -201,8 +220,11 @@ O sistema agora cria automaticamente views de BI (somente leitura) no startup do
 - `vw_bi_ranking_servico`
 - `vw_bi_qualidade_mapeamento`
 - `vw_bi_ocorrencias_tipo`
+- `vw_conferencia_base_oficial`
+- `vw_conferencia_comparativo`
+- `vw_conferencia_divergencias`
 
-Essas views usam as tabelas `management_execucao` e `management_ocorrencias` e servem como base para Metabase/Power BI sem alterar o pipeline.
+Essas views usam as tabelas `management_*` e `inspections/inspection_items` e servem como base para Metabase/Power BI sem alterar o pipeline.
 
 ### Consultas rapidas (SQL)
 

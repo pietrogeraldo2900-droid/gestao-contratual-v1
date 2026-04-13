@@ -47,6 +47,7 @@ class InspectionRepository:
         *,
         limit: int = 200,
         contract_id: int | None = None,
+        contract_ids: list[int] | None = None,
         status: str = "",
         date_from: date | None = None,
         date_to: date | None = None,
@@ -58,6 +59,21 @@ class InspectionRepository:
         if contract_id:
             clauses.append("i.contract_id = %s")
             params.append(int(contract_id))
+        elif contract_ids is not None:
+            normalized_contract_ids: list[int] = []
+            for value in list(contract_ids or []):
+                try:
+                    contract_value = int(value)
+                except Exception:
+                    continue
+                if contract_value > 0:
+                    normalized_contract_ids.append(contract_value)
+            if not normalized_contract_ids:
+                clauses.append("1 = 0")
+            else:
+                placeholders = ", ".join(["%s"] * len(normalized_contract_ids))
+                clauses.append(f"i.contract_id IN ({placeholders})")
+                params.extend(normalized_contract_ids)
         if status:
             clauses.append("LOWER(i.status) = %s")
             params.append(str(status or "").strip().lower())
@@ -121,6 +137,7 @@ class InspectionRepository:
         self,
         *,
         contract_id: int | None = None,
+        contract_ids: list[int] | None = None,
         status: str = "",
     ) -> int:
         clauses = []
@@ -128,6 +145,21 @@ class InspectionRepository:
         if contract_id:
             clauses.append("contract_id = %s")
             params.append(int(contract_id))
+        elif contract_ids is not None:
+            normalized_contract_ids: list[int] = []
+            for value in list(contract_ids or []):
+                try:
+                    contract_value = int(value)
+                except Exception:
+                    continue
+                if contract_value > 0:
+                    normalized_contract_ids.append(contract_value)
+            if not normalized_contract_ids:
+                clauses.append("1 = 0")
+            else:
+                placeholders = ", ".join(["%s"] * len(normalized_contract_ids))
+                clauses.append(f"contract_id IN ({placeholders})")
+                params.extend(normalized_contract_ids)
         if status:
             clauses.append("LOWER(status) = %s")
             params.append(str(status or "").strip().lower())
@@ -197,6 +229,13 @@ class InspectionRepository:
             responsavel_ajuste,
             valor_multa,
             evidencia_ref,
+            quantidade_declarada,
+            quantidade_verificada,
+            quantidade_oficial,
+            verificado_informado,
+            divergencia_absoluta,
+            divergencia_percentual,
+            divergencia_status,
             created_at,
             updated_at
         FROM inspection_items
@@ -270,9 +309,16 @@ class InspectionRepository:
             prazo_ajuste,
             responsavel_ajuste,
             valor_multa,
-            evidencia_ref
+            evidencia_ref,
+            quantidade_declarada,
+            quantidade_verificada,
+            quantidade_oficial,
+            verificado_informado,
+            divergencia_absoluta,
+            divergencia_percentual,
+            divergencia_status
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
 
         with self._db.connection() as conn:
@@ -324,6 +370,13 @@ class InspectionRepository:
                                 str((item or {}).get("responsavel_ajuste", "") or "").strip(),
                                 _ensure_decimal((item or {}).get("valor_multa")),
                                 str((item or {}).get("evidencia_ref", "") or "").strip(),
+                                _ensure_decimal((item or {}).get("quantidade_declarada")),
+                                _ensure_decimal((item or {}).get("quantidade_verificada")),
+                                _ensure_decimal((item or {}).get("quantidade_oficial")),
+                                bool((item or {}).get("verificado_informado")),
+                                _ensure_decimal((item or {}).get("divergencia_absoluta")),
+                                _ensure_decimal((item or {}).get("divergencia_percentual")),
+                                str((item or {}).get("divergencia_status", "sem_divergencia") or "sem_divergencia").strip().lower(),
                             ),
                         )
                 conn.commit()
@@ -349,3 +402,11 @@ class InspectionRepository:
             conn.commit()
         return changed > 0
 
+    def delete_inspection(self, inspection_id: int) -> bool:
+        sql = "DELETE FROM inspections WHERE id = %s"
+        with self._db.connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql, (int(inspection_id),))
+                changed = int(getattr(cur, "rowcount", 0) or 0)
+            conn.commit()
+        return changed > 0

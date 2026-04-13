@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-hero compact">
+  <div class="page-hero-grid">
+    <div>
+      <div class="hero-eyebrow">Conferencia em campo</div>
+      <h2 class="hero-title">{{ inspection.titulo or ('Ficha #' ~ inspection.id) }}</h2>
+      <p class="hero-subtitle">{{ inspection.contract_label or 'Sem contrato' }} - {{ inspection.data_vistoria or '-' }}</p>
+    </div>
+    <div class="hero-stat-grid">
+      <div class="hero-stat">
+        <div class="hero-stat-label">Itens</div>
+        <div class="hero-stat-value">{{ planned_items|length }}</div>
+        <div class="hero-stat-subtitle">Planejados</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">Campo</div>
+        <div class="hero-stat-value">{{ field_items|length }}</div>
+        <div class="hero-stat-subtitle">Encontrados no local</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% if readonly %}
+  <div class="notice info">Esta conferencia ja foi concluida. O conteudo esta em modo leitura.</div>
+{% endif %}
+
+<form method="post" action="{{ url_for('conferencia_salvar_rascunho', inspection_id=inspection.id) }}" enctype="multipart/form-data">
+  <section class="section">
+    <h3>Itens planejados</h3>
+    <div class="body conference-mobile-form">
+      {% if planned_items %}
+        {% for item in planned_items %}
+          <article class="conference-item-card">
+            <div class="conference-item-head">
+              <div>
+                <h4>{{ item.item_titulo or ('Item #' ~ loop.index) }}</h4>
+                <p>{{ item.area or 'Area nao informada' }}</p>
+              </div>
+              <span class="badge info">Declarada: {{ item.quantidade_declarada or '0' }}</span>
+            </div>
+            {% if item.descricao %}
+              <p class="conference-item-desc">{{ item.descricao }}</p>
+            {% endif %}
+            <input type="hidden" name="evidencia_existing_{{ item.inspection_item_id }}" value="{{ item.evidencia_ref or '' }}">
+            <div class="conference-inline-grid">
+              <div class="field">
+                <label>Qtd verificada</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  name="qtd_{{ item.inspection_item_id }}"
+                  data-qty-input
+                  data-item-id="{{ item.inspection_item_id }}"
+                  value="{{ item.quantidade_verificada or '' }}"
+                  {% if readonly %}disabled{% endif %}
+                >
+              </div>
+              <div class="field">
+                <label>Status</label>
+                <select name="status_{{ item.inspection_item_id }}" data-status-input data-item-id="{{ item.inspection_item_id }}" {% if readonly %}disabled{% endif %}>
+                  <option value="pendente" {% if item.status == 'pendente' %}selected{% endif %}>pendente</option>
+                  <option value="conforme" {% if item.status == 'conforme' %}selected{% endif %}>conforme</option>
+                  <option value="nao_conforme" {% if item.status == 'nao_conforme' %}selected{% endif %}>nao_conforme</option>
+                  <option value="observacao" {% if item.status == 'observacao' %}selected{% endif %}>observacao</option>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label>Observacao tecnica</label>
+              <textarea name="obs_{{ item.inspection_item_id }}" {% if readonly %}disabled{% endif %}>{{ item.observacao_tecnica or '' }}</textarea>
+            </div>
+            <div class="field">
+              <label>Local verificado</label>
+              <input type="text" name="local_{{ item.inspection_item_id }}" value="{{ item.local_verificado or '' }}" {% if readonly %}disabled{% endif %}>
+            </div>
+            <div class="field">
+              <label>Evidencia (JPG, PNG, WEBP ou PDF)</label>
+              <input type="file" name="evidencia_file_{{ item.inspection_item_id }}" accept="image/*,.pdf" capture="environment" {% if readonly %}disabled{% endif %}>
+              {% if item.evidencia_ref %}
+                <div class="muted break-all">{{ item.evidencia_ref }}</div>
+              {% endif %}
+            </div>
+          </article>
+        {% endfor %}
+      {% else %}
+        <p class="muted">Nenhum item planejado encontrado para conferencia.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="section">
+    <h3>Itens encontrados em campo</h3>
+    <div class="body">
+      {% if field_items %}
+        <div class="conference-list compact">
+          {% for item in field_items %}
+            <article class="conference-card">
+              <div class="conference-card-head">
+                <div>
+                  <h4 class="conference-card-title">{{ item.item_titulo or ('Item #' ~ loop.index) }}</h4>
+                  <p class="conference-card-subtitle">{{ item.area or 'Area nao informada' }}</p>
+                </div>
+                <span class="badge warning">{{ item.status or 'observacao' }}</span>
+              </div>
+              <div class="conference-meta">
+                <span>Qtd verificada: {{ item.quantidade_verificada or '0' }}</span>
+                <span>Local: {{ item.local_verificado or '-' }}</span>
+              </div>
+              {% if item.observacao_tecnica %}
+                <p class="conference-item-desc">{{ item.observacao_tecnica }}</p>
+              {% endif %}
+              {% if item.evidencia_ref %}
+                <p class="muted break-all">{{ item.evidencia_ref }}</p>
+              {% endif %}
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="muted">Nenhum item adicional encontrado em campo ate o momento.</p>
+      {% endif %}
+      <div class="actions">
+        <a href="{{ url_for('conferencia_item_campo_new', inspection_id=inspection.id) }}">
+          <button type="button" class="secondary" {% if readonly %}disabled{% endif %}>Adicionar item encontrado em campo</button>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h3>Registro tecnico da sessao</h3>
+    <div class="body">
+      <div class="field">
+        <label>Observacao tecnica geral</label>
+        <textarea name="technical_notes" {% if readonly %}disabled{% endif %}>{{ session.technical_notes or '' }}</textarea>
+      </div>
+      <div class="field">
+        <label>Local verificado geral</label>
+        <input type="text" name="location_verified" value="{{ session.location_verified or '' }}" {% if readonly %}disabled{% endif %}>
+      </div>
+    </div>
+  </section>
+
+  <div class="actions sticky-actions">
+    {% if not readonly %}
+      <button type="submit" name="next_action" value="rascunho">Salvar rascunho</button>
+      <button type="submit" class="secondary" name="next_action" value="resumo">Salvar e ir para resumo</button>
+    {% endif %}
+    <a href="{{ url_for('conferencia_resumo', inspection_id=inspection.id) }}"><button type="button" class="secondary">Resumo final</button></a>
+    <a href="{{ url_for('conferencia_ficha_detail', inspection_id=inspection.id) }}"><button type="button" class="secondary">Voltar ao detalhe</button></a>
+  </div>
+</form>
+{% if not readonly %}
+<script>
+  (() => {
+    const syncQtyRequirement = () => {
+      document.querySelectorAll('[data-status-input]').forEach((statusInput) => {
+        const itemId = statusInput.getAttribute('data-item-id');
+        const qtyInput = document.querySelector(`[data-qty-input][data-item-id="${itemId}"]`);
+        if (!qtyInput) return;
+        qtyInput.required = (statusInput.value || '').trim().toLowerCase() !== 'pendente';
+      });
+    };
+    document.querySelectorAll('[data-status-input]').forEach((statusInput) => {
+      statusInput.addEventListener('change', syncQtyRequirement);
+    });
+    syncQtyRequirement();
+  })();
+</script>
+{% endif %}
+{% endblock %}

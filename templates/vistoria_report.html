@@ -1,16 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="section">
-  <h3>Relatório de vistoria #{{ inspection.id }}</h3>
+  <h3>Relatorio de vistoria #{{ inspection.id }}</h3>
   <div class="body">
-    <p class="muted">Documento de leitura rápida para validação em campo e acompanhamento contratual.</p>
+    <p class="muted">Documento de leitura rapida para validacao em campo e acompanhamento contratual.</p>
+    <p class="muted">Base oficial protegida: somente o valor verificado pelo fiscal compoe o consolidado oficial.</p>
     <div class="grid-2">
-      <div class="field"><label>Título</label><input value="{{ inspection.titulo or '-' }}" disabled></div>
+      <div class="field"><label>Titulo</label><input value="{{ inspection.titulo or '-' }}" disabled></div>
       <div class="field"><label>Data</label><input value="{{ inspection.data_vistoria or '-' }}" disabled></div>
       <div class="field"><label>Contrato</label><input value="{{ inspection.contract_label or '-' }}" disabled></div>
       <div class="field"><label>Status</label><input value="{{ inspection.status or '-' }}" disabled></div>
-      <div class="field"><label>Núcleo</label><input value="{{ inspection.nucleo or '-' }}" disabled></div>
-      <div class="field"><label>Município</label><input value="{{ inspection.municipio or '-' }}" disabled></div>
+      <div class="field"><label>Nucleo</label><input value="{{ inspection.nucleo or '-' }}" disabled></div>
+      <div class="field"><label>Municipio</label><input value="{{ inspection.municipio or '-' }}" disabled></div>
       <div class="field"><label>Equipe</label><input value="{{ inspection.equipe or '-' }}" disabled></div>
       <div class="field"><label>Resultado</label><input value="{{ inspection.resultado or '-' }}" disabled></div>
     </div>
@@ -19,7 +20,7 @@
       <input value="{{ inspection.local_vistoria or '-' }}" disabled>
     </div>
     <div class="field">
-      <label>Observações</label>
+      <label>Observacoes</label>
       <textarea disabled>{{ inspection.observacoes or '-' }}</textarea>
     </div>
   </div>
@@ -34,12 +35,18 @@
           <thead>
             <tr>
               <th>#</th>
-              <th>Área</th>
+              <th>Area</th>
               <th>Item</th>
               <th>Status</th>
               <th>Severidade</th>
+              <th>Qtd declarada</th>
+              <th>Qtd verificada</th>
+              <th>Qtd oficial</th>
+              <th>Divergencia abs.</th>
+              <th>Divergencia %</th>
+              <th>Classificacao</th>
               <th>Prazo</th>
-              <th>Responsável</th>
+              <th>Responsavel</th>
               <th>Multa</th>
             </tr>
           </thead>
@@ -54,6 +61,12 @@
                 </td>
                 <td>{{ item.status or '-' }}</td>
                 <td>{{ item.severidade or '-' }}</td>
+                <td>{{ item.quantidade_declarada or '0' }}</td>
+                <td>{{ item.quantidade_verificada or '0' }}</td>
+                <td>{{ item.quantidade_oficial or '0' }}</td>
+                <td>{{ item.divergencia_absoluta or '0' }}</td>
+                <td>{{ item.divergencia_percentual or '0' }}</td>
+                <td>{{ item.divergencia_status or '-' }}</td>
                 <td>{{ item.prazo_ajuste or '-' }}</td>
                 <td>{{ item.responsavel_ajuste or '-' }}</td>
                 <td>R$ {{ item.valor_multa or '0' }}</td>
@@ -73,4 +86,3 @@
   <a href="{{ url_for('vistorias_detail', inspection_id=inspection.id) }}"><button type="button" class="secondary">Voltar</button></a>
 </div>
 {% endblock %}
-

@@ -39,6 +39,16 @@ def _parse_int(value: Any) -> int:
         return 0
 
 
+def _parse_optional_int(value: Any) -> int | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        return int(text)
+    except Exception:
+        return None
+
+
 def _parse_decimal(value: Any) -> Decimal:
     if isinstance(value, Decimal):
         return value
@@ -55,48 +65,38 @@ def _parse_bool(value: Any) -> bool:
     if isinstance(value, bool):
         return value
     text = str(value or "").strip().lower()
-    if text in {"1", "true", "t", "yes", "y", "sim", "s"}:
-        return True
-    if text in {"0", "false", "f", "no", "n", "nao"}:
-        return False
-    return False
+    return text in {"1", "true", "on", "yes", "sim", "s"}
 
 
 def _fmt_date(value: date | None) -> str:
-    if not value:
+    if value is None:
         return ""
     return value.isoformat()
 
 
 @dataclass(frozen=True)
-class Inspection:
+class DailyExecutionDeclaration:
     id: int
     contract_id: int | None
     contract_label: str
-    titulo: str
-    data_vistoria: date | None
+    declaration_date: date | None
     periodo: str
     nucleo: str
     municipio: str
-    local_vistoria: str
+    logradouro: str
     equipe: str
-    fiscal_nome: str
-    fiscal_contato: str
     responsavel_nome: str
     responsavel_contato: str
-    status: str
-    prioridade: str
-    resultado: str
-    score_geral: Decimal
     observacoes: str
+    is_official_base: bool
+    generated_inspection_id: int | None
     created_by: int | None
     created_at: datetime
     updated_at: datetime
 
     @classmethod
-    def from_row(cls, row: dict[str, Any]) -> "Inspection":
-        contract_id_raw = row.get("contract_id")
-        contract_id = _parse_int(contract_id_raw) if str(contract_id_raw or "").strip() else None
+    def from_row(cls, row: dict[str, Any]) -> "DailyExecutionDeclaration":
+        contract_id = _parse_optional_int(row.get("contract_id"))
         numero = str(row.get("numero_contrato", "") or "").strip()
         nome = str(row.get("nome_contrato", "") or "").strip()
         if numero and nome:
@@ -108,30 +108,22 @@ class Inspection:
         else:
             contract_label = ""
 
-        created_by_raw = row.get("created_by")
-        created_by = _parse_int(created_by_raw) if str(created_by_raw or "").strip() else None
-
         return cls(
             id=_parse_int(row.get("id")),
             contract_id=contract_id,
             contract_label=contract_label,
-            titulo=str(row.get("titulo", "") or "").strip(),
-            data_vistoria=_parse_date(row.get("data_vistoria")),
+            declaration_date=_parse_date(row.get("declaration_date")),
             periodo=str(row.get("periodo", "") or "").strip(),
             nucleo=str(row.get("nucleo", "") or "").strip(),
             municipio=str(row.get("municipio", "") or "").strip(),
-            local_vistoria=str(row.get("local_vistoria", "") or "").strip(),
+            logradouro=str(row.get("logradouro", "") or "").strip(),
             equipe=str(row.get("equipe", "") or "").strip(),
-            fiscal_nome=str(row.get("fiscal_nome", "") or "").strip(),
-            fiscal_contato=str(row.get("fiscal_contato", "") or "").strip(),
             responsavel_nome=str(row.get("responsavel_nome", "") or "").strip(),
             responsavel_contato=str(row.get("responsavel_contato", "") or "").strip(),
-            status=str(row.get("status", "") or "").strip(),
-            prioridade=str(row.get("prioridade", "") or "").strip(),
-            resultado=str(row.get("resultado", "") or "").strip(),
-            score_geral=_parse_decimal(row.get("score_geral")),
             observacoes=str(row.get("observacoes", "") or "").strip(),
-            created_by=created_by,
+            is_official_base=_parse_bool(row.get("is_official_base")),
+            generated_inspection_id=_parse_optional_int(row.get("generated_inspection_id")),
+            created_by=_parse_optional_int(row.get("created_by")),
             created_at=_parse_datetime(row.get("created_at")),
             updated_at=_parse_datetime(row.get("updated_at")),
         )
@@ -141,22 +133,17 @@ class Inspection:
             "id": self.id,
             "contract_id": self.contract_id,
             "contract_label": self.contract_label,
-            "titulo": self.titulo,
-            "data_vistoria": _fmt_date(self.data_vistoria),
+            "declaration_date": _fmt_date(self.declaration_date),
             "periodo": self.periodo,
             "nucleo": self.nucleo,
             "municipio": self.municipio,
-            "local_vistoria": self.local_vistoria,
+            "logradouro": self.logradouro,
             "equipe": self.equipe,
-            "fiscal_nome": self.fiscal_nome,
-            "fiscal_contato": self.fiscal_contato,
             "responsavel_nome": self.responsavel_nome,
             "responsavel_contato": self.responsavel_contato,
-            "status": self.status,
-            "prioridade": self.prioridade,
-            "resultado": self.resultado,
-            "score_geral": str(self.score_geral),
             "observacoes": self.observacoes,
+            "is_official_base": self.is_official_base,
+            "generated_inspection_id": self.generated_inspection_id,
             "created_by": self.created_by,
             "created_at": self.created_at.isoformat() if self.created_at != datetime.min else "",
             "updated_at": self.updated_at.isoformat() if self.updated_at != datetime.min else "",
@@ -164,51 +151,35 @@ class Inspection:
 
 
 @dataclass(frozen=True)
-class InspectionItem:
+class DailyExecutionDeclarationItem:
     id: int
-    inspection_id: int
+    declaration_id: int
     ordem: int
-    area: str
-    item_titulo: str
+    servico_oficial: str
+    servico_label: str
+    categoria: str
+    quantidade: Decimal
+    unidade: str
+    local_execucao: str
     descricao: str
-    status: str
-    severidade: str
-    prazo_ajuste: date | None
-    responsavel_ajuste: str
-    valor_multa: Decimal
-    evidencia_ref: str
-    quantidade_declarada: Decimal
-    quantidade_verificada: Decimal
-    quantidade_oficial: Decimal
-    verificado_informado: bool
-    divergencia_absoluta: Decimal
-    divergencia_percentual: Decimal
-    divergencia_status: str
+    item_status: str
     created_at: datetime
     updated_at: datetime
 
     @classmethod
-    def from_row(cls, row: dict[str, Any]) -> "InspectionItem":
+    def from_row(cls, row: dict[str, Any]) -> "DailyExecutionDeclarationItem":
         return cls(
             id=_parse_int(row.get("id")),
-            inspection_id=_parse_int(row.get("inspection_id")),
+            declaration_id=_parse_int(row.get("declaration_id")),
             ordem=_parse_int(row.get("ordem")),
-            area=str(row.get("area", "") or "").strip(),
-            item_titulo=str(row.get("item_titulo", "") or "").strip(),
+            servico_oficial=str(row.get("servico_oficial", "") or "").strip(),
+            servico_label=str(row.get("servico_label", "") or "").strip(),
+            categoria=str(row.get("categoria", "") or "").strip(),
+            quantidade=_parse_decimal(row.get("quantidade")),
+            unidade=str(row.get("unidade", "") or "").strip(),
+            local_execucao=str(row.get("local_execucao", "") or "").strip(),
             descricao=str(row.get("descricao", "") or "").strip(),
-            status=str(row.get("status", "") or "").strip(),
-            severidade=str(row.get("severidade", "") or "").strip(),
-            prazo_ajuste=_parse_date(row.get("prazo_ajuste")),
-            responsavel_ajuste=str(row.get("responsavel_ajuste", "") or "").strip(),
-            valor_multa=_parse_decimal(row.get("valor_multa")),
-            evidencia_ref=str(row.get("evidencia_ref", "") or "").strip(),
-            quantidade_declarada=_parse_decimal(row.get("quantidade_declarada")),
-            quantidade_verificada=_parse_decimal(row.get("quantidade_verificada")),
-            quantidade_oficial=_parse_decimal(row.get("quantidade_oficial")),
-            verificado_informado=_parse_bool(row.get("verificado_informado")),
-            divergencia_absoluta=_parse_decimal(row.get("divergencia_absoluta")),
-            divergencia_percentual=_parse_decimal(row.get("divergencia_percentual")),
-            divergencia_status=str(row.get("divergencia_status", "sem_divergencia") or "sem_divergencia").strip(),
+            item_status=str(row.get("item_status", "") or "").strip(),
             created_at=_parse_datetime(row.get("created_at")),
             updated_at=_parse_datetime(row.get("updated_at")),
         )
@@ -216,24 +187,19 @@ class InspectionItem:
     def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
-            "inspection_id": self.inspection_id,
+            "declaration_id": self.declaration_id,
             "ordem": self.ordem,
-            "area": self.area,
-            "item_titulo": self.item_titulo,
+            "servico_oficial": self.servico_oficial,
+            "servico_label": self.servico_label,
+            "categoria": self.categoria,
+            "quantidade": str(self.quantidade),
+            "unidade": self.unidade,
+            "local_execucao": self.local_execucao,
             "descricao": self.descricao,
-            "status": self.status,
-            "severidade": self.severidade,
-            "prazo_ajuste": _fmt_date(self.prazo_ajuste),
-            "responsavel_ajuste": self.responsavel_ajuste,
-            "valor_multa": str(self.valor_multa),
-            "evidencia_ref": self.evidencia_ref,
-            "quantidade_declarada": str(self.quantidade_declarada),
-            "quantidade_verificada": str(self.quantidade_verificada),
-            "quantidade_oficial": str(self.quantidade_oficial),
-            "verificado_informado": self.verificado_informado,
-            "divergencia_absoluta": str(self.divergencia_absoluta),
-            "divergencia_percentual": str(self.divergencia_percentual),
-            "divergencia_status": self.divergencia_status,
+            "item_status": self.item_status,
             "created_at": self.created_at.isoformat() if self.created_at != datetime.min else "",
             "updated_at": self.updated_at.isoformat() if self.updated_at != datetime.min else "",
         }
+
+
+__all__ = ["DailyExecutionDeclaration", "DailyExecutionDeclarationItem"]

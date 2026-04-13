@@ -2,38 +2,113 @@
   "version": "2.0",
   "nucleos": [
     {
+      "nucleo": "Amcaps",
+      "status": "ativo",
+      "aliases": [],
+      "municipio": "Carapicuíba",
+      "created_at": "2026-04-06 18:37:24",
+      "updated_at": "2026-04-06 18:37:24",
+      "observacoes": "",
+      "equipes_padrao": [],
+      "logradouros_padrao": [
+        "Rua Amcaps"
+      ],
+      "logradouro_principal": "Rua Amcaps"
+    },
+    {
+      "nucleo": "Ayrosa",
+      "status": "ativo",
+      "aliases": [],
+      "municipio": "Osasco",
+      "created_at": "2026-04-08 18:33:32",
+      "updated_at": "2026-04-08 18:33:32",
+      "observacoes": "",
+      "equipes_padrao": [],
+      "logradouros_padrao": [],
+      "logradouro_principal": ""
+    },
+    {
+      "nucleo": "Baronesa",
+      "status": "ativo",
+      "aliases": [],
+      "municipio": "Osasco",
+      "created_at": "2026-04-06 15:24:23",
+      "updated_at": "2026-04-06 15:24:23",
+      "observacoes": "",
+      "equipes_padrao": [],
+      "logradouros_padrao": [],
+      "logradouro_principal": ""
+    },
+    {
+      "nucleo": "Bonança",
+      "status": "ativo",
+      "aliases": [],
+      "municipio": "Osasco",
+      "created_at": "2026-04-06 12:54:56",
+      "updated_at": "2026-04-06 15:22:47",
+      "observacoes": "",
+      "equipes_padrao": [],
+      "logradouros_padrao": [
+        "LOURENÇO BELOLI"
+      ],
+      "logradouro_principal": "LOURENÇO BELOLI"
+    },
+    {
       "nucleo": "Cerejas",
-      "municipio": "Jandira",
       "status": "ativo",
       "aliases": [
         "Travessa das Cerejas"
       ],
+      "municipio": "Jandira",
+      "created_at": "2026-03-16 00:00:00",
+      "updated_at": "2026-03-16 00:00:00",
       "observacoes": "",
-      "logradouro_principal": "Travessa das Cerejas",
+      "equipes_padrao": [],
       "logradouros_padrao": [
         "Travessa das Cerejas"
       ],
+      "logradouro_principal": "Travessa das Cerejas"
+    },
+    {
+      "nucleo": "Jardim Munhoz",
+      "status": "ativo",
+      "aliases": [],
+      "municipio": "Osasco",
+      "created_at": "2026-04-08 18:34:12",
+      "updated_at": "2026-04-08 18:34:12",
+      "observacoes": "",
       "equipes_padrao": [],
-      "created_at": "2026-03-16 00:00:00",
-      "updated_at": "2026-03-16 00:00:00"
+      "logradouros_padrao": [],
+      "logradouro_principal": ""
+    },
+    {
+      "nucleo": "Jardim Olinda",
+      "status": "ativo",
+      "aliases": [],
+      "municipio": "Osasco",
+      "created_at": "2026-04-06 15:22:22",
+      "updated_at": "2026-04-06 15:22:22",
+      "observacoes": "",
+      "equipes_padrao": [],
+      "logradouros_padrao": [],
+      "logradouro_principal": ""
     },
     {
       "nucleo": "José Bonifácio",
-      "municipio": "Jandira",
       "status": "ativo",
       "aliases": [
         "Jose Bonifacio"
       ],
-      "observacoes": "",
-      "logradouro_principal": "",
-      "logradouros_padrao": [],
-      "equipes_padrao": [],
+      "municipio": "Jandira",
       "created_at": "2026-03-16 00:00:00",
-      "updated_at": "2026-03-16 21:25:16"
+      "updated_at": "2026-03-16 21:25:16",
+      "observacoes": "",
+      "equipes_padrao": [],
+      "logradouros_padrao": [],
+      "logradouro_principal": ""
     },
     {
       "nucleo": "Mississipi",
-      "municipio": "Barueri",
       "status": "ativo",
       "aliases": [
         "Mississippi",
@@ -44,68 +119,107 @@
         "Viela 1",
         "Viela 7"
       ],
-      "observacoes": "",
-      "logradouro_principal": "",
-      "logradouros_padrao": [],
-      "equipes_padrao": [],
+      "municipio": "Barueri",
       "created_at": "2026-03-16 00:00:00",
-      "updated_at": "2026-03-16 21:40:41"
+      "updated_at": "2026-03-16 21:40:41",
+      "observacoes": "",
+      "equipes_padrao": [],
+      "logradouros_padrao": [],
+      "logradouro_principal": ""
+    },
+    {
+      "nucleo": "Morro do Sabão",
+      "status": "ativo",
+      "aliases": [],
+      "municipio": "Osasco",
+      "created_at": "2026-04-08 18:34:43",
+      "updated_at": "2026-04-08 18:34:43",
+      "observacoes": "",
+      "equipes_padrao": [],
+      "logradouros_padrao": [],
+      "logradouro_principal": ""
     },
     {
       "nucleo": "Patrocínio",
-      "municipio": "Carapicuíba",
       "status": "ativo",
       "aliases": [
         "Patrocinio"
       ],
-      "observacoes": "",
-      "logradouro_principal": "",
-      "logradouros_padrao": [],
-      "equipes_padrao": [],
+      "municipio": "Carapicuíba",
       "created_at": "2026-03-16 00:00:00",
-      "updated_at": "2026-03-16 00:00:00"
+      "updated_at": "2026-03-16 00:00:00",
+      "observacoes": "",
+      "equipes_padrao": [],
+      "logradouros_padrao": [],
+      "logradouro_principal": ""
     },
     {
       "nucleo": "Santa Terezinha",
-      "municipio": "Carapicuíba",
       "status": "ativo",
       "aliases": [
         "Santa Teresinha"
       ],
+      "municipio": "Carapicuíba",
+      "created_at": "2026-03-16 00:00:00",
+      "updated_at": "2026-03-16 00:00:00",
       "observacoes": "",
-      "logradouro_principal": "Av. Deputado Emílio Carlos",
+      "equipes_padrao": [],
       "logradouros_padrao": [
         "Av. Deputado Emílio Carlos"
       ],
-      "equipes_padrao": [],
-      "created_at": "2026-03-16 00:00:00",
-      "updated_at": "2026-03-16 00:00:00"
+      "logradouro_principal": "Av. Deputado Emílio Carlos"
     },
     {
       "nucleo": "Savoy",
-      "municipio": "Carapicuíba",
       "status": "ativo",
       "aliases": [],
+      "municipio": "Carapicuíba",
+      "created_at": "2026-03-18 13:50:09",
+      "updated_at": "2026-03-18 13:50:09",
       "observacoes": "",
-      "logradouro_principal": "Rua General Carneiro",
+      "equipes_padrao": [],
       "logradouros_padrao": [
         "Rua General Carneiro"
       ],
-      "equipes_padrao": [],
-      "created_at": "2026-03-18 13:50:09",
-      "updated_at": "2026-03-18 13:50:09"
+      "logradouro_principal": "Rua General Carneiro"
     },
     {
       "nucleo": "Vila Dirce",
-      "municipio": "Carapicuíba",
       "status": "inativo",
       "aliases": [],
-      "observacoes": "Confirmar municipio oficial antes de usar como referencia automatica.",
-      "logradouro_principal": "",
-      "logradouros_padrao": [],
-      "equipes_padrao": [],
+      "municipio": "Carapicuíba",
       "created_at": "2026-03-16 00:00:00",
-      "updated_at": "2026-03-16 21:25:31"
+      "updated_at": "2026-03-16 21:25:31",
+      "observacoes": "Confirmar municipio oficial antes de usar como referencia automatica.",
+      "equipes_padrao": [],
+      "logradouros_padrao": [],
+      "logradouro_principal": ""
+    },
+    {
+      "nucleo": "Vila Menck",
+      "status": "ativo",
+      "aliases": [],
+      "municipio": "Osasco",
+      "created_at": "2026-04-06 15:23:43",
+      "updated_at": "2026-04-06 15:23:43",
+      "observacoes": "",
+      "equipes_padrao": [],
+      "logradouros_padrao": [],
+      "logradouro_principal": ""
+    },
+    {
+      "nucleo": "Votupoca",
+      "status": "ativo",
+      "aliases": [],
+      "municipio": "Barueri",
+      "created_at": "2026-03-30 18:38:22",
+      "updated_at": "2026-03-30 18:38:22",
+      "observacoes": "",
+      "equipes_padrao": [],
+      "logradouros_padrao": [
+        "Viela G1"
+      ],
+      "logradouro_principal": "Viela G1"
     }
   ]
 }

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-hero compact">
+  <div class="page-hero-grid">
+    <div>
+      <div class="hero-eyebrow">Conferencia operacional</div>
+      <h2 class="hero-title">Fila do fiscal</h2>
+      <p class="hero-subtitle">Fichas pendentes vinculadas automaticamente aos contratos do fiscal logado.</p>
+    </div>
+    <div class="hero-stat-grid">
+      <div class="hero-stat">
+        <div class="hero-stat-label">Pendentes</div>
+        <div class="hero-stat-value">{{ stats.total or 0 }}</div>
+        <div class="hero-stat-subtitle">Aguardando conferencia</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% if error_message %}
+  <div class="notice warning">{{ error_message }}</div>
+{% endif %}
+
+<section class="section">
+  <h3>Fichas pendentes</h3>
+  <div class="body">
+    {% if rows %}
+      <div class="conference-list">
+        {% for row in rows %}
+          <article class="conference-card">
+            <div class="conference-card-head">
+              <div>
+                <h4 class="conference-card-title">{{ row.titulo or ('Ficha #' ~ row.id) }}</h4>
+                <p class="conference-card-subtitle">{{ row.contract_label or 'Sem contrato vinculado' }}</p>
+              </div>
+              <span class="badge info">{{ row.status or 'aberta' }}</span>
+            </div>
+            <div class="conference-meta">
+              <span>Data: {{ row.data_vistoria or '-' }}</span>
+              <span>Nucleo: {{ row.nucleo or '-' }}</span>
+              <span>Municipio: {{ row.municipio or '-' }}</span>
+              <span>Equipe: {{ row.equipe or '-' }}</span>
+            </div>
+            <div class="actions">
+              <a href="{{ url_for('conferencia_ficha_detail', inspection_id=row.id) }}"><button type="button">Abrir ficha</button></a>
+              <a href="{{ url_for('conferencia_campo', inspection_id=row.id) }}"><button type="button" class="secondary">Conferir em campo</button></a>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="muted">Nao ha fichas pendentes para este contrato no momento.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

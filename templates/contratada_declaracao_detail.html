@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-hero compact">
+  <div class="page-hero-grid">
+    <div>
+      <div class="hero-eyebrow">Conferencia operacional</div>
+      <h2 class="hero-title">Declaracao diaria #{{ declaration.id }}</h2>
+      <p class="hero-subtitle">
+        Registro de origem para conferencia. Nao integra a base oficial.
+      </p>
+    </div>
+    <div class="hero-stat-grid">
+      <div class="hero-stat">
+        <div class="hero-stat-label">Data</div>
+        <div class="hero-stat-value">{{ declaration.declaration_date or '-' }}</div>
+        <div class="hero-stat-subtitle">Referencia declarada</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">Ficha</div>
+        <div class="hero-stat-value">
+          {% if declaration.generated_inspection_id %}
+            #{{ declaration.generated_inspection_id }}
+          {% else %}
+            -
+          {% endif %}
+        </div>
+        <div class="hero-stat-subtitle">Conferencia gerada</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="actions">
+  <a href="{{ url_for('contratada_declaracoes_list') }}"><button type="button" class="secondary">Voltar</button></a>
+  {% if declaration.generated_inspection_id %}
+    <a href="{{ url_for('vistorias_detail', inspection_id=declaration.generated_inspection_id) }}"><button type="button">Abrir ficha vinculada</button></a>
+  {% endif %}
+</div>
+
+<section class="section">
+  <h3>Cabecalho declarado</h3>
+  <div class="body">
+    <div class="grid-2">
+      <div><strong>Contrato:</strong> {{ declaration.contract_label or '-' }}</div>
+      <div><strong>Periodo:</strong> {{ declaration.periodo or '-' }}</div>
+      <div><strong>Nucleo:</strong> {{ declaration.nucleo or '-' }}</div>
+      <div><strong>Municipio:</strong> {{ declaration.municipio or '-' }}</div>
+      <div><strong>Logradouro:</strong> {{ declaration.logradouro or '-' }}</div>
+      <div><strong>Equipe:</strong> {{ declaration.equipe or '-' }}</div>
+      <div><strong>Responsavel:</strong> {{ declaration.responsavel_nome or '-' }}</div>
+      <div><strong>Contato:</strong> {{ declaration.responsavel_contato or '-' }}</div>
+    </div>
+    {% if declaration.observacoes %}
+      <div class="field" style="margin-top:16px;">
+        <label>Observacoes</label>
+        <div class="notice info">{{ declaration.observacoes }}</div>
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+<section class="section">
+  <h3>Itens declarados</h3>
+  <div class="body">
+    {% if items %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Ordem</th>
+              <th>Servico oficial</th>
+              <th>Rotulo</th>
+              <th>Categoria</th>
+              <th>Quantidade</th>
+              <th>Unidade</th>
+              <th>Local</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items %}
+            <tr>
+              <td>{{ item.ordem }}</td>
+              <td>{{ item.servico_oficial or '-' }}</td>
+              <td>{{ item.servico_label or '-' }}</td>
+              <td>{{ item.categoria or '-' }}</td>
+              <td>{{ item.quantidade or '-' }}</td>
+              <td>{{ item.unidade or '-' }}</td>
+              <td>{{ item.local_execucao or '-' }}</td>
+              <td>{{ item.item_status or '-' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">Sem itens registrados.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

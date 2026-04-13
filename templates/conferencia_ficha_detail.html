@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-hero compact">
+  <div class="page-hero-grid">
+    <div>
+      <div class="hero-eyebrow">Ficha para conferencia</div>
+      <h2 class="hero-title">{{ inspection.titulo or ('Ficha #' ~ inspection.id) }}</h2>
+      <p class="hero-subtitle">{{ inspection.contract_label or 'Sem contrato' }} - {{ inspection.data_vistoria or '-' }}</p>
+    </div>
+    <div class="hero-stat-grid">
+      <div class="hero-stat">
+        <div class="hero-stat-label">Itens previstos</div>
+        <div class="hero-stat-value">{{ item_totals.total or 0 }}</div>
+        <div class="hero-stat-subtitle">Checklist planejado</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">Sessao</div>
+        <div class="hero-stat-value">{{ session.status or 'nova' }}</div>
+        <div class="hero-stat-subtitle">Estado da conferencia</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="actions">
+  {% if can_execute_conference %}
+    <a href="{{ url_for('conferencia_campo', inspection_id=inspection.id) }}"><button type="button">Abrir conferencia em campo</button></a>
+    <a href="{{ url_for('conferencia_pendentes') }}"><button type="button" class="secondary">Voltar a fila</button></a>
+  {% else %}
+    <a href="{{ url_for('vistorias_detail', inspection_id=inspection.id) }}"><button type="button" class="secondary">Voltar para vistoria</button></a>
+  {% endif %}
+</div>
+
+<section class="section">
+  <h3>Dados da ficha</h3>
+  <div class="body">
+    <div class="grid-2">
+      <div class="field"><label>Status</label><input value="{{ inspection.status or '-' }}" disabled></div>
+      <div class="field"><label>Prioridade</label><input value="{{ inspection.prioridade or '-' }}" disabled></div>
+      <div class="field"><label>Nucleo</label><input value="{{ inspection.nucleo or '-' }}" disabled></div>
+      <div class="field"><label>Municipio</label><input value="{{ inspection.municipio or '-' }}" disabled></div>
+      <div class="field"><label>Local vistoria</label><input value="{{ inspection.local_vistoria or '-' }}" disabled></div>
+      <div class="field"><label>Equipe</label><input value="{{ inspection.equipe or '-' }}" disabled></div>
+      <div class="field"><label>Fiscal</label><input value="{{ inspection.fiscal_nome or '-' }}" disabled></div>
+      <div class="field"><label>Contato fiscal</label><input value="{{ inspection.fiscal_contato or '-' }}" disabled></div>
+      <div class="field"><label>Responsavel local</label><input value="{{ inspection.responsavel_nome or '-' }}" disabled></div>
+      <div class="field"><label>Contato responsavel</label><input value="{{ inspection.responsavel_contato or '-' }}" disabled></div>
+    </div>
+    <div class="field">
+      <label>Observacoes da ficha</label>
+      <textarea disabled>{{ inspection.observacoes or '-' }}</textarea>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <h3>Checklist previsto</h3>
+  <div class="body">
+    {% if items %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Area</th>
+              <th>Item</th>
+              <th>Qtd declarada</th>
+              <th>Status atual</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items %}
+              <tr>
+                <td>{{ item.ordem or loop.index }}</td>
+                <td>{{ item.area or '-' }}</td>
+                <td>
+                  <strong>{{ item.item_titulo or '-' }}</strong>
+                  {% if item.descricao %}<div class="muted">{{ item.descricao }}</div>{% endif %}
+                </td>
+                <td>{{ item.quantidade_declarada or '0' }}</td>
+                <td>{{ item.status or 'pendente' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">Nao ha itens previstos nesta ficha.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

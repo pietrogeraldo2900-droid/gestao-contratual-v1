@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-hero compact">
+  <div class="page-hero-grid">
+    <div>
+      <div class="hero-eyebrow">Conferencia operacional</div>
+      <h2 class="hero-title">Resumo final da conferencia</h2>
+      <p class="hero-subtitle">{{ inspection.titulo or ('Ficha #' ~ inspection.id) }} - {{ inspection.contract_label or 'Sem contrato' }}</p>
+    </div>
+    <div class="hero-stat-grid">
+      <div class="hero-stat">
+        <div class="hero-stat-label">Resultado final</div>
+        <div class="hero-stat-value">{{ summary.resultado_final or 'pendente' }}</div>
+        <div class="hero-stat-subtitle">Calculado pela conferencia</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">Pronto para concluir</div>
+        <div class="hero-stat-value">{{ 'sim' if summary.ready_to_conclude else 'nao' }}</div>
+        <div class="hero-stat-subtitle">Todos os itens planejados conferidos</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="notice info">
+  Base oficial protegida: somente os resultados da conferencia do fiscal compoem a base oficial.
+</div>
+
+<section class="section">
+  <h3>Indicadores da sessao</h3>
+  <div class="body">
+    <div class="conference-summary-grid">
+      <article class="conference-summary-card">
+        <span class="conference-summary-label">Itens planejados</span>
+        <strong>{{ summary.planned_count or 0 }}</strong>
+      </article>
+      <article class="conference-summary-card">
+        <span class="conference-summary-label">Itens campo</span>
+        <strong>{{ summary.field_found_count or 0 }}</strong>
+      </article>
+      <article class="conference-summary-card">
+        <span class="conference-summary-label">Pendentes</span>
+        <strong>{{ summary.pending_count or 0 }}</strong>
+      </article>
+      <article class="conference-summary-card">
+        <span class="conference-summary-label">Nao conformes</span>
+        <strong>{{ summary.nao_conforme_count or 0 }}</strong>
+      </article>
+      <article class="conference-summary-card">
+        <span class="conference-summary-label">Volume declarado</span>
+        <strong>{{ summary.declared_total or '0' }}</strong>
+      </article>
+      <article class="conference-summary-card">
+        <span class="conference-summary-label">Volume verificado</span>
+        <strong>{{ summary.verified_total or '0' }}</strong>
+      </article>
+    </div>
+    <p class="muted">Delta total (verificado - declarado): {{ summary.delta_total or '0' }}</p>
+  </div>
+</section>
+
+<section class="section">
+  <h3>Itens consolidados</h3>
+  <div class="body">
+    {% set all_items = planned_items + field_items %}
+    {% if all_items %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Origem</th>
+              <th>Area</th>
+              <th>Item</th>
+              <th>Status</th>
+              <th>Qtd declarada</th>
+              <th>Qtd verificada</th>
+              <th>Local</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in planned_items %}
+              <tr>
+                <td>{{ item.ordem or loop.index }}</td>
+                <td><span class="badge info">planejado</span></td>
+                <td>{{ item.area or '-' }}</td>
+                <td>{{ item.item_titulo or '-' }}</td>
+                <td>{{ item.status or 'pendente' }}</td>
+                <td>{{ item.quantidade_declarada or '0' }}</td>
+                <td>{{ item.quantidade_verificada or '0' }}</td>
+                <td>{{ item.local_verificado or '-' }}</td>
+              </tr>
+            {% endfor %}
+            {% for item in field_items %}
+              <tr>
+                <td>{{ item.ordem or loop.index }}</td>
+                <td><span class="badge warning">campo</span></td>
+                <td>{{ item.area or '-' }}</td>
+                <td>{{ item.item_titulo or '-' }}</td>
+                <td>{{ item.status or 'observacao' }}</td>
+                <td>0</td>
+                <td>{{ item.quantidade_verificada or '0' }}</td>
+                <td>{{ item.local_verificado or '-' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">Nenhum item disponivel para resumo.</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="section">
+  <h3>Conclusao da conferencia</h3>
+  <div class="body">
+    {% set is_done = (session.status or '') == 'concluida' %}
+    {% if is_done %}
+      <div class="notice success">Conferencia concluida e publicada na base oficial.</div>
+    {% endif %}
+    <form method="post" action="{{ url_for('conferencia_concluir', inspection_id=inspection.id) }}">
+      <div class="field">
+        <label>Observacao tecnica final</label>
+        <textarea name="technical_notes" {% if is_done %}disabled{% endif %}>{{ session.technical_notes or '' }}</textarea>
+      </div>
+      <div class="field">
+        <label>Local verificado final</label>
+        <input type="text" name="location_verified" value="{{ session.location_verified or '' }}" {% if is_done %}disabled{% endif %}>
+      </div>
+      <div class="actions">
+        <button type="submit" {% if is_done or not summary.ready_to_conclude %}disabled{% endif %}>Concluir e publicar na base oficial</button>
+        <a href="{{ url_for('conferencia_campo', inspection_id=inspection.id) }}"><button type="button" class="secondary">Voltar para conferencia</button></a>
+        <a href="{{ url_for('conferencia_pendentes') }}"><button type="button" class="secondary">Voltar para fila</button></a>
+      </div>
+      {% if not summary.ready_to_conclude and not is_done %}
+        <p class="muted">Finalize os status dos itens planejados antes de concluir.</p>
+      {% endif %}
+    </form>
+  </div>
+</section>
+{% endblock %}

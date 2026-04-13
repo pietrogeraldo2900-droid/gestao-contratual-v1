@@ -47,11 +47,24 @@ class UserService:
         created_at = user_row.get("created_at")
         approved_at = user_row.get("approved_at")
         last_login_at = user_row.get("last_login_at")
+        authorized_contract_ids: list[int] = []
+        raw_contract_ids = user_row.get("authorized_contract_ids", user_row.get("contract_ids", []))
+        if isinstance(raw_contract_ids, (list, tuple, set)):
+            for item in raw_contract_ids:
+                try:
+                    contract_id = int(item)
+                except Exception:
+                    continue
+                if contract_id > 0:
+                    authorized_contract_ids.append(contract_id)
         return {
             "id": int(user_row.get("id", 0) or 0),
             "email": str(user_row.get("email", "") or ""),
             "role": str(user_row.get("role", "") or ""),
             "status": str(user_row.get("status", "") or ""),
+            "contractor_name": str(user_row.get("contractor_name", "") or "").strip(),
+            "authorized_contract_ids": authorized_contract_ids,
+            "contract_ids": authorized_contract_ids,
             "approved_by": user_row.get("approved_by"),
             "approved_at": approved_at.isoformat() if isinstance(approved_at, datetime) else str(approved_at or ""),
             "last_login_at": last_login_at.isoformat()

@@ -2930,4 +2930,130 @@
       min-width: 110px;
       white-space: nowrap;
     }
+
+/* conferencia operacional */
+.conference-list {
+      display: grid;
+      gap: 12px;
+    }
+    .conference-list.compact {
+      gap: 10px;
+    }
+    .conference-card {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      background: rgba(12, 18, 28, 0.6);
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+    .conference-card-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .conference-card-title {
+      margin: 0;
+      color: #f8fbff;
+      font-size: 16px;
+      line-height: 1.35;
+      font-weight: 650;
+    }
+    .conference-card-subtitle {
+      margin: 4px 0 0;
+      color: #94a3b8;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .conference-meta {
+      display: grid;
+      gap: 6px;
+      color: #cdd9ea;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .conference-mobile-form {
+      display: grid;
+      gap: 12px;
+    }
+    .conference-item-card {
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      background: rgba(14, 23, 36, 0.7);
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+    .conference-item-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .conference-item-head h4 {
+      margin: 0;
+      color: #f8fbff;
+      font-size: 14px;
+      line-height: 1.35;
+      font-weight: 650;
+    }
+    .conference-item-head p {
+      margin: 4px 0 0;
+      color: #94a3b8;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+    .conference-item-desc {
+      margin: 0;
+      color: #c6d2e3;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    .conference-inline-grid {
+      display: grid;
+      gap: 10px;
+    }
+    .conference-summary-grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .conference-summary-card {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(15, 26, 40, 0.64);
+      border-radius: 12px;
+      padding: 12px;
+      display: grid;
+      gap: 6px;
+    }
+    .conference-summary-label {
+      color: #94a3b8;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 650;
+    }
+    .conference-summary-card strong {
+      color: #f8fbff;
+      font-size: 18px;
+      line-height: 1;
+      font-weight: 700;
+    }
+    .break-all {
+      word-break: break-all;
+      overflow-wrap: anywhere;
+    }
+
+    @media (min-width: 760px) {
+      .conference-meta {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .conference-inline-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .conference-summary-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
   

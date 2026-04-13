@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-hero compact">
+  <div class="page-hero-grid">
+    <div>
+      <div class="hero-eyebrow">Conferencia operacional</div>
+      <h2 class="hero-title">Declaracoes diarias da contratada</h2>
+      <p class="hero-subtitle">
+        Origem estruturada dos itens de conferencia. Esta declaracao nao compoe a base oficial do sistema.
+      </p>
+    </div>
+    <div class="hero-stat-grid">
+      <div class="hero-stat">
+        <div class="hero-stat-label">Total</div>
+        <div class="hero-stat-value">{{ stats.total or 0 }}</div>
+        <div class="hero-stat-subtitle">Declaracoes no filtro</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">Com ficha</div>
+        <div class="hero-stat-value">{{ stats.com_ficha or 0 }}</div>
+        <div class="hero-stat-subtitle">Geracao automatica concluida</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% if error_message %}
+  <div class="notice warning">{{ error_message }}</div>
+{% endif %}
+
+<div class="actions">
+  <a href="{{ url_for('contratada_declaracoes_new') }}"><button type="button">Nova declaracao diaria</button></a>
+  <a href="{{ url_for('dashboard') }}"><button type="button" class="secondary">Voltar ao dashboard</button></a>
+</div>
+
+<section class="section">
+  <h3>Filtros</h3>
+  <div class="body">
+    <form method="get" action="{{ url_for('contratada_declaracoes_list') }}" class="grid-2" style="margin-bottom:0;">
+      <div class="field">
+        <label>Contrato</label>
+        <select name="contract_id">
+          <option value="">Todos</option>
+          {% for option in contract_options %}
+            <option value="{{ option.id }}" {% if filters.contract_id == option.id %}selected{% endif %}>{{ option.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label>Data (de)</label>
+        <input type="date" name="date_from" value="{{ filters.date_from }}">
+      </div>
+      <div class="field">
+        <label>Data (ate)</label>
+        <input type="date" name="date_to" value="{{ filters.date_to }}">
+      </div>
+      <div class="actions" style="align-items:flex-end;">
+        <button type="submit">Aplicar filtros</button>
+        <a href="{{ url_for('contratada_declaracoes_list') }}"><button type="button" class="secondary">Limpar</button></a>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="section">
+  <h3>Registros enviados</h3>
+  <div class="body">
+    {% if rows %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Contrato</th>
+              <th>Nucleo</th>
+              <th>Equipe</th>
+              <th>Ficha vinculada</th>
+              <th>Acoes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr>
+                <td>{{ row.declaration_date or '-' }}</td>
+                <td>{{ row.contract_label or '-' }}</td>
+                <td>{{ row.nucleo or '-' }}</td>
+                <td>{{ row.equipe or '-' }}</td>
+                <td>
+                  {% if row.generated_inspection_id %}
+                    <a href="{{ url_for('vistorias_detail', inspection_id=row.generated_inspection_id) }}">Ficha #{{ row.generated_inspection_id }}</a>
+                  {% else %}
+                    <span class="badge warning">Pendente</span>
+                  {% endif %}
+                </td>
+                <td><a href="{{ url_for('contratada_declaracoes_detail', declaration_id=row.id) }}">Abrir</a></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">Nenhuma declaracao encontrada no filtro informado.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

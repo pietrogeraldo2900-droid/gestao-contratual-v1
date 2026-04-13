@@ -23,11 +23,18 @@ class FakeUserService:
 class FakeUserRepository:
     def __init__(self, users: dict[int, dict[str, object]]):
         self.users = {int(k): dict(v) for k, v in users.items()}
+        for user in self.users.values():
+            user.setdefault("authorized_contract_ids", [])
+            user.setdefault("contractor_name", "")
 
     def list_users(self, status: str | None = None):
         if status:
             return [dict(v) for v in self.users.values() if str(v.get("status", "") or "").lower() == status]
         return [dict(v) for v in self.users.values()]
+
+    def get_user_by_id(self, user_id: int):
+        user = self.users.get(int(user_id))
+        return dict(user) if user else None
 
     def update_user_status(self, user_id: int, status: str, *, approved_by=None, set_approved=False):
         user = dict(self.users.get(int(user_id), {}))
@@ -43,6 +50,18 @@ class FakeUserRepository:
         user["role"] = role
         self.users[int(user_id)] = user
         return dict(user)
+
+    def update_user_contractor(self, user_id: int, contractor_name: str | None):
+        user = dict(self.users.get(int(user_id), {}))
+        user["contractor_name"] = str(contractor_name or "").strip()
+        self.users[int(user_id)] = user
+        return dict(user)
+
+    def replace_user_authorized_contracts(self, user_id: int, contract_ids: list[int]):
+        user = dict(self.users.get(int(user_id), {}))
+        user["authorized_contract_ids"] = list(contract_ids or [])
+        self.users[int(user_id)] = user
+        return list(contract_ids or [])
 
 
 class FakeAuditRepository:
@@ -139,6 +158,68 @@ class AdminUsersUITests(unittest.TestCase):
         updated = repo.users.get(2, {})
         self.assertEqual(updated.get("status"), "active")
         self.assertEqual(updated.get("role"), "operador")
+        self.assertTrue(any(action["action"] == "user_approved" for action in audit.actions))
+        tmp.cleanup()
+
+    def test_superadmin_can_approve_contratada_with_scope(self):
+        app, tmp = _build_app_with_user("superadmin")
+
+        class FakeContract:
+            def __init__(self, contract_id: int):
+                self._id = contract_id
+
+            def to_dict(self):
+                return {
+                    "id": self._id,
+                    "numero_contrato": f"CTR-{self._id:03d}",
+                    "nome_contrato": f"Contrato {self._id}",
+                    "contratada_nome": "Prestadora A",
+                }
+
+        class FakeContractService:
+            def list_contracts(self, limit: int = 100):
+                _ = limit
+                return [FakeContract(1), FakeContract(2)]
+
+            def count_contracts(self):
+                return 2
+
+        repo = FakeUserRepository(
+            {
+                2: {
+                    "id": 2,
+                    "email": "contratada@empresa.com",
+                    "status": "pending",
+                    "role": "",
+                    "created_at": "",
+                }
+            }
+        )
+        audit = FakeAuditRepository()
+        app.config["USER_REPOSITORY"] = repo
+        app.config["ADMIN_AUDIT_REPOSITORY"] = audit
+        app.config["CONTRACTS_SERVICE"] = FakeContractService()
+        client = app.test_client()
+        with client.session_transaction() as sess:
+            sess["web_user_id"] = 1
+            sess["web_user_email"] = "super@empresa.com"
+
+        response = client.post(
+            "/admin/usuarios/2/update",
+            data={
+                "action": "approve",
+                "role": "contratada",
+                "contractor_name": "Prestadora A",
+                "contract_ids": ["1", "2"],
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 302)
+        updated = repo.users.get(2, {})
+        self.assertEqual(updated.get("status"), "active")
+        self.assertEqual(updated.get("role"), "contratada")
+        self.assertEqual(updated.get("contractor_name"), "Prestadora A")
+        self.assertEqual(updated.get("authorized_contract_ids"), [1, 2])
         self.assertTrue(any(action["action"] == "user_approved" for action in audit.actions))
         tmp.cleanup()
 

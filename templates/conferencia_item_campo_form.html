@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-hero compact">
+  <div class="page-hero-grid">
+    <div>
+      <div class="hero-eyebrow">Conferencia em campo</div>
+      <h2 class="hero-title">Adicionar item encontrado em campo</h2>
+      <p class="hero-subtitle">{{ inspection.titulo or ('Ficha #' ~ inspection.id) }} - {{ inspection.contract_label or 'Sem contrato' }}</p>
+    </div>
+  </div>
+</section>
+
+{% if readonly %}
+  <div class="notice info">Esta conferencia ja foi concluida e nao permite novos itens.</div>
+{% endif %}
+
+<form method="post" action="{{ url_for('conferencia_item_campo_create', inspection_id=inspection.id) }}" enctype="multipart/form-data">
+  <section class="section">
+    <h3>Novo item de campo</h3>
+    <div class="body">
+      <div class="grid-2">
+        <div class="field">
+          <label>Area</label>
+          <input type="text" name="area" placeholder="Ex.: Rede, caixa, poste" {% if readonly %}disabled{% endif %}>
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <select name="status" {% if readonly %}disabled{% endif %}>
+            <option value="observacao" selected>observacao</option>
+            <option value="conforme">conforme</option>
+            <option value="nao_conforme">nao_conforme</option>
+            <option value="pendente">pendente</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Titulo do item *</label>
+          <input type="text" name="item_titulo" required placeholder="Ex.: Caixa adicional nao prevista" {% if readonly %}disabled{% endif %}>
+        </div>
+        <div class="field">
+          <label>Qtd verificada *</label>
+          <input type="number" min="0" step="0.001" name="quantidade_verificada" value="0" required {% if readonly %}disabled{% endif %}>
+        </div>
+      </div>
+      <div class="field">
+        <label>Descricao</label>
+        <textarea name="descricao" placeholder="Descreva o que foi encontrado" {% if readonly %}disabled{% endif %}></textarea>
+      </div>
+      <div class="field">
+        <label>Observacao tecnica</label>
+        <textarea name="observacao_tecnica" placeholder="Detalhes tecnicos para base oficial" {% if readonly %}disabled{% endif %}></textarea>
+      </div>
+      <div class="field">
+        <label>Local verificado</label>
+        <input type="text" name="local_verificado" placeholder="Ponto de referencia no campo" {% if readonly %}disabled{% endif %}>
+      </div>
+      <div class="field">
+        <label>Evidencia (JPG, PNG, WEBP ou PDF)</label>
+        <input type="file" name="evidencia_file" accept="image/*,.pdf" capture="environment" {% if readonly %}disabled{% endif %}>
+      </div>
+    </div>
+  </section>
+
+  <div class="actions sticky-actions">
+    {% if not readonly %}
+      <button type="submit">Adicionar item ao rascunho</button>
+    {% endif %}
+    <a href="{{ url_for('conferencia_campo', inspection_id=inspection.id) }}"><button type="button" class="secondary">Voltar para conferencia</button></a>
+  </div>
+</form>
+{% endblock %}

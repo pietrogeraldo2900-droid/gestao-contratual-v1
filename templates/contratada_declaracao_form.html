@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-hero compact">
+  <div class="page-hero-grid">
+    <div>
+      <div class="hero-eyebrow">Conferencia operacional</div>
+      <h2 class="hero-title">Declaracao diaria da contratada</h2>
+      <p class="hero-subtitle">
+        A declaracao diaria nao compoe a base oficial. Ela e usada somente como origem para gerar a Ficha de Conferencia.
+      </p>
+    </div>
+    <div class="hero-stat-grid">
+      <div class="hero-stat">
+        <div class="hero-stat-label">Fluxo</div>
+        <div class="hero-stat-value">1 envio</div>
+        <div class="hero-stat-subtitle">Declaracao + ficha automatica</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">Vocabulos</div>
+        <div class="hero-stat-value">{{ service_catalog_options|length }}</div>
+        <div class="hero-stat-subtitle">Servicos padronizados</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% if error_message %}
+  <div class="notice warning">{{ error_message }}</div>
+{% endif %}
+
+<form method="post" action="{{ url_for('contratada_declaracoes_create') }}">
+  <section class="section">
+    <h3>Cabecalho da declaracao</h3>
+    <div class="body">
+      <div class="grid-2">
+        <div class="field">
+          <label>Contrato *</label>
+          <select name="contract_id" required>
+            <option value="">Selecionar contrato</option>
+            {% for option in contract_options %}
+              <option value="{{ option.id }}" {% if form_data.contract_id == option.id %}selected{% endif %}>{{ option.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>Data da declaracao *</label>
+          <input type="date" name="declaration_date" value="{{ form_data.declaration_date }}" required>
+        </div>
+        <div class="field">
+          <label>Periodo</label>
+          <input type="text" name="periodo" value="{{ form_data.periodo }}" placeholder="Ex.: Diurno">
+        </div>
+        <div class="field">
+          <label>Nucleo</label>
+          <input type="text" name="nucleo" value="{{ form_data.nucleo }}">
+        </div>
+        <div class="field">
+          <label>Municipio</label>
+          <input type="text" name="municipio" value="{{ form_data.municipio }}">
+        </div>
+        <div class="field">
+          <label>Logradouro / local base</label>
+          <input type="text" name="logradouro" value="{{ form_data.logradouro }}">
+        </div>
+        <div class="field">
+          <label>Equipe</label>
+          <input type="text" name="equipe" value="{{ form_data.equipe }}">
+        </div>
+        <div class="field">
+          <label>Responsavel da contratada</label>
+          <input type="text" name="responsavel_nome" value="{{ form_data.responsavel_nome }}">
+        </div>
+        <div class="field">
+          <label>Contato do responsavel</label>
+          <input type="text" name="responsavel_contato" value="{{ form_data.responsavel_contato }}">
+        </div>
+      </div>
+      <div class="field">
+        <label>Observacoes gerais</label>
+        <textarea name="observacoes" placeholder="Resumo do dia e apontamentos da contratada">{{ form_data.observacoes }}</textarea>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h3>Itens declarados (estrutura diaria)</h3>
+    <div class="body">
+      <p class="muted">
+        Selecione servicos padronizados sempre que possivel. A ficha de conferencia sera criada com estes itens automaticamente.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Servico oficial *</th>
+              <th>Rotulo</th>
+              <th>Categoria</th>
+              <th>Quantidade *</th>
+              <th>Unidade</th>
+              <th>Local execucao</th>
+              <th>Descricao</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items %}
+            <tr>
+              <td>
+                <select name="item_servico_oficial[]" class="service-select">
+                  <option value="">Selecionar</option>
+                  {% for option in service_catalog_options %}
+                    <option
+                      value="{{ option.servico }}"
+                      data-label="{{ option.label }}"
+                      data-categoria="{{ option.categoria }}"
+                      {% if item.servico_oficial == option.servico %}selected{% endif %}
+                    >
+                      {{ option.label }} ({{ option.categoria }})
+                    </option>
+                  {% endfor %}
+                </select>
+              </td>
+              <td><input type="text" name="item_servico_label[]" value="{{ item.servico_label }}"></td>
+              <td><input type="text" name="item_categoria[]" value="{{ item.categoria }}"></td>
+              <td><input type="number" min="0" step="0.001" name="item_quantidade[]" value="{{ item.quantidade }}"></td>
+              <td>
+                <select name="item_unidade[]">
+                  <option value="">-</option>
+                  {% for unidade in unidade_options %}
+                    <option value="{{ unidade }}" {% if item.unidade == unidade %}selected{% endif %}>{{ unidade }}</option>
+                  {% endfor %}
+                </select>
+              </td>
+              <td><input type="text" name="item_local_execucao[]" value="{{ item.local_execucao }}"></td>
+              <td><input type="text" name="item_descricao[]" value="{{ item.descricao }}"></td>
+              <td>
+                <select name="item_status[]">
+                  {% for status in item_status_options %}
+                    <option value="{{ status }}" {% if item.item_status == status %}selected{% endif %}>{{ status }}</option>
+                  {% endfor %}
+                </select>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <div class="actions sticky-actions">
+    <button type="submit">Enviar declaracao diaria</button>
+    <a href="{{ url_for('contratada_declaracoes_list') }}"><button type="button" class="secondary">Cancelar</button></a>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+  const selects = Array.from(document.querySelectorAll(".service-select"));
+  selects.forEach((select) => {
+    const tr = select.closest("tr");
+    if (!tr) return;
+    const labelInput = tr.querySelector('input[name="item_servico_label[]"]');
+    const categoryInput = tr.querySelector('input[name="item_categoria[]"]');
+    const applySelection = () => {
+      const option = select.selectedOptions && select.selectedOptions[0];
+      if (!option) return;
+      if (labelInput && !String(labelInput.value || "").trim()) {
+        labelInput.value = String(option.dataset.label || "");
+      }
+      if (categoryInput && !String(categoryInput.value || "").trim()) {
+        categoryInput.value = String(option.dataset.categoria || "");
+      }
+    };
+    select.addEventListener("change", applySelection);
+    applySelection();
+  });
+})();
+</script>
+{% endblock %}

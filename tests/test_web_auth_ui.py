@@ -32,6 +32,9 @@ class FakeUserService:
             "email": clean_email,
             "status": "pending",
             "role": "operador",
+            "authorized_contract_ids": [],
+            "contract_ids": [],
+            "contractor_name": "",
             "created_at": "2026-01-01T00:00:00+00:00",
         }
         self._users_by_email[clean_email] = {"user": user, "password": str(password or "")}
@@ -218,6 +221,39 @@ class WebAuthUITests(unittest.TestCase):
         self.assertEqual(response.status_code, 401)
         html = response.data.decode("utf-8")
         self.assertIn("aguardando aprovacao", html.lower())
+
+    def test_contratada_role_redirects_to_declaracao_diaria_scope(self) -> None:
+        self.fake_user_service.register_user("contratada@empresa.com", "12345678")
+        self.fake_user_service.set_status("contratada@empresa.com", "active")
+        self.fake_user_service.set_role("contratada@empresa.com", "contratada")
+
+        login_response = self.client.post(
+            "/login",
+            data={"email": "contratada@empresa.com", "password": "12345678"},
+            follow_redirects=False,
+        )
+        self.assertEqual(login_response.status_code, 302)
+        self.assertEqual(
+            "/conferencia-operacional/contratada/declaracoes",
+            str(login_response.headers.get("Location", "") or ""),
+        )
+
+        blocked_response = self.client.get("/dashboard", follow_redirects=False)
+        self.assertEqual(blocked_response.status_code, 302)
+        self.assertEqual(
+            "/conferencia-operacional/contratada/declaracoes",
+            str(blocked_response.headers.get("Location", "") or ""),
+        )
+
+        blocked_entry_response = self.client.get("/nova-entrada", follow_redirects=False)
+        self.assertEqual(blocked_entry_response.status_code, 302)
+        self.assertEqual(
+            "/conferencia-operacional/contratada/declaracoes",
+            str(blocked_entry_response.headers.get("Location", "") or ""),
+        )
+
+        allowed_response = self.client.get("/conferencia-operacional/contratada/declaracoes", follow_redirects=False)
+        self.assertIn(allowed_response.status_code, (200, 500, 503))
 
 
 if __name__ == "__main__":

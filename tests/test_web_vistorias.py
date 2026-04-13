@@ -124,6 +124,13 @@ class FakeInspectionService:
                     "responsavel_ajuste": "",
                     "valor_multa": "0",
                     "evidencia_ref": "",
+                    "quantidade_declarada": "0",
+                    "quantidade_verificada": "0",
+                    "quantidade_oficial": "0",
+                    "verificado_informado": False,
+                    "divergencia_absoluta": "0",
+                    "divergencia_percentual": "0",
+                    "divergencia_status": "sem_divergencia",
                     "created_at": "",
                     "updated_at": "",
                 }
@@ -132,13 +139,26 @@ class FakeInspectionService:
         self._next_id = 2
 
     def list_inspections(self, **kwargs):  # noqa: ANN003
-        _ = kwargs
-        return list(self._rows)
+        rows = list(self._rows)
+        contract_id = kwargs.get("contract_id")
+        contract_ids = kwargs.get("contract_ids")
+        status = str(kwargs.get("status", "") or "").strip().lower()
+        if contract_id:
+            rows = [row for row in rows if int(row.contract_id or 0) == int(contract_id)]
+        elif isinstance(contract_ids, list):
+            allowed = {int(item) for item in contract_ids if int(item) > 0}
+            rows = [row for row in rows if int(row.contract_id or 0) in allowed]
+        if status:
+            rows = [row for row in rows if row.status == status]
+        return rows
 
-    def count_inspections(self, *, contract_id: int | None = None, status: str = "") -> int:
+    def count_inspections(self, *, contract_id: int | None = None, contract_ids: list[int] | None = None, status: str = "") -> int:
         rows = list(self._rows)
         if contract_id:
             rows = [row for row in rows if int(row.contract_id or 0) == int(contract_id)]
+        elif isinstance(contract_ids, list):
+            allowed = {int(item) for item in contract_ids if int(item) > 0}
+            rows = [row for row in rows if int(row.contract_id or 0) in allowed]
         if status:
             rows = [row for row in rows if row.status == status]
         return len(rows)
@@ -164,23 +184,30 @@ class FakeInspectionService:
         self._rows.append(new)
         items = list(raw_items or [])
         self._items[new.id] = [
-            {
-                "id": idx + 1,
-                "inspection_id": new.id,
-                "ordem": idx + 1,
-                "area": str(item.get("area", "") or ""),
+                {
+                    "id": idx + 1,
+                    "inspection_id": new.id,
+                    "ordem": idx + 1,
+                    "area": str(item.get("area", "") or ""),
                 "item_titulo": str(item.get("item_titulo", "") or ""),
                 "descricao": str(item.get("descricao", "") or ""),
                 "status": str(item.get("status", "pendente") or "pendente"),
                 "severidade": str(item.get("severidade", "baixa") or "baixa"),
                 "prazo_ajuste": "",
-                "responsavel_ajuste": str(item.get("responsavel_ajuste", "") or ""),
-                "valor_multa": str(item.get("valor_multa", "0") or "0"),
-                "evidencia_ref": str(item.get("evidencia_ref", "") or ""),
-                "created_at": "",
-                "updated_at": "",
-            }
-            for idx, item in enumerate(items)
+                    "responsavel_ajuste": str(item.get("responsavel_ajuste", "") or ""),
+                    "valor_multa": str(item.get("valor_multa", "0") or "0"),
+                    "evidencia_ref": str(item.get("evidencia_ref", "") or ""),
+                    "quantidade_declarada": str(item.get("quantidade_declarada", "0") or "0"),
+                    "quantidade_verificada": str(item.get("quantidade_verificada", "0") or "0"),
+                    "quantidade_oficial": str(item.get("quantidade_verificada", "0") or "0"),
+                    "verificado_informado": bool(str(item.get("quantidade_verificada", "") or "").strip()),
+                    "divergencia_absoluta": "0",
+                    "divergencia_percentual": "0",
+                    "divergencia_status": "sem_divergencia",
+                    "created_at": "",
+                    "updated_at": "",
+                }
+                for idx, item in enumerate(items)
             if str(item.get("item_titulo", "") or "").strip()
         ]
         self._next_id += 1
@@ -297,6 +324,60 @@ class WebVistoriasTests(unittest.TestCase):
         response = self.client.post("/vistorias/1/status", data={"status": "concluida"}, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
         self.assertIn("Status atualizado com sucesso", response.data.decode("utf-8"))
+
+    def test_fiscal_so_visualiza_fichas_dos_contratos_vinculados(self) -> None:
+        class StaticUserService:
+            def __init__(self, user: dict[str, object]):
+                self._user = dict(user)
+
+            def get_user_by_id(self, user_id: int) -> dict[str, object] | None:
+                if int(self._user.get("id", 0) or 0) == int(user_id):
+                    return dict(self._user)
+                return None
+
+        inspection_service = FakeInspectionService()
+        inspection_service._rows.append(
+            _FakeInspection(
+                id=2,
+                contract_id=2,
+                contract_label="CTR-002 - Contrato Oeste",
+                titulo="Inspecao fora do escopo",
+                data_vistoria="2026-04-03",
+                status="aberta",
+                prioridade="media",
+                resultado="pendente",
+                nucleo="Centro",
+                municipio="Osasco",
+                equipe="Equipe 02",
+                observacoes="",
+            )
+        )
+
+        self.app.config["INSPECTION_SERVICE"] = inspection_service
+        self.app.config["USER_SERVICE"] = StaticUserService(
+            {
+                "id": 10,
+                "email": "fiscal@empresa.com",
+                "status": "active",
+                "role": "fiscal",
+                "authorized_contract_ids": [1],
+                "contract_ids": [1],
+            }
+        )
+
+        with self.client.session_transaction() as sess:
+            sess["web_user_id"] = 10
+            sess["web_user_email"] = "fiscal@empresa.com"
+            sess["web_user_role"] = "fiscal"
+
+        list_response = self.client.get("/vistorias")
+        self.assertEqual(list_response.status_code, 200)
+        html = list_response.data.decode("utf-8")
+        self.assertIn("Inspecao inicial", html)
+        self.assertNotIn("Inspecao fora do escopo", html)
+
+        blocked_detail = self.client.get("/vistorias/2")
+        self.assertEqual(blocked_detail.status_code, 403)
 
 
 if __name__ == "__main__":

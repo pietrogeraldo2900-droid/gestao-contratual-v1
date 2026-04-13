@@ -18,6 +18,8 @@
 {% set base_mestra_endpoints = ['base_mestra_list', 'base_mestra_file'] %}
 {% set history_endpoints = ['history'] %}
 {% set vistorias_endpoints = ['vistorias_list', 'vistorias_new', 'vistorias_create', 'vistorias_detail', 'vistorias_status_update', 'vistorias_report'] %}
+{% set conferencia_operacional_endpoints = ['conferencia_pendentes', 'conferencia_ficha_detail', 'conferencia_campo', 'conferencia_salvar_rascunho', 'conferencia_item_campo_new', 'conferencia_item_campo_create', 'conferencia_resumo', 'conferencia_concluir'] %}
+{% set declaracoes_contratada_endpoints = ['contratada_declaracoes_list', 'contratada_declaracoes_new', 'contratada_declaracoes_create', 'contratada_declaracoes_detail', 'contratada_conferencia_home'] %}
 {% set gerencial_endpoints = ['gerencial'] %}
 {% set institucional_endpoints = ['institucional', 'institucional_export'] %}
 {% set nucleos_endpoints = ['nucleos', 'nucleos_save'] %}
@@ -44,6 +46,19 @@
   'vistorias_detail': 'Detalhes da vistoria',
   'vistorias_status_update': 'Detalhes da vistoria',
   'vistorias_report': 'Relatorio de vistoria',
+  'conferencia_pendentes': 'Fila do fiscal',
+  'conferencia_ficha_detail': 'Detalhe da ficha',
+  'conferencia_campo': 'Conferencia em campo',
+  'conferencia_salvar_rascunho': 'Conferencia em campo',
+  'conferencia_item_campo_new': 'Item encontrado em campo',
+  'conferencia_item_campo_create': 'Item encontrado em campo',
+  'conferencia_resumo': 'Resumo da conferencia',
+  'conferencia_concluir': 'Resumo da conferencia',
+  'contratada_conferencia_home': 'Declaracoes diarias',
+  'contratada_declaracoes_list': 'Declaracoes diarias',
+  'contratada_declaracoes_new': 'Nova declaracao diaria',
+  'contratada_declaracoes_create': 'Nova declaracao diaria',
+  'contratada_declaracoes_detail': 'Detalhes da declaracao',
   'base_mestra_list': 'Base Mestra',
   'base_mestra_file': 'Base Mestra',
   'result_detail': 'Resultado do processamento',
@@ -73,6 +88,19 @@
   'vistorias_detail': 'Acompanhe itens conformes e nao conformes, atualize status e emita o relatorio consolidado.',
   'vistorias_status_update': 'Acompanhe itens conformes e nao conformes, atualize status e emita o relatorio consolidado.',
   'vistorias_report': 'Versao de leitura executiva da vistoria para compartilhamento em campo e auditoria.',
+  'conferencia_pendentes': 'Fila automatica com as fichas pendentes dos contratos vinculados ao fiscal.',
+  'conferencia_ficha_detail': 'Detalhes da ficha com checklist previsto para apoiar a conferencia em campo.',
+  'conferencia_campo': 'Fluxo mobile-first para conferencia item a item, evidencias e rascunho.',
+  'conferencia_salvar_rascunho': 'Fluxo mobile-first para conferencia item a item, evidencias e rascunho.',
+  'conferencia_item_campo_new': 'Adicione item encontrado em campo para compor a conferencia oficial.',
+  'conferencia_item_campo_create': 'Adicione item encontrado em campo para compor a conferencia oficial.',
+  'conferencia_resumo': 'Resumo final da conferencia antes da publicacao na base oficial.',
+  'conferencia_concluir': 'Resumo final da conferencia antes da publicacao na base oficial.',
+  'contratada_conferencia_home': 'Tela exclusiva da contratada para envio estruturado da declaracao diaria de execucao.',
+  'contratada_declaracoes_list': 'Acompanhe as declaracoes enviadas e a ficha de conferencia gerada automaticamente.',
+  'contratada_declaracoes_new': 'Preencha a declaracao diaria estruturada para gerar automaticamente a ficha de conferencia.',
+  'contratada_declaracoes_create': 'Preencha a declaracao diaria estruturada para gerar automaticamente a ficha de conferencia.',
+  'contratada_declaracoes_detail': 'Visualize os itens declarados e o vinculo com a ficha de conferencia criada.',
   'base_mestra_list': 'Acesso central aos arquivos oficiais da Base Mestra para auditoria e conciliacao externa.',
   'result_detail': 'Detalhes do processamento selecionado e acesso aos arquivos gerados.',
   'gerencial': 'Leitura analitica com indicadores consolidados do sistema.',
@@ -122,6 +150,22 @@
                 <svg viewBox="0 0 24 24"><path d="M9 6h11"></path><path d="M9 12h11"></path><path d="M9 18h11"></path><path d="M4 6h.01"></path><path d="M4 12h.01"></path><path d="M4 18h.01"></path></svg>
               </span>
               <span class="nav-link-label">Vistorias</span>
+            </a>
+            {% endif %}
+            {% if can_access('conferencia_operacional') %}
+            <a href="{{ url_for('conferencia_pendentes') }}" class="sidebar-link nav-link {% if endpoint in conferencia_operacional_endpoints %}active is-active{% endif %}" {% if endpoint in conferencia_operacional_endpoints %}aria-current="page"{% endif %}>
+              <span class="nav-link-icon">
+                <svg viewBox="0 0 24 24"><path d="M4 5h16"></path><path d="M4 12h16"></path><path d="M4 19h10"></path><circle cx="18" cy="19" r="2"></circle></svg>
+              </span>
+              <span class="nav-link-label">Conferencia operacional</span>
+            </a>
+            {% endif %}
+            {% if can_access('conferencia_contratada') %}
+            <a href="{{ url_for('contratada_declaracoes_list') }}" class="sidebar-link nav-link {% if endpoint in declaracoes_contratada_endpoints %}active is-active{% endif %}" {% if endpoint in declaracoes_contratada_endpoints %}aria-current="page"{% endif %}>
+              <span class="nav-link-icon">
+                <svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"></path><path d="M15 3v4h4"></path><path d="M9 12h6"></path><path d="M9 16h6"></path></svg>
+              </span>
+              <span class="nav-link-label">Declaracao diaria</span>
             </a>
             {% endif %}
             {% if can_access('historico') %}
@@ -234,12 +278,14 @@
               <span class="nav-link-label">Base Mestra</span>
             </a>
             {% endif %}
+            {% if web_user_role not in ['contratada', 'fiscal'] %}
             <a href="{{ url_for('web_profile') }}" class="sidebar-link nav-link {% if endpoint in profile_endpoints %}active is-active{% endif %}" {% if endpoint in profile_endpoints %}aria-current="page"{% endif %}>
               <span class="nav-link-icon">
                 <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M4 20c1.8-3.5 5-5 8-5s6.2 1.5 8 5"></path></svg>
               </span>
               <span class="nav-link-label">Perfil</span>
             </a>
+            {% endif %}
             {% if can_access('usuarios_admin') %}
             <a href="{{ url_for('admin_users') }}" class="sidebar-link nav-link {% if endpoint == 'admin_users' %}active is-active{% endif %}" {% if endpoint == 'admin_users' %}aria-current="page"{% endif %}>
               <span class="nav-link-icon">

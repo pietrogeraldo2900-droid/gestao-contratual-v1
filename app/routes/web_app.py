@@ -15,7 +15,9 @@ from config.settings import AppSettings, load_settings
 from app.database import build_database_manager, init_db
 from app.repositories import (
     AdminAuditRepository,
+    ConferenceRepository,
     ContractRepository,
+    DailyExecutionDeclarationRepository,
     InspectionRepository,
     ManagementRepository,
     ReportRepository,
@@ -27,11 +29,27 @@ from app.repositories.user_repository import UserAlreadyExistsError
 from app.routes.auth_api import register_auth_routes
 from app.routes.contracts_api import register_contract_routes
 from app.services.contract_service import ContractService, ContractValidationError
+from app.services.conference_service import (
+    ConferenceAccessError,
+    ConferenceNotFoundError,
+    ConferenceService,
+    ConferenceValidationError,
+)
+from app.services.declaration_service import DeclarationService, DeclarationValidationError
 from app.services.inspection_service import InspectionService, InspectionValidationError
 from app.services.report_service import ReportService, create_report_service
 from app.services.user_service import UserAuthError, UserService, UserValidationError
 from app.utils.jwt_utils import generate_jwt_token
-from app.utils.access_control import ROLE_ADMIN, ROLE_LEITOR, ROLE_OPERADOR, ROLE_SUPERADMIN, can_access, normalize_role
+from app.utils.access_control import (
+    ROLE_ADMIN,
+    ROLE_CONTRATADA,
+    ROLE_FISCAL,
+    ROLE_LEITOR,
+    ROLE_OPERADOR,
+    ROLE_SUPERADMIN,
+    can_access,
+    normalize_role,
+)
 from app.services.web_service import WebPipelineService
 
 
@@ -40,6 +58,27 @@ SESSION_USER_EMAIL_KEY = "web_user_email"
 SESSION_AUTH_TOKEN_KEY = "web_auth_token"
 SESSION_USER_ROLE_KEY = "web_user_role"
 SESSION_USER_STATUS_KEY = "web_user_status"
+
+DECLARACAO_DIARIA_ENDPOINTS = {
+    "contratada_conferencia_home",
+    "contratada_declaracoes_list",
+    "contratada_declaracoes_new",
+    "contratada_declaracoes_create",
+    "contratada_declaracoes_detail",
+}
+FICHAS_ENDPOINTS = {
+    "vistorias_list",
+    "vistorias_detail",
+    "vistorias_report",
+    "conferencia_pendentes",
+    "conferencia_ficha_detail",
+    "conferencia_campo",
+    "conferencia_salvar_rascunho",
+    "conferencia_item_campo_new",
+    "conferencia_item_campo_create",
+    "conferencia_resumo",
+    "conferencia_concluir",
+}
 
 
 def _collect_form_fields(form) -> Dict[str, object]:
@@ -237,6 +276,26 @@ def _resolve_permission_for_endpoint(endpoint: str) -> str | None:
         return "vistorias"
     if endpoint in {"vistorias_create", "vistorias_status_update"}:
         return "vistorias_edicao"
+    if endpoint in {"conferencia_ficha_detail"}:
+        return "conferencia_operacional"
+    if endpoint in {
+        "conferencia_pendentes",
+        "conferencia_campo",
+        "conferencia_salvar_rascunho",
+        "conferencia_item_campo_new",
+        "conferencia_item_campo_create",
+        "conferencia_resumo",
+        "conferencia_concluir",
+    }:
+        return "conferencia_operacional_execucao"
+    if endpoint in {
+        "contratada_conferencia_home",
+        "contratada_declaracoes_list",
+        "contratada_declaracoes_new",
+        "contratada_declaracoes_create",
+        "contratada_declaracoes_detail",
+    }:
+        return "conferencia_contratada"
     if endpoint in {"web_contracts_list", "web_contracts_new", "web_contracts_create"}:
         return "contratos"
     if endpoint in {"nucleos", "nucleos_save"}:
@@ -252,6 +311,38 @@ def _resolve_permission_for_endpoint(endpoint: str) -> str | None:
     if endpoint in {"web_settings"}:
         return "configuracoes"
     return None
+
+
+def _default_home_endpoint_for_role(role: object) -> str:
+    normalized = normalize_role(role)
+    if normalized == ROLE_CONTRATADA:
+        return "contratada_declaracoes_list"
+    if normalized == ROLE_FISCAL:
+        return "conferencia_pendentes"
+    return "dashboard"
+
+
+def _is_endpoint_allowed_for_role(role: object, endpoint: str) -> bool:
+    normalized = normalize_role(role)
+    if normalized == ROLE_CONTRATADA:
+        return endpoint in DECLARACAO_DIARIA_ENDPOINTS
+    if normalized == ROLE_FISCAL:
+        return endpoint in FICHAS_ENDPOINTS
+    return True
+
+
+def _parse_int_set(values: object) -> set[int]:
+    output: set[int] = set()
+    if not isinstance(values, (list, tuple, set)):
+        return output
+    for raw in values:
+        try:
+            parsed = int(raw)
+        except Exception:
+            continue
+        if parsed > 0:
+            output.add(parsed)
+    return output
 
 
 def create_app(test_config: dict | None = None, settings: AppSettings | None = None) -> Flask:
@@ -271,6 +362,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         HISTORY_FILE=str(settings.history_file),
         DRAFT_DIR=str(settings.draft_dir),
         NUCLEO_REFERENCE_FILE=str(settings.nucleo_reference_file),
+        CONFERENCE_EVIDENCE_DIR=str(base_dir / "data" / "evidencias_conferencia"),
     )
 
     if test_config:
@@ -290,6 +382,8 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     report_service: ReportService | None = None
     user_service: UserService | None = None
     inspection_service: InspectionService | None = None
+    declaration_service: DeclarationService | None = None
+    conference_service: ConferenceService | None = None
     management_repository: ManagementRepository | None = None
     admin_audit_repository: AdminAuditRepository | None = None
     service_mapping_repository: ServiceMappingRepository | None = None
@@ -301,12 +395,24 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         contract_repository = ContractRepository(db_manager)
         report_repository = ReportRepository(db_manager)
         inspection_repository = InspectionRepository(db_manager)
+        conference_repository = ConferenceRepository(db_manager)
+        declaration_repository = DailyExecutionDeclarationRepository(db_manager)
         admin_audit_repository = AdminAuditRepository(db_manager)
         service_mapping_repository = ServiceMappingRepository(db_manager)
         user_service = UserService(user_repository)
         contract_service = ContractService(contract_repository)
         report_service = ReportService(report_repository, contract_repository)
         inspection_service = InspectionService(inspection_repository)
+        declaration_service = DeclarationService(
+            declaration_repository,
+            inspection_service,
+            service_catalog_provider=service.get_service_catalog_ui,
+        )
+        conference_service = ConferenceService(
+            conference_repository,
+            inspection_service,
+            Path(app.config["CONFERENCE_EVIDENCE_DIR"]),
+        )
         if settings.contracts_auto_init_schema:
             try:
                 init_db(db_manager)
@@ -330,6 +436,8 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     app.config["ADMIN_AUDIT_REPOSITORY"] = admin_audit_repository
     app.config["SERVICE_MAPPING_REPOSITORY"] = service_mapping_repository
     app.config["INSPECTION_SERVICE"] = inspection_service
+    app.config["DECLARATION_SERVICE"] = declaration_service
+    app.config["CONFERENCE_SERVICE"] = conference_service
 
     protected_web_endpoints = {
         "dashboard",
@@ -348,6 +456,14 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         "vistorias_detail",
         "vistorias_status_update",
         "vistorias_report",
+        "conferencia_pendentes",
+        "conferencia_ficha_detail",
+        "conferencia_campo",
+        "conferencia_salvar_rascunho",
+        "conferencia_item_campo_new",
+        "conferencia_item_campo_create",
+        "conferencia_resumo",
+        "conferencia_concluir",
         "web_contracts_list",
         "web_contracts_new",
         "web_contracts_create",
@@ -360,6 +476,11 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         "nucleos_save",
         "preview",
         "generate",
+        "contratada_conferencia_home",
+        "contratada_declaracoes_list",
+        "contratada_declaracoes_new",
+        "contratada_declaracoes_create",
+        "contratada_declaracoes_detail",
         "history",
         "gerencial",
         "gerencial_drilldown",
@@ -375,6 +496,12 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         required = ("authenticate_user", "register_user", "get_user_by_id")
         if candidate is not None and all(callable(getattr(candidate, name, None)) for name in required):
             return candidate  # type: ignore[return-value]
+        return None
+
+    def _active_user_lookup_service():
+        candidate = app.config.get("USER_SERVICE")
+        if candidate is not None and callable(getattr(candidate, "get_user_by_id", None)):
+            return candidate
         return None
 
     def _active_user_repository() -> UserRepository | None:
@@ -408,6 +535,20 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
     def _active_inspection_service() -> InspectionService | None:
         candidate = app.config.get("INSPECTION_SERVICE")
         required = ("list_inspections", "count_inspections", "create_inspection", "get_inspection_with_items")
+        if candidate is not None and all(callable(getattr(candidate, name, None)) for name in required):
+            return candidate  # type: ignore[return-value]
+        return None
+
+    def _active_conference_service() -> ConferenceService | None:
+        candidate = app.config.get("CONFERENCE_SERVICE")
+        required = ("list_pending_queue", "open_conference", "save_draft", "add_field_item", "get_summary", "conclude")
+        if candidate is not None and all(callable(getattr(candidate, name, None)) for name in required):
+            return candidate  # type: ignore[return-value]
+        return None
+
+    def _active_declaration_service() -> DeclarationService | None:
+        candidate = app.config.get("DECLARATION_SERVICE")
+        required = ("list_declarations", "create_declaration_and_generate_inspection", "get_declaration_with_items")
         if candidate is not None and all(callable(getattr(candidate, name, None)) for name in required):
             return candidate  # type: ignore[return-value]
         return None
@@ -929,6 +1070,63 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             return numero, context
         return raw, context
 
+    def _current_web_role() -> str:
+        return normalize_role(session.get(SESSION_USER_ROLE_KEY, ""))
+
+    def _current_web_user_id() -> int:
+        try:
+            user_id = int(session.get(SESSION_USER_ID_KEY, 0) or 0)
+        except Exception:
+            user_id = 0
+        return user_id if user_id > 0 else 0
+
+    def _current_user_contract_ids() -> set[int]:
+        current_user = dict(getattr(g, "current_web_user", None) or {})
+        raw_ids = current_user.get("authorized_contract_ids", current_user.get("contract_ids", []))
+        return _parse_int_set(raw_ids)
+
+    def _is_scoped_profile(role: object) -> bool:
+        normalized = normalize_role(role)
+        return normalized in {ROLE_CONTRATADA, ROLE_FISCAL}
+
+    def _is_contract_allowed_for_current_user(
+        contract_id: int | None,
+        *,
+        require_contract_for_contractor: bool = False,
+    ) -> bool:
+        role = _current_web_role()
+        if not _is_scoped_profile(role):
+            return True
+
+        allowed_contract_ids = _current_user_contract_ids()
+        if role == ROLE_CONTRATADA and require_contract_for_contractor and not contract_id:
+            return False
+        if contract_id is None:
+            return False
+        return int(contract_id) in allowed_contract_ids
+
+    def _deny_scoped_access():
+        role = _current_web_role()
+        flash("Acesso restrito para o seu perfil.", "warning")
+        return redirect(url_for(_default_home_endpoint_for_role(role)))
+
+    def _filter_contract_options_for_current_user(options: list[dict[str, str]]) -> list[dict[str, str]]:
+        role = _current_web_role()
+        if not _is_scoped_profile(role):
+            return options
+        allowed_contract_ids = _current_user_contract_ids()
+        if not allowed_contract_ids:
+            return []
+        filtered: list[dict[str, str]] = []
+        for item in list(options or []):
+            try:
+                contract_id = int(str(item.get("id", "") or "").strip())
+            except Exception:
+                continue
+            if contract_id in allowed_contract_ids:
+                filtered.append(item)
+        return filtered
+
     def _build_contract_options(limit: int = 300) -> list[dict[str, str]]:
         contracts_service = _active_contract_service()
         if contracts_service is None:
@@ -960,7 +1158,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                 label = f"Contrato {contract_id}"
             options.append({"id": contract_id, "label": label})
 
-        return options
+        return _filter_contract_options_for_current_user(options)
 
     def _clear_web_auth_session() -> None:
         session.pop(SESSION_USER_ID_KEY, None)
@@ -1070,7 +1268,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         if can_access(role, permission):
             return None
         flash("Acesso restrito para o seu perfil.", "warning")
-        return redirect(url_for("dashboard"))
+        return redirect(url_for(_default_home_endpoint_for_role(role)))
 
     @app.context_processor
     def _inject_web_auth_context():
@@ -1091,8 +1289,8 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         if not endpoint or endpoint == "static":
             return None
 
-        auth_service = _active_user_service()
-        if auth_service is None:
+        user_lookup_service = _active_user_lookup_service()
+        if user_lookup_service is None:
             g.current_web_user = None
             return None
 
@@ -1100,13 +1298,20 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         raw_user_id = session.get(SESSION_USER_ID_KEY)
         if raw_user_id is not None:
             try:
-                current_user = auth_service.get_user_by_id(int(raw_user_id))
+                current_user = user_lookup_service.get_user_by_id(int(raw_user_id))
             except Exception:
                 current_user = None
         if current_user:
             g.current_web_user = current_user
-            session[SESSION_USER_ROLE_KEY] = normalize_role(current_user.get("role", ""))
+            current_role = normalize_role(current_user.get("role", ""))
+            session[SESSION_USER_ROLE_KEY] = current_role
             session[SESSION_USER_STATUS_KEY] = str(current_user.get("status", "") or "").strip().lower()
+            if endpoint in protected_web_endpoints and _is_scoped_profile(current_role):
+                if not _is_endpoint_allowed_for_role(current_role, endpoint):
+                    return _deny_scoped_access()
+                permission = _resolve_permission_for_endpoint(endpoint)
+                if permission and not can_access(current_role, permission):
+                    return _deny_scoped_access()
             return None
         if raw_user_id is not None:
             _clear_web_auth_session()
@@ -1116,13 +1321,6 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             return None
         if endpoint not in protected_web_endpoints:
             return None
-
-        permission = _resolve_permission_for_endpoint(endpoint)
-        if permission:
-            role = normalize_role(session.get(SESSION_USER_ROLE_KEY, ""))
-            if not can_access(role, permission):
-                flash("Acesso restrito para o seu perfil.", "warning")
-                return redirect(url_for("dashboard"))
 
         next_value = request.path
         if request.query_string:
@@ -1148,7 +1346,8 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
 
         if request.method == "GET":
             if getattr(g, "current_web_user", None):
-                return redirect(next_url)
+                current_role = normalize_role(session.get(SESSION_USER_ROLE_KEY, ""))
+                return redirect(_resolve_next(_default_home_endpoint_for_role(current_role)))
             return render_template(
                 "login.html",
                 title="Login",
@@ -1199,7 +1398,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
 
         _set_web_auth_session(user)
         flash("Login realizado com sucesso.", "success")
-        return redirect(next_url)
+        return redirect(_resolve_next(_default_home_endpoint_for_role(user.get("role", ""))))
 
     @app.route("/cadastro", methods=["GET", "POST"])
     def web_register():
@@ -1432,14 +1631,36 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             )
         status_filter = str(request.args.get("status", "") or "").strip().lower()
         users = repo.list_users(status_filter if status_filter else None)
+        contract_options = _build_contract_options(limit=1000)
+
+        contractor_options: list[str] = []
+        contracts_service = _active_contract_service()
+        if contracts_service is not None:
+            try:
+                contracts = contracts_service.list_contracts(limit=1000)
+                names: set[str] = set()
+                for contract in contracts:
+                    to_dict = getattr(contract, "to_dict", None)
+                    if not callable(to_dict):
+                        continue
+                    payload = dict(to_dict() or {})
+                    contractor_name = str(payload.get("contratada_nome", "") or "").strip()
+                    if contractor_name:
+                        names.add(contractor_name)
+                contractor_options = sorted(names, key=lambda item: item.casefold())
+            except Exception as exc:
+                app.logger.warning("Falha ao carregar opcoes de contratada na tela de usuarios: %s", exc)
+
         return render_template(
             "admin_users.html",
             title="Usuarios",
             users=users,
             status_filter=status_filter,
             error_message="",
-            roles=[ROLE_SUPERADMIN, ROLE_ADMIN, ROLE_OPERADOR, ROLE_LEITOR],
+            roles=[ROLE_SUPERADMIN, ROLE_ADMIN, ROLE_OPERADOR, ROLE_LEITOR, ROLE_CONTRATADA, ROLE_FISCAL],
             statuses=["pending", "active", "rejected", "disabled"],
+            contract_options=contract_options,
+            contractor_options=contractor_options,
         )
 
     @app.post("/admin/usuarios/<int:user_id>/update")
@@ -1454,18 +1675,82 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
 
         action = str(request.form.get("action", "") or "").strip().lower()
         role_value = normalize_role(request.form.get("role", ""))
+        contractor_name = str(request.form.get("contractor_name", "") or "").strip()
+        raw_contract_ids = list(request.form.getlist("contract_ids") or [])
+        selected_contract_ids: list[int] = []
+        seen_contract_ids: set[int] = set()
+        for raw in raw_contract_ids:
+            try:
+                contract_id = int(str(raw or "").strip())
+            except Exception:
+                continue
+            if contract_id <= 0 or contract_id in seen_contract_ids:
+                continue
+            seen_contract_ids.add(contract_id)
+            selected_contract_ids.append(contract_id)
+
+        available_contract_ids: set[int] = set()
+        for item in _build_contract_options(limit=2000):
+            try:
+                contract_id = int(str(item.get("id", "") or "").strip())
+            except Exception:
+                continue
+            if contract_id > 0:
+                available_contract_ids.add(contract_id)
+
+        def _apply_scope_for_role(target_role: str) -> tuple[str, list[int]]:
+            normalized_role = normalize_role(target_role)
+            normalized_contractor = contractor_name
+            normalized_contracts = list(selected_contract_ids)
+
+            if normalized_role == ROLE_CONTRATADA:
+                if not normalized_contractor:
+                    raise ValueError("Informe a contratada para aprovar usuario da contratada.")
+                if not normalized_contracts:
+                    raise ValueError("Selecione ao menos um contrato autorizado para usuario da contratada.")
+            elif normalized_role == ROLE_FISCAL:
+                normalized_contractor = ""
+                if not normalized_contracts:
+                    raise ValueError("Selecione ao menos um contrato autorizado para fiscal.")
+            else:
+                normalized_contractor = ""
+                normalized_contracts = []
+
+            invalid_contracts = [contract_id for contract_id in normalized_contracts if contract_id not in available_contract_ids]
+            if invalid_contracts:
+                raise ValueError("Foram informados contratos invalidos para o vinculo do usuario.")
+
+            update_contractor = getattr(repo, "update_user_contractor", None)
+            replace_contracts = getattr(repo, "replace_user_authorized_contracts", None)
+            if not callable(update_contractor) or not callable(replace_contracts):
+                raise RuntimeError("Repositorio de usuarios nao suporta vinculo por contrato.")
+
+            update_contractor(user_id, normalized_contractor)
+            replace_contracts(user_id, normalized_contracts)
+            return normalized_contractor, normalized_contracts
+
         actor = dict(getattr(g, "current_web_user", None) or {})
         actor_id = int(actor.get("id", 0) or 0)
         audit_repo = _active_audit_repository()
 
         try:
             if action == "approve":
-                if role_value not in {ROLE_SUPERADMIN, ROLE_ADMIN, ROLE_OPERADOR, ROLE_LEITOR}:
+                if role_value not in {ROLE_SUPERADMIN, ROLE_ADMIN, ROLE_OPERADOR, ROLE_LEITOR, ROLE_CONTRATADA, ROLE_FISCAL}:
                     raise ValueError("Informe um papel valido para aprovar.")
+                scope_contractor, scope_contracts = _apply_scope_for_role(role_value)
                 repo.update_user_role(user_id, role_value)
                 repo.update_user_status(user_id, "active", approved_by=actor_id, set_approved=True)
                 if audit_repo is not None:
-                    audit_repo.log_action(actor_id, user_id, "user_approved", {"role": role_value})
+                    audit_repo.log_action(
+                        actor_id,
+                        user_id,
+                        "user_approved",
+                        {
+                            "role": role_value,
+                            "contractor_name": scope_contractor,
+                            "authorized_contract_ids": scope_contracts,
+                        },
+                    )
                 flash("Usuario aprovado com sucesso.", "success")
             elif action == "reject":
                 repo.update_user_status(user_id, "rejected", approved_by=actor_id, set_approved=False)
@@ -1483,12 +1768,39 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                     audit_repo.log_action(actor_id, user_id, "user_reactivated", {})
                 flash("Usuario reativado.", "success")
             elif action == "set_role":
-                if role_value not in {ROLE_SUPERADMIN, ROLE_ADMIN, ROLE_OPERADOR, ROLE_LEITOR}:
+                if role_value not in {ROLE_SUPERADMIN, ROLE_ADMIN, ROLE_OPERADOR, ROLE_LEITOR, ROLE_CONTRATADA, ROLE_FISCAL}:
                     raise ValueError("Informe um papel valido.")
+                scope_contractor, scope_contracts = _apply_scope_for_role(role_value)
                 repo.update_user_role(user_id, role_value)
                 if audit_repo is not None:
-                    audit_repo.log_action(actor_id, user_id, "role_changed", {"role": role_value})
+                    audit_repo.log_action(
+                        actor_id,
+                        user_id,
+                        "role_changed",
+                        {
+                            "role": role_value,
+                            "contractor_name": scope_contractor,
+                            "authorized_contract_ids": scope_contracts,
+                        },
+                    )
                 flash("Papel atualizado.", "success")
+            elif action == "set_scope":
+                get_user = getattr(repo, "get_user_by_id", None)
+                current_user = get_user(user_id) if callable(get_user) else None
+                current_role = normalize_role((current_user or {}).get("role", role_value))
+                scope_contractor, scope_contracts = _apply_scope_for_role(current_role)
+                if audit_repo is not None:
+                    audit_repo.log_action(
+                        actor_id,
+                        user_id,
+                        "scope_changed",
+                        {
+                            "role": current_role,
+                            "contractor_name": scope_contractor,
+                            "authorized_contract_ids": scope_contracts,
+                        },
+                    )
+                flash("Vinculos atualizados.", "success")
             else:
                 flash("Acao invalida.", "error")
         except Exception as exc:
@@ -1739,6 +2051,109 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         except Exception:
             return None
 
+    def _service_catalog_options_for_form() -> list[dict[str, str]]:
+        catalog = dict(service.get_service_catalog_ui() or {})
+        options: list[dict[str, str]] = []
+        for raw in list(catalog.get("options", []) or []):
+            row = dict(raw or {})
+            servico = str(row.get("servico", "") or "").strip()
+            if not servico:
+                continue
+            options.append(
+                {
+                    "servico": servico,
+                    "label": str(row.get("label", "") or "").strip() or servico.replace("_", " "),
+                    "categoria": str(row.get("categoria", "") or "").strip() or "servico_nao_mapeado",
+                }
+            )
+        return options
+
+    def _extract_declaration_items_from_form(form) -> list[dict[str, object]]:
+        services = form.getlist("item_servico_oficial[]")
+        labels = form.getlist("item_servico_label[]")
+        categorias = form.getlist("item_categoria[]")
+        quantidades = form.getlist("item_quantidade[]")
+        unidades = form.getlist("item_unidade[]")
+        locais = form.getlist("item_local_execucao[]")
+        descricoes = form.getlist("item_descricao[]")
+        statuses = form.getlist("item_status[]")
+
+        max_len = max(
+            len(services),
+            len(labels),
+            len(categorias),
+            len(quantidades),
+            len(unidades),
+            len(locais),
+            len(descricoes),
+            len(statuses),
+            0,
+        )
+
+        rows: list[dict[str, object]] = []
+        for idx in range(max_len):
+            rows.append(
+                {
+                    "servico_oficial": services[idx] if idx < len(services) else "",
+                    "servico_label": labels[idx] if idx < len(labels) else "",
+                    "categoria": categorias[idx] if idx < len(categorias) else "",
+                    "quantidade": quantidades[idx] if idx < len(quantidades) else "",
+                    "unidade": unidades[idx] if idx < len(unidades) else "",
+                    "local_execucao": locais[idx] if idx < len(locais) else "",
+                    "descricao": descricoes[idx] if idx < len(descricoes) else "",
+                    "item_status": statuses[idx] if idx < len(statuses) else "declarado",
+                }
+            )
+        return rows
+
+    def _render_contratada_declaracao_form(
+        form_data: Dict[str, str] | None = None,
+        items: list[dict[str, object]] | None = None,
+        error_message: str = "",
+    ):
+        defaults = {
+            "contract_id": "",
+            "declaration_date": datetime.now().strftime("%Y-%m-%d"),
+            "periodo": "Diurno",
+            "nucleo": "",
+            "municipio": "",
+            "logradouro": "",
+            "equipe": "",
+            "responsavel_nome": "",
+            "responsavel_contato": "",
+            "observacoes": "",
+        }
+        payload = dict(defaults)
+        payload.update(dict(form_data or {}))
+
+        item_rows = list(items or [])
+        if not item_rows:
+            item_rows = [
+                {
+                    "servico_oficial": "",
+                    "servico_label": "",
+                    "categoria": "",
+                    "quantidade": "",
+                    "unidade": "",
+                    "local_execucao": "",
+                    "descricao": "",
+                    "item_status": "declarado",
+                }
+                for _ in range(4)
+            ]
+
+        return render_template(
+            "contratada_declaracao_form.html",
+            title="Declaracao diaria de execucao",
+            form_data=payload,
+            items=item_rows,
+            error_message=str(error_message or ""),
+            contract_options=_build_contract_options(),
+            service_catalog_options=_service_catalog_options_for_form(),
+            unidade_options=["m", "un", "km", "m2", "m3", "h", "dia", "lote"],
+            item_status_options=["declarado", "ajustado", "cancelado"],
+        )
+
     def _extract_inspection_items_from_form(form) -> list[dict[str, object]]:
         areas = form.getlist("item_area[]")
         titles = form.getlist("item_titulo[]")
@@ -1749,6 +2164,8 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         responsaveis = form.getlist("item_responsavel[]")
         multas = form.getlist("item_multa[]")
         evidencias = form.getlist("item_evidencia[]")
+        qtd_declaradas = form.getlist("item_qtd_declarada[]")
+        qtd_verificadas = form.getlist("item_qtd_verificada[]")
 
         max_len = max(
             len(areas),
@@ -1760,6 +2177,8 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             len(responsaveis),
             len(multas),
             len(evidencias),
+            len(qtd_declaradas),
+            len(qtd_verificadas),
             0,
         )
         items: list[dict[str, object]] = []
@@ -1774,6 +2193,8 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                 "responsavel_ajuste": responsaveis[idx] if idx < len(responsaveis) else "",
                 "valor_multa": multas[idx] if idx < len(multas) else "",
                 "evidencia_ref": evidencias[idx] if idx < len(evidencias) else "",
+                "quantidade_declarada": qtd_declaradas[idx] if idx < len(qtd_declaradas) else "0",
+                "quantidade_verificada": qtd_verificadas[idx] if idx < len(qtd_verificadas) else "",
             }
             items.append(item)
         return items
@@ -1817,6 +2238,8 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                     "responsavel_ajuste": "",
                     "valor_multa": "",
                     "evidencia_ref": "",
+                    "quantidade_declarada": "0",
+                    "quantidade_verificada": "",
                 }
                 for _ in range(4)
             ]
@@ -1832,6 +2255,204 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             resultado_options=["pendente", "conforme", "parcial", "nao_conforme"],
             item_status_options=["pendente", "conforme", "nao_conforme", "observacao"],
             item_severity_options=["baixa", "media", "alta", "critica"],
+        )
+
+    @app.get("/conferencia-operacional/contratada")
+    def contratada_conferencia_home():
+        denied = _deny_if_no_permission("conferencia_contratada")
+        if denied is not None:
+            return denied
+        return redirect(url_for("contratada_declaracoes_list"))
+
+    @app.get("/conferencia-operacional/contratada/declaracoes")
+    def contratada_declaracoes_list():
+        denied = _deny_if_no_permission("conferencia_contratada")
+        if denied is not None:
+            return denied
+
+        declarations_service = _active_declaration_service()
+        if declarations_service is None:
+            return (
+                render_template(
+                    "contratada_declaracoes_list.html",
+                    title="Declaracoes diarias",
+                    rows=[],
+                    stats={"total": 0, "com_ficha": 0, "sem_ficha": 0},
+                    filters={"contract_id": "", "date_from": "", "date_to": ""},
+                    contract_options=[],
+                    error_message=_auth_unavailable_message("Declaracao diaria de execucao"),
+                ),
+                503,
+            )
+
+        filters = {
+            "contract_id": str(request.args.get("contract_id", "") or "").strip(),
+            "date_from": str(request.args.get("date_from", "") or "").strip(),
+            "date_to": str(request.args.get("date_to", "") or "").strip(),
+        }
+
+        contract_id = int(filters["contract_id"]) if filters["contract_id"].isdigit() else None
+        if not _is_contract_allowed_for_current_user(contract_id):
+            return _deny_scoped_access()
+
+        current_role = _current_web_role()
+        current_user_id = int(session.get(SESSION_USER_ID_KEY, 0) or 0)
+        scoped_created_by = current_user_id if current_role == ROLE_CONTRATADA and current_user_id > 0 else None
+
+        try:
+            declarations = declarations_service.list_declarations(
+                limit=300,
+                contract_id=contract_id,
+                created_by=scoped_created_by,
+                date_from=filters["date_from"],
+                date_to=filters["date_to"],
+            )
+            rows = [item.to_dict() for item in declarations]
+        except Exception as exc:
+            app.logger.warning("Falha ao carregar declaracoes diarias: %s", exc)
+            return (
+                render_template(
+                    "contratada_declaracoes_list.html",
+                    title="Declaracoes diarias",
+                    rows=[],
+                    stats={"total": 0, "com_ficha": 0, "sem_ficha": 0},
+                    filters=filters,
+                    contract_options=_build_contract_options(),
+                    error_message="Nao foi possivel carregar as declaracoes agora. Tente novamente.",
+                ),
+                500,
+            )
+
+        stats = {
+            "total": len(rows),
+            "com_ficha": sum(1 for row in rows if row.get("generated_inspection_id")),
+            "sem_ficha": sum(1 for row in rows if not row.get("generated_inspection_id")),
+        }
+        return render_template(
+            "contratada_declaracoes_list.html",
+            title="Declaracoes diarias",
+            rows=rows,
+            stats=stats,
+            filters=filters,
+            contract_options=_build_contract_options(),
+            error_message="",
+        )
+
+    @app.get("/conferencia-operacional/contratada/declaracoes/nova")
+    def contratada_declaracoes_new():
+        denied = _deny_if_no_permission("conferencia_contratada")
+        if denied is not None:
+            return denied
+
+        declarations_service = _active_declaration_service()
+        if declarations_service is None:
+            return _render_contratada_declaracao_form(
+                error_message=_auth_unavailable_message("Declaracao diaria de execucao")
+            ), 503
+        _ = declarations_service
+        if _current_web_role() == ROLE_CONTRATADA and not _build_contract_options():
+            return (
+                _render_contratada_declaracao_form(
+                    error_message=(
+                        "Usuario da contratada sem contratos vinculados. "
+                        "Solicite ao administrador a vinculacao do contrato."
+                    )
+                ),
+                403,
+            )
+        return _render_contratada_declaracao_form()
+
+    @app.post("/conferencia-operacional/contratada/declaracoes")
+    def contratada_declaracoes_create():
+        denied = _deny_if_no_permission("conferencia_contratada")
+        if denied is not None:
+            return denied
+
+        declarations_service = _active_declaration_service()
+        if declarations_service is None:
+            return _render_contratada_declaracao_form(
+                error_message=_auth_unavailable_message("Declaracao diaria de execucao")
+            ), 503
+
+        payload = {
+            "contract_id": str(request.form.get("contract_id", "") or "").strip(),
+            "declaration_date": str(request.form.get("declaration_date", "") or "").strip(),
+            "periodo": str(request.form.get("periodo", "") or "").strip(),
+            "nucleo": str(request.form.get("nucleo", "") or "").strip(),
+            "municipio": str(request.form.get("municipio", "") or "").strip(),
+            "logradouro": str(request.form.get("logradouro", "") or "").strip(),
+            "equipe": str(request.form.get("equipe", "") or "").strip(),
+            "responsavel_nome": str(request.form.get("responsavel_nome", "") or "").strip(),
+            "responsavel_contato": str(request.form.get("responsavel_contato", "") or "").strip(),
+            "observacoes": str(request.form.get("observacoes", "") or "").strip(),
+        }
+        items = _extract_declaration_items_from_form(request.form)
+
+        contract_id = int(payload["contract_id"]) if payload["contract_id"].isdigit() else None
+        if not _is_contract_allowed_for_current_user(contract_id, require_contract_for_contractor=True):
+            return (
+                _render_contratada_declaracao_form(
+                    form_data=payload,
+                    items=items,
+                    error_message="Contrato fora do escopo do usuario atual.",
+                ),
+                403,
+            )
+
+        created_by = session.get(SESSION_USER_ID_KEY)
+        try:
+            declaration, inspection = declarations_service.create_declaration_and_generate_inspection(
+                payload,
+                items,
+                created_by=int(created_by) if str(created_by or "").strip() else None,
+            )
+        except DeclarationValidationError as exc:
+            return _render_contratada_declaracao_form(form_data=payload, items=items, error_message=str(exc)), 400
+        except Exception as exc:
+            app.logger.warning("Falha ao criar declaracao diaria e ficha de conferencia: %s", exc)
+            return (
+                _render_contratada_declaracao_form(
+                    form_data=payload,
+                    items=items,
+                    error_message="Nao foi possivel salvar a declaracao agora. Tente novamente.",
+                ),
+                500,
+            )
+
+        flash(
+            (
+                "Declaracao diaria enviada com sucesso. "
+                f"Ficha de conferencia #{inspection.id} gerada automaticamente."
+            ),
+            "success",
+        )
+        return redirect(url_for("contratada_declaracoes_detail", declaration_id=declaration.id))
+
+    @app.get("/conferencia-operacional/contratada/declaracoes/<int:declaration_id>")
+    def contratada_declaracoes_detail(declaration_id: int):
+        denied = _deny_if_no_permission("conferencia_contratada")
+        if denied is not None:
+            return denied
+
+        declarations_service = _active_declaration_service()
+        if declarations_service is None:
+            abort(503)
+
+        declaration, items = declarations_service.get_declaration_with_items(declaration_id)
+        if declaration is None:
+            abort(404)
+        if not _is_contract_allowed_for_current_user(declaration.contract_id):
+            return _deny_scoped_access()
+        if _current_web_role() == ROLE_CONTRATADA:
+            current_user_id = int(session.get(SESSION_USER_ID_KEY, 0) or 0)
+            if current_user_id > 0 and int(declaration.created_by or 0) != current_user_id:
+                return _deny_scoped_access()
+
+        return render_template(
+            "contratada_declaracao_detail.html",
+            title=f"Declaracao diaria #{declaration.id}",
+            declaration=declaration.to_dict(),
+            items=[item.to_dict() for item in items],
         )
 
     @app.get("/vistorias")
@@ -1863,11 +2484,30 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             "q": str(request.args.get("q", "") or "").strip(),
         }
 
+        current_role = _current_web_role()
+        scoped_contract_ids = _current_user_contract_ids() if current_role == ROLE_FISCAL else set()
+        if current_role == ROLE_FISCAL and not scoped_contract_ids:
+            return (
+                render_template(
+                    "vistorias_list.html",
+                    title="Vistorias",
+                    rows=[],
+                    filters=filters,
+                    stats={"total": 0, "aberta": 0, "em_andamento": 0, "concluida": 0},
+                    contract_options=[],
+                    error_message="Fiscal sem contratos vinculados. Solicite ao administrador a definicao do escopo.",
+                ),
+                403,
+            )
+
         contract_id = int(filters["contract_id"]) if filters["contract_id"].isdigit() else None
+        if current_role == ROLE_FISCAL and contract_id and contract_id not in scoped_contract_ids:
+            abort(403)
         try:
             inspections = inspections_service.list_inspections(
                 limit=300,
                 contract_id=contract_id,
+                contract_ids=sorted(scoped_contract_ids) if current_role == ROLE_FISCAL else None,
                 status=filters["status"],
                 date_from=filters["date_from"],
                 date_to=filters["date_to"],
@@ -1875,10 +2515,25 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             )
             rows = [item.to_dict() for item in inspections]
             stats = {
-                "total": inspections_service.count_inspections(contract_id=contract_id),
-                "aberta": inspections_service.count_inspections(contract_id=contract_id, status="aberta"),
-                "em_andamento": inspections_service.count_inspections(contract_id=contract_id, status="em_andamento"),
-                "concluida": inspections_service.count_inspections(contract_id=contract_id, status="concluida"),
+                "total": inspections_service.count_inspections(
+                    contract_id=contract_id,
+                    contract_ids=sorted(scoped_contract_ids) if current_role == ROLE_FISCAL else None,
+                ),
+                "aberta": inspections_service.count_inspections(
+                    contract_id=contract_id,
+                    contract_ids=sorted(scoped_contract_ids) if current_role == ROLE_FISCAL else None,
+                    status="aberta",
+                ),
+                "em_andamento": inspections_service.count_inspections(
+                    contract_id=contract_id,
+                    contract_ids=sorted(scoped_contract_ids) if current_role == ROLE_FISCAL else None,
+                    status="em_andamento",
+                ),
+                "concluida": inspections_service.count_inspections(
+                    contract_id=contract_id,
+                    contract_ids=sorted(scoped_contract_ids) if current_role == ROLE_FISCAL else None,
+                    status="concluida",
+                ),
             }
         except Exception as exc:
             app.logger.warning("Falha ao carregar vistorias: %s", exc)
@@ -1983,6 +2638,10 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         inspection, items = inspections_service.get_inspection_with_items(inspection_id)
         if inspection is None:
             abort(404)
+        if _current_web_role() == ROLE_FISCAL:
+            contract_id = int(inspection.contract_id) if inspection.contract_id else None
+            if not _is_contract_allowed_for_current_user(contract_id):
+                abort(403)
 
         rows = [item.to_dict() for item in items]
         item_totals = {
@@ -2009,6 +2668,14 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         inspections_service = _active_inspection_service()
         if inspections_service is None:
             abort(503)
+
+        if _current_web_role() == ROLE_FISCAL:
+            inspection, _ = inspections_service.get_inspection_with_items(inspection_id)
+            if inspection is None:
+                abort(404)
+            contract_id = int(inspection.contract_id) if inspection.contract_id else None
+            if not _is_contract_allowed_for_current_user(contract_id):
+                abort(403)
 
         status = str(request.form.get("status", "") or "").strip().lower()
         try:
@@ -2039,6 +2706,10 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         inspection, items = inspections_service.get_inspection_with_items(inspection_id)
         if inspection is None:
             abort(404)
+        if _current_web_role() == ROLE_FISCAL:
+            contract_id = int(inspection.contract_id) if inspection.contract_id else None
+            if not _is_contract_allowed_for_current_user(contract_id):
+                abort(403)
 
         return render_template(
             "vistoria_report.html",
@@ -2046,6 +2717,348 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             inspection=inspection.to_dict(),
             items=[item.to_dict() for item in items],
         )
+
+    def _conference_user_context() -> tuple[int, str]:
+        user_id = _current_web_user_id()
+        if user_id <= 0:
+            raise ConferenceAccessError("Sessao de usuario invalida para conferencia.")
+        return user_id, _current_web_role()
+
+    @app.get("/conferencia-operacional/pendentes")
+    def conferencia_pendentes():
+        denied = _deny_if_no_permission("conferencia_operacional_execucao")
+        if denied is not None:
+            return denied
+
+        conference = _active_conference_service()
+        if conference is None:
+            return (
+                render_template(
+                    "conferencia_pendentes.html",
+                    title="Conferencia Operacional",
+                    rows=[],
+                    stats={"total": 0},
+                    error_message=_auth_unavailable_message("Conferencia Operacional"),
+                ),
+                503,
+            )
+
+        try:
+            user_id, role = _conference_user_context()
+            inspections = conference.list_pending_queue(user_id=user_id, role=role, limit=300)
+            rows = [row.to_dict() for row in inspections]
+        except ConferenceAccessError:
+            abort(403)
+        except Exception as exc:
+            app.logger.warning("Falha ao carregar fila de conferencia operacional: %s", exc)
+            return (
+                render_template(
+                    "conferencia_pendentes.html",
+                    title="Conferencia Operacional",
+                    rows=[],
+                    stats={"total": 0},
+                    error_message="Nao foi possivel carregar a fila de conferencia agora.",
+                ),
+                500,
+            )
+
+        return render_template(
+            "conferencia_pendentes.html",
+            title="Conferencia Operacional",
+            rows=rows,
+            stats={"total": len(rows)},
+            error_message="",
+        )
+
+    @app.get("/conferencia-operacional/fichas/<int:inspection_id>")
+    def conferencia_ficha_detail(inspection_id: int):
+        denied = _deny_if_no_permission("conferencia_operacional")
+        if denied is not None:
+            return denied
+
+        conference = _active_conference_service()
+        if conference is None:
+            abort(503)
+
+        try:
+            user_id, role = _conference_user_context()
+            payload = conference.get_ficha_detail(
+                inspection_id=int(inspection_id),
+                user_id=user_id,
+                role=role,
+            )
+        except ConferenceAccessError:
+            abort(403)
+        except ConferenceNotFoundError:
+            abort(404)
+
+        return render_template(
+            "conferencia_ficha_detail.html",
+            title=f"Ficha #{payload.get('inspection', {}).get('id', inspection_id)}",
+            inspection=dict(payload.get("inspection", {}) or {}),
+            items=list(payload.get("items", []) or []),
+            item_totals=dict(payload.get("item_totals", {}) or {}),
+            session=dict(payload.get("session", {}) or {}),
+            can_execute_conference=can_access(_current_web_role(), "conferencia_operacional_execucao"),
+        )
+
+    @app.get("/conferencia-operacional/fichas/<int:inspection_id>/campo")
+    def conferencia_campo(inspection_id: int):
+        denied = _deny_if_no_permission("conferencia_operacional_execucao")
+        if denied is not None:
+            return denied
+
+        conference = _active_conference_service()
+        if conference is None:
+            abort(503)
+
+        try:
+            user_id, role = _conference_user_context()
+            payload = conference.open_conference(
+                inspection_id=int(inspection_id),
+                user_id=user_id,
+                role=role,
+            )
+        except ConferenceAccessError:
+            abort(403)
+        except ConferenceNotFoundError:
+            abort(404)
+
+        return render_template(
+            "conferencia_campo_mobile.html",
+            title=f"Conferencia em campo #{inspection_id}",
+            inspection=dict(payload.get("inspection", {}) or {}),
+            session=dict(payload.get("session", {}) or {}),
+            planned_items=list(payload.get("planned_items", []) or []),
+            field_items=list(payload.get("field_items", []) or []),
+            readonly=bool(payload.get("readonly", False)),
+        )
+
+    @app.post("/conferencia-operacional/fichas/<int:inspection_id>/rascunho")
+    def conferencia_salvar_rascunho(inspection_id: int):
+        denied = _deny_if_no_permission("conferencia_operacional_execucao")
+        if denied is not None:
+            return denied
+
+        conference = _active_conference_service()
+        if conference is None:
+            abort(503)
+
+        try:
+            user_id, role = _conference_user_context()
+            payload = conference.open_conference(
+                inspection_id=int(inspection_id),
+                user_id=user_id,
+                role=role,
+            )
+            session = dict(payload.get("session", {}) or {})
+            session_id = int(session.get("id", 0) or 0)
+            inspection_data = dict(payload.get("inspection", {}) or {})
+            planned_updates: list[dict[str, object]] = []
+            for row in list(payload.get("planned_items", []) or []):
+                item_id = int(row.get("inspection_item_id", 0) or 0)
+                if item_id <= 0:
+                    continue
+                evidence_ref = str(
+                    request.form.get(
+                        f"evidencia_existing_{item_id}",
+                        row.get("evidencia_ref", ""),
+                    )
+                    or ""
+                ).strip()
+                upload = request.files.get(f"evidencia_file_{item_id}")
+                if upload and str(upload.filename or "").strip():
+                    evidence_ref = conference.save_evidence_file(
+                        file_storage=upload,
+                        inspection_id=int(inspection_data.get("id", inspection_id) or inspection_id),
+                        session_id=session_id,
+                        slot=f"item_{item_id}",
+                    )
+                planned_updates.append(
+                    {
+                        "inspection_item_id": item_id,
+                        "ordem": int(row.get("ordem", 0) or 0),
+                        "area": str(row.get("area", "") or "").strip(),
+                        "item_titulo": str(row.get("item_titulo", "") or "").strip(),
+                        "descricao": str(row.get("descricao", "") or "").strip(),
+                        "quantidade_verificada": str(request.form.get(f"qtd_{item_id}", "") or "").strip(),
+                        "status": str(request.form.get(f"status_{item_id}", "pendente") or "pendente").strip().lower(),
+                        "observacao_tecnica": str(request.form.get(f"obs_{item_id}", "") or "").strip(),
+                        "local_verificado": str(request.form.get(f"local_{item_id}", "") or "").strip(),
+                        "evidencia_ref": evidence_ref,
+                    }
+                )
+            conference.save_draft(
+                inspection_id=int(inspection_id),
+                user_id=user_id,
+                role=role,
+                planned_updates=planned_updates,
+                technical_notes=str(request.form.get("technical_notes", "") or "").strip(),
+                location_verified=str(request.form.get("location_verified", "") or "").strip(),
+            )
+            flash("Rascunho da conferencia salvo com sucesso.", "success")
+        except ConferenceValidationError as exc:
+            flash(str(exc), "error")
+        except ConferenceAccessError:
+            abort(403)
+        except ConferenceNotFoundError:
+            abort(404)
+        except Exception as exc:
+            app.logger.warning("Falha ao salvar rascunho da conferencia da ficha %s: %s", inspection_id, exc)
+            flash("Nao foi possivel salvar o rascunho agora.", "error")
+
+        next_action = str(request.form.get("next_action", "") or "").strip().lower()
+        if next_action == "resumo":
+            return redirect(url_for("conferencia_resumo", inspection_id=inspection_id))
+        return redirect(url_for("conferencia_campo", inspection_id=inspection_id))
+
+    @app.get("/conferencia-operacional/fichas/<int:inspection_id>/itens-campo/novo")
+    def conferencia_item_campo_new(inspection_id: int):
+        denied = _deny_if_no_permission("conferencia_operacional_execucao")
+        if denied is not None:
+            return denied
+
+        conference = _active_conference_service()
+        if conference is None:
+            abort(503)
+
+        try:
+            user_id, role = _conference_user_context()
+            payload = conference.open_conference(
+                inspection_id=int(inspection_id),
+                user_id=user_id,
+                role=role,
+            )
+        except ConferenceAccessError:
+            abort(403)
+        except ConferenceNotFoundError:
+            abort(404)
+
+        return render_template(
+            "conferencia_item_campo_form.html",
+            title=f"Adicionar item em campo #{inspection_id}",
+            inspection=dict(payload.get("inspection", {}) or {}),
+            session=dict(payload.get("session", {}) or {}),
+            readonly=bool(payload.get("readonly", False)),
+        )
+
+    @app.post("/conferencia-operacional/fichas/<int:inspection_id>/itens-campo")
+    def conferencia_item_campo_create(inspection_id: int):
+        denied = _deny_if_no_permission("conferencia_operacional_execucao")
+        if denied is not None:
+            return denied
+
+        conference = _active_conference_service()
+        if conference is None:
+            abort(503)
+
+        try:
+            user_id, role = _conference_user_context()
+            payload = conference.open_conference(
+                inspection_id=int(inspection_id),
+                user_id=user_id,
+                role=role,
+            )
+            session = dict(payload.get("session", {}) or {})
+            session_id = int(session.get("id", 0) or 0)
+            evidence_ref = ""
+            upload = request.files.get("evidencia_file")
+            if upload and str(upload.filename or "").strip():
+                evidence_ref = conference.save_evidence_file(
+                    file_storage=upload,
+                    inspection_id=int(inspection_id),
+                    session_id=session_id,
+                    slot="item_encontrado_campo",
+                )
+            conference.add_field_item(
+                inspection_id=int(inspection_id),
+                user_id=user_id,
+                role=role,
+                payload={
+                    "area": str(request.form.get("area", "") or "").strip(),
+                    "item_titulo": str(request.form.get("item_titulo", "") or "").strip(),
+                    "descricao": str(request.form.get("descricao", "") or "").strip(),
+                    "quantidade_verificada": str(request.form.get("quantidade_verificada", "0") or "0").strip(),
+                    "status": str(request.form.get("status", "observacao") or "observacao").strip().lower(),
+                    "observacao_tecnica": str(request.form.get("observacao_tecnica", "") or "").strip(),
+                    "local_verificado": str(request.form.get("local_verificado", "") or "").strip(),
+                    "evidencia_ref": evidence_ref,
+                },
+            )
+            flash("Item encontrado em campo adicionado ao rascunho.", "success")
+            return redirect(url_for("conferencia_campo", inspection_id=inspection_id))
+        except ConferenceValidationError as exc:
+            flash(str(exc), "error")
+            return redirect(url_for("conferencia_item_campo_new", inspection_id=inspection_id))
+        except ConferenceAccessError:
+            abort(403)
+        except ConferenceNotFoundError:
+            abort(404)
+
+    @app.get("/conferencia-operacional/fichas/<int:inspection_id>/resumo")
+    def conferencia_resumo(inspection_id: int):
+        denied = _deny_if_no_permission("conferencia_operacional_execucao")
+        if denied is not None:
+            return denied
+
+        conference = _active_conference_service()
+        if conference is None:
+            abort(503)
+
+        try:
+            user_id, role = _conference_user_context()
+            payload = conference.get_summary(
+                inspection_id=int(inspection_id),
+                user_id=user_id,
+                role=role,
+            )
+        except ConferenceAccessError:
+            abort(403)
+        except ConferenceNotFoundError:
+            abort(404)
+
+        return render_template(
+            "conferencia_resumo.html",
+            title=f"Resumo da conferencia #{inspection_id}",
+            inspection=dict(payload.get("inspection", {}) or {}),
+            session=dict(payload.get("session", {}) or {}),
+            planned_items=list(payload.get("planned_items", []) or []),
+            field_items=list(payload.get("field_items", []) or []),
+            summary=dict(payload.get("summary", {}) or {}),
+        )
+
+    @app.post("/conferencia-operacional/fichas/<int:inspection_id>/concluir")
+    def conferencia_concluir(inspection_id: int):
+        denied = _deny_if_no_permission("conferencia_operacional_execucao")
+        if denied is not None:
+            return denied
+
+        conference = _active_conference_service()
+        if conference is None:
+            abort(503)
+
+        try:
+            user_id, role = _conference_user_context()
+            conference.conclude(
+                inspection_id=int(inspection_id),
+                user_id=user_id,
+                role=role,
+                technical_notes=str(request.form.get("technical_notes", "") or "").strip(),
+                location_verified=str(request.form.get("location_verified", "") or "").strip(),
+            )
+            flash("Conferencia concluida e publicada na base oficial.", "success")
+            return redirect(url_for("conferencia_resumo", inspection_id=inspection_id))
+        except ConferenceValidationError as exc:
+            flash(str(exc), "error")
+            return redirect(url_for("conferencia_resumo", inspection_id=inspection_id))
+        except ConferenceAccessError:
+            abort(403)
+        except ConferenceNotFoundError:
+            abort(404)
+        except Exception as exc:
+            app.logger.warning("Falha ao concluir conferencia da ficha %s: %s", inspection_id, exc)
+            flash("Nao foi possivel concluir a conferencia agora.", "error")
+            return redirect(url_for("conferencia_resumo", inspection_id=inspection_id))
 
     def _render_contract_form(
         form_data: Dict[str, str] | None = None,
@@ -2217,12 +3230,17 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
 
     @app.get("/")
     def index():
-        if _active_user_service() is not None:
-            return redirect(url_for("dashboard"))
+        if _active_user_lookup_service() is not None:
+            current_role = normalize_role(session.get(SESSION_USER_ROLE_KEY, ""))
+            return redirect(url_for(_default_home_endpoint_for_role(current_role)))
         return _render_entry_page()
 
     @app.get("/nucleos")
     def nucleos():
+        denied = _deny_if_no_permission("nucleos")
+        if denied is not None:
+            return denied
+
         search = str(request.args.get("q", "") or "").strip()
         status = str(request.args.get("status", "") or "").strip().lower()
         edit_name = str(request.args.get("edit", "") or "").strip()
@@ -2246,6 +3264,10 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
 
     @app.post("/nucleos")
     def nucleos_save():
+        denied = _deny_if_no_permission("nucleos")
+        if denied is not None:
+            return denied
+
         form_data = {
             "original_nucleo": str(request.form.get("original_nucleo", "") or "").strip(),
             "nucleo": str(request.form.get("nucleo", "") or "").strip(),
@@ -2441,6 +3463,38 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         mensagem = str(request.form.get("mensagem", "") or "").strip()
         form_data = _collect_form_fields(request.form)
         form_data, autofill_info = service.apply_nucleo_defaults(form_data)
+        contract_raw = str(form_data.get("contract_id", "") or "").strip()
+        contract_id: int | None = None
+        if contract_raw:
+            try:
+                contract_id = int(contract_raw)
+            except Exception:
+                return _render_entry_page(
+                    form_data=form_data,
+                    mensagem=mensagem,
+                    error_message="Contrato invalido. Selecione um contrato valido para continuar.",
+                    autofill_info=autofill_info,
+                )
+            if contract_id <= 0:
+                return _render_entry_page(
+                    form_data=form_data,
+                    mensagem=mensagem,
+                    error_message="Contrato invalido. Selecione um contrato valido para continuar.",
+                    autofill_info=autofill_info,
+                )
+
+        if not _is_contract_allowed_for_current_user(contract_id, require_contract_for_contractor=True):
+            profile_role = _current_web_role()
+            if profile_role == ROLE_CONTRATADA:
+                error_message = "Usuario da contratada deve selecionar um contrato autorizado para enviar a declaracao."
+            else:
+                error_message = "Contrato fora do escopo de acesso do usuario atual."
+            return _render_entry_page(
+                form_data=form_data,
+                mensagem=mensagem,
+                error_message=error_message,
+                autofill_info=autofill_info,
+            )
 
         if not mensagem:
             return _render_entry_page(
@@ -2494,6 +3548,38 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         form_data = _collect_form_fields(request.form)
         form_data, autofill_info = service.apply_nucleo_defaults(form_data)
         contract_id_raw = str(form_data.get("contract_id", "") or "").strip()
+        contract_id: int | None = None
+        if contract_id_raw:
+            try:
+                contract_id = int(contract_id_raw)
+            except Exception:
+                return _render_entry_page(
+                    form_data=form_data,
+                    mensagem=str(request.form.get("mensagem", "") or ""),
+                    error_message="Contrato invalido. Selecione um contrato valido para continuar.",
+                    autofill_info=autofill_info,
+                )
+            if contract_id <= 0:
+                return _render_entry_page(
+                    form_data=form_data,
+                    mensagem=str(request.form.get("mensagem", "") or ""),
+                    error_message="Contrato invalido. Selecione um contrato valido para continuar.",
+                    autofill_info=autofill_info,
+                )
+
+        if not _is_contract_allowed_for_current_user(contract_id, require_contract_for_contractor=True):
+            profile_role = _current_web_role()
+            if profile_role == ROLE_CONTRATADA:
+                error_message = "Usuario da contratada deve selecionar um contrato autorizado para gerar a declaracao."
+            else:
+                error_message = "Contrato fora do escopo de acesso do usuario atual."
+            return _render_entry_page(
+                form_data=form_data,
+                mensagem=str(request.form.get("mensagem", "") or ""),
+                error_message=error_message,
+                autofill_info=autofill_info,
+            )
+
         contract_label, contract_context = _resolve_contract_context(contract_id_raw)
 
         if not draft_id:
