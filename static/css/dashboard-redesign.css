@@ -4479,3 +4479,239 @@ body.auth-shell-mode .gerencial-page-v4 .pgm4-empty {
     grid-template-columns: 1fr;
   }
 }
+
+/* Novos estilos Premium para Sparklines e List-Cards */
+.mk-kpi-sparkline {
+  margin-top: 12px;
+  height: 40px;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.mk-kpi-sparkline svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+.mk-list-container {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.mk-list-card {
+  background: linear-gradient(90deg, var(--mk-card-top), var(--mk-card-bottom));
+  border: 1px solid var(--mk-line);
+  border-radius: var(--mk-radius-md);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  transition: 160ms ease;
+  box-shadow: var(--mk-shadow-sm);
+}
+
+.mk-list-card:hover {
+  border-color: var(--mk-line-strong);
+  transform: translateX(4px);
+  background: linear-gradient(90deg, rgba(28, 94, 173, 0.1), var(--mk-card-bottom));
+}
+
+.mk-list-card-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mk-list-card-title {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.mk-list-card-subtitle {
+  color: var(--mk-text-soft);
+  font-size: 13px;
+  margin: 0;
+}
+
+.mk-list-card-progress {
+  flex: 0 0 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mk-progress-bar-bg {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.mk-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1c5ead, #2563eb);
+  border-radius: 999px;
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.4);
+}
+
+.mk-progress-text {
+  font-size: 11px;
+  color: var(--mk-text-faint);
+  text-align: right;
+}
+
+.mk-list-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mk-badge {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mk-badge-success { background: rgba(52, 211, 153, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.2); }
+.mk-badge-warning { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2); }
+.mk-badge-info { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.2); }
+
+/* Estilos para o novo layout de Login e Cadastro (Auth) */
+.mk-auth-shell {
+  display: flex;
+  min-height: 100vh;
+  background: var(--mk-bg);
+}
+
+.mk-auth-visual {
+  flex: 1;
+  background: linear-gradient(135deg, #060b14 0%, #0e1421 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  position: relative;
+  overflow: hidden;
+}
+
+.mk-auth-visual::before {
+  content: "";
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.15) 0%, transparent 70%);
+  top: -100px;
+  left: -100px;
+}
+
+.mk-auth-glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 40px;
+  padding: 60px;
+  max-width: 500px;
+  text-align: center;
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.5);
+}
+
+.mk-auth-glass-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 30px;
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.2), rgba(37, 99, 235, 0.05));
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #60a5fa;
+  box-shadow: 0 0 30px rgba(37, 99, 235, 0.3);
+}
+
+.mk-auth-glass-icon svg { width: 40px; height: 40px; }
+
+.mk-auth-glass-value {
+  font-size: 64px;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 10px;
+  letter-spacing: -0.04em;
+}
+
+.mk-auth-glass-label {
+  color: #93c5fd;
+  font-size: 18px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+}
+
+.mk-auth-form-side {
+  width: 550px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background: #080c16;
+  border-left: 1px solid var(--mk-line);
+}
+
+.mk-auth-form-card {
+  width: 100%;
+  max-width: 400px;
+}
+
+.mk-auth-form-header { margin-bottom: 40px; }
+.mk-auth-form-title { font-size: 32px; font-weight: 700; color: #fff; margin-bottom: 12px; }
+.mk-auth-form-subtitle { color: var(--mk-text-soft); font-size: 15px; }
+
+.mk-auth-form .field { margin-bottom: 24px; }
+.mk-auth-form label { margin-bottom: 10px; display: block; }
+.mk-auth-form input {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 16px;
+  font-size: 15px;
+  border-radius: 16px;
+  transition: 200ms ease;
+}
+
+.mk-auth-form input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.mk-auth-btn {
+  width: 100%;
+  min-height: 56px;
+  background: linear-gradient(90deg, #1c5ead, #2563eb);
+  color: #fff;
+  border: none;
+  border-radius: 18px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.3);
+  transition: 200ms ease;
+}
+
+.mk-auth-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 35px rgba(37, 99, 235, 0.4);
+}
+
+@media (max-width: 1000px) {
+  .mk-auth-visual { display: none; }
+  .mk-auth-form-side { width: 100%; border-left: none; }
+}

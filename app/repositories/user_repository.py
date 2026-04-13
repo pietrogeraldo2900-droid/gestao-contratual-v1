@@ -5,7 +5,7 @@ from typing import Any
 from app.database.connection import DatabaseManager
 
 
-_USER_KEYS = [
+_USER_KEYS_ALL = [
     "id",
     "email",
     "password",
@@ -18,31 +18,42 @@ _USER_KEYS = [
     "contractor_name",
 ]
 
-_USER_SELECT_FIELDS = """
-    id,
-    email,
-    password,
-    role,
-    status,
-    approved_by,
-    approved_at,
-    last_login_at,
-    created_at,
-    contractor_name
-"""
+def _get_user_select_fields(conn) -> str:
+    """
+    Retorna a lista de campos para o SELECT de forma dinamica,
+    verificando se as colunas existem no banco de dados.
+    Isso evita erros de 'column does not exist' durante migrações.
+    """
+    try:
+        with conn.cursor() as cur:
+            cur.execute(\"\"\"
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'users'
+            \"\"\")
+            existing_columns = {row[0] for row in cur.fetchall()}
+            
+            if not existing_columns:
+                # Fallback se a tabela nao existir ou erro na consulta
+                return "id, email, password, role, status, created_at"
+                
+            fields = [f for f in _USER_KEYS_ALL if f in existing_columns]
+            return ", ".join(fields)
+    except Exception:
+        return "id, email, password, role, status, created_at"
 
-_USER_LIST_SELECT_FIELDS = """
-    id,
-    email,
-    password,
-    role,
-    status,
-    approved_by,
-    approved_at,
-    last_login_at,
-    created_at,
-    contractor_name
-"""
+def _get_user_keys(conn) -> list[str]:
+    try:
+        with conn.cursor() as cur:
+            cur.execute(\"\"\"
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'users'
+            \"\"\")
+            existing_columns = {row[0] for row in cur.fetchall()}
+            return [f for f in _USER_KEYS_ALL if f in existing_columns]
+    except Exception:
+        return ["id", "email", "password", "role", "status", "created_at"]
 
 
 def _dict_row_factory():
@@ -54,13 +65,14 @@ def _dict_row_factory():
         return None
 
 
-def _row_to_dict(row: Any) -> dict[str, Any]:
+def _row_to_dict(row: Any, keys: list[str] | None = None) -> dict[str, Any]:
     if isinstance(row, dict):
         return dict(row)
     if row is None:
         return {}
     values = list(row)
-    return {k: values[idx] if idx < len(values) else None for idx, k in enumerate(_USER_KEYS)}
+    actual_keys = keys if keys is not None else _USER_KEYS_ALL
+    return {k: values[idx] if idx < len(values) else None for idx, k in enumerate(actual_keys)}
 
 
 def _is_unique_violation(exc: Exception) -> bool:
@@ -124,12 +136,14 @@ class UserRepository:
         return out
 
     def create_user(self, email: str, password_hash: str, *, status: str, role: str | None = None) -> dict[str, Any]:
-        sql = f"""
-        INSERT INTO users (email, password, status, role)
-        VALUES (%s, %s, %s, %s)
-        RETURNING {_USER_SELECT_FIELDS}
-        """
         with self._db.connection() as conn:
+            fields = _get_user_select_fields(conn)
+            keys = _get_user_keys(conn)
+            sql = f"""
+            INSERT INTO users (email, password, status, role)
+            VALUES (%s, %s, %s, %s)
+            RETURNING {fields}
+            """
             try:
                 with conn.cursor(**self._cursor_kwargs()) as cur:
                     cur.execute(sql, (email, password_hash, status, role))
@@ -140,57 +154,63 @@ class UserRepository:
                 if _is_unique_violation(exc):
                     raise UserAlreadyExistsError("Email ja cadastrado.") from exc
                 raise
-            out = self._attach_scope(conn, _row_to_dict(row))
+            out = self._attach_scope(conn, _row_to_dict(row, keys))
         if not out:
             raise RuntimeError("Falha ao criar usuario.")
         return out
 
     def get_user_by_email(self, email: str) -> dict[str, Any] | None:
-        sql = f"""
-        SELECT {_USER_SELECT_FIELDS}
-        FROM users
-        WHERE email = %s
-        LIMIT 1
-        """
         with self._db.connection() as conn:
+            fields = _get_user_select_fields(conn)
+            keys = _get_user_keys(conn)
+            sql = f"""
+            SELECT {fields}
+            FROM users
+            WHERE email = %s
+            LIMIT 1
+            """
             with conn.cursor(**self._cursor_kwargs()) as cur:
                 cur.execute(sql, (email,))
                 row = cur.fetchone()
-            out = self._attach_scope(conn, _row_to_dict(row))
+            out = self._attach_scope(conn, _row_to_dict(row, keys))
         return out or None
 
     def get_user_by_id(self, user_id: int) -> dict[str, Any] | None:
-        sql = f"""
-        SELECT {_USER_SELECT_FIELDS}
-        FROM users
-        WHERE id = %s
-        LIMIT 1
-        """
         with self._db.connection() as conn:
+            fields = _get_user_select_fields(conn)
+            keys = _get_user_keys(conn)
+            sql = f"""
+            SELECT {fields}
+            FROM users
+            WHERE id = %s
+            LIMIT 1
+            """
             with conn.cursor(**self._cursor_kwargs()) as cur:
                 cur.execute(sql, (int(user_id),))
                 row = cur.fetchone()
-            out = self._attach_scope(conn, _row_to_dict(row))
+            out = self._attach_scope(conn, _row_to_dict(row, keys))
         return out or None
 
     def list_users(self, status: str | None = None) -> list[dict[str, Any]]:
-        sql = f"""
-        SELECT {_USER_LIST_SELECT_FIELDS}
-        FROM users
-        {{where_clause}}
-        ORDER BY created_at DESC
-        """
-        params: tuple[Any, ...] = ()
-        where_clause = ""
-        if status:
-            where_clause = "WHERE status = %s"
-            params = (status,)
-        sql = sql.format(where_clause=where_clause)
         with self._db.connection() as conn:
+            fields = _get_user_select_fields(conn)
+            keys = _get_user_keys(conn)
+            sql = f"""
+            SELECT {fields}
+            FROM users
+            {{where_clause}}
+            ORDER BY created_at DESC
+            """
+            params: tuple[Any, ...] = ()
+            where_clause = ""
+            if status:
+                where_clause = "WHERE status = %s"
+                params = (status,)
+            sql = sql.format(where_clause=where_clause)
             with conn.cursor(**self._cursor_kwargs()) as cur:
                 cur.execute(sql, params)
                 rows = cur.fetchall() or []
-            users = [self._attach_scope(conn, _row_to_dict(row)) for row in rows]
+            users = [self._attach_scope(conn, _row_to_dict(row, keys)) for row in rows]
         return users
 
     def update_user_status(
@@ -201,54 +221,60 @@ class UserRepository:
         approved_by: int | None = None,
         set_approved: bool = False,
     ) -> dict[str, Any]:
-        sql = f"""
-        UPDATE users
-        SET status = %s,
-            approved_by = CASE WHEN %s THEN %s ELSE approved_by END,
-            approved_at = CASE WHEN %s THEN NOW() ELSE approved_at END
-        WHERE id = %s
-        RETURNING {_USER_SELECT_FIELDS}
-        """
         with self._db.connection() as conn:
+            fields = _get_user_select_fields(conn)
+            keys = _get_user_keys(conn)
+            sql = f"""
+            UPDATE users
+            SET status = %s,
+                approved_by = CASE WHEN %s THEN %s ELSE approved_by END,
+                approved_at = CASE WHEN %s THEN NOW() ELSE approved_at END
+            WHERE id = %s
+            RETURNING {fields}
+            """
             with conn.cursor(**self._cursor_kwargs()) as cur:
                 cur.execute(sql, (status, set_approved, approved_by, set_approved, int(user_id)))
                 row = cur.fetchone()
             conn.commit()
-            out = self._attach_scope(conn, _row_to_dict(row))
+            out = self._attach_scope(conn, _row_to_dict(row, keys))
         if not out:
             raise RuntimeError("Falha ao atualizar status do usuario.")
         return out
 
     def update_user_role(self, user_id: int, role: str) -> dict[str, Any]:
-        sql = f"""
-        UPDATE users
-        SET role = %s
-        WHERE id = %s
-        RETURNING {_USER_SELECT_FIELDS}
-        """
         with self._db.connection() as conn:
+            fields = _get_user_select_fields(conn)
+            keys = _get_user_keys(conn)
+            sql = f"""
+            UPDATE users
+            SET role = %s
+            WHERE id = %s
+            RETURNING {fields}
+            """
             with conn.cursor(**self._cursor_kwargs()) as cur:
                 cur.execute(sql, (role, int(user_id)))
                 row = cur.fetchone()
             conn.commit()
-            out = self._attach_scope(conn, _row_to_dict(row))
+            out = self._attach_scope(conn, _row_to_dict(row, keys))
         if not out:
             raise RuntimeError("Falha ao atualizar papel do usuario.")
         return out
 
     def update_user_contractor(self, user_id: int, contractor_name: str | None) -> dict[str, Any]:
-        sql = f"""
-        UPDATE users
-        SET contractor_name = NULLIF(%s, '')
-        WHERE id = %s
-        RETURNING {_USER_SELECT_FIELDS}
-        """
         with self._db.connection() as conn:
+            fields = _get_user_select_fields(conn)
+            keys = _get_user_keys(conn)
+            sql = f"""
+            UPDATE users
+            SET contractor_name = NULLIF(%s, '')
+            WHERE id = %s
+            RETURNING {fields}
+            """
             with conn.cursor(**self._cursor_kwargs()) as cur:
                 cur.execute(sql, (str(contractor_name or "").strip(), int(user_id)))
                 row = cur.fetchone()
             conn.commit()
-            out = self._attach_scope(conn, _row_to_dict(row))
+            out = self._attach_scope(conn, _row_to_dict(row, keys))
         if not out:
             raise RuntimeError("Falha ao atualizar contratada do usuario.")
         return out

@@ -41,13 +41,17 @@
           <path d="M16 3v4"></path>
         </svg>
       </div>
-      <p class="mk-kpi-label">{% if can_access('contratos') %}Contratos{% else %}Base contratual{% endif %}</p>
-      <p class="mk-kpi-value">{{ total_contracts }}</p>
+      <p class="mk-kpi-label">Contratos Ativos</p>
+      <p class="mk-kpi-value">{{ total_ativos }}</p>
+      <div class="mk-kpi-sparkline" style="color: #34d399;">
+        <svg viewBox="0 0 100 30" preserveAspectRatio="none">
+          <path d="M0,25 Q15,10 30,20 T60,15 T100,5" fill="none" stroke="currentColor" stroke-width="2" />
+        </svg>
+      </div>
       <div class="mk-kpi-detail">
         <p class="mk-kpi-detail-title">Base contratual</p>
         <ul class="mk-kpi-detail-list">
           <li>{{ total_ativos }} ativos</li>
-          <li>{{ total_contracts - total_ativos if total_contracts >= total_ativos else 0 }} em outros estados</li>
           <li>Base mestre do sistema</li>
         </ul>
       </div>
@@ -60,14 +64,18 @@
           <path d="M15 3v4h4"></path>
         </svg>
       </div>
-      <p class="mk-kpi-label">Relatorios</p>
+      <p class="mk-kpi-label">Relatórios</p>
       <p class="mk-kpi-value">{{ total_reports }}</p>
+      <div class="mk-kpi-sparkline" style="color: #f59e0b;">
+        <svg viewBox="0 0 100 30" preserveAspectRatio="none">
+          <path d="M0,20 Q20,25 40,15 T70,22 T100,10" fill="none" stroke="currentColor" stroke-width="2" />
+        </svg>
+      </div>
       <div class="mk-kpi-detail">
-        <p class="mk-kpi-detail-title">Relatorios recentes</p>
+        <p class="mk-kpi-detail-title">Relatórios recentes</p>
         <ul class="mk-kpi-detail-list">
-          <li>{{ recent_reports_count }} novos na janela recente</li>
-          <li>{{ total_recentes_lista }} exibidos na lista</li>
-          <li>Arquivos vinculados aos contratos</li>
+          <li>{{ recent_reports_count }} novos</li>
+          <li>Arquivos vinculados</li>
         </ul>
       </div>
     </article>
@@ -78,13 +86,17 @@
           <path d="M3 12h4l2.5-5 5 10 2.5-5H21"></path>
         </svg>
       </div>
-      <p class="mk-kpi-label">Operacao</p>
+      <p class="mk-kpi-label">Operação</p>
       <p class="mk-kpi-value">{{ total_ativos }}</p>
+      <div class="mk-kpi-sparkline" style="color: #60a5fa;">
+        <svg viewBox="0 0 100 30" preserveAspectRatio="none">
+          <path d="M0,15 Q25,5 50,25 T100,10" fill="none" stroke="currentColor" stroke-width="2" />
+        </svg>
+      </div>
       <div class="mk-kpi-detail">
-        <p class="mk-kpi-detail-title">Execucao operacional</p>
+        <p class="mk-kpi-detail-title">Execução operacional</p>
         <ul class="mk-kpi-detail-list">
           <li>{{ total_ativos }} contratos ativos</li>
-          <li>{{ recent_reports_count }} relatorios recentes</li>
           <li>Fluxo operacional protegido</li>
         </ul>
       </div>
@@ -99,46 +111,67 @@
       </div>
       <p class="mk-kpi-label">Recentes</p>
       <p class="mk-kpi-value">{{ total_recentes_lista }}</p>
+      <div class="mk-kpi-sparkline" style="color: #fb7185;">
+        <svg viewBox="0 0 100 30" preserveAspectRatio="none">
+          <path d="M0,28 Q30,20 50,25 T100,15" fill="none" stroke="currentColor" stroke-width="2" />
+        </svg>
+      </div>
       <div class="mk-kpi-detail">
         <p class="mk-kpi-detail-title">Atividade recente</p>
         <ul class="mk-kpi-detail-list">
-          <li>{{ total_recentes_lista }} itens monitorados</li>
           <li>Janela de {{ recent_window_days }} dias</li>
-          <li>Ultimo processamento: {{ ultimo_processamento }}</li>
+          <li>Último: {{ ultimo_processamento }}</li>
         </ul>
       </div>
     </article>
   </section>
 
-  <section class="mk-two-col">
-    <section class="mk-panel">
-      <div class="mk-panel-head">
-        <h2 class="mk-panel-title">Visao rapida do sistema</h2>
-      </div>
-      <div class="mk-quick-list">
-        <div class="mk-quick-item">
-          <span class="mk-quick-dot"></span>
-          <p>{{ recent_reports_count }} relatorios recentes processados</p>
+  <section class="mk-panel">
+    <div class="mk-panel-head">
+      <h2 class="mk-panel-title">Relatórios Recentes</h2>
+      <a href="{{ url_for('results_list') }}" class="mk-inline-link">Ver todos</a>
+    </div>
+    
+    <div class="mk-list-container">
+      {% for item in recent_reports[:5] %}
+        <article class="mk-list-card">
+          <div class="mk-list-card-info">
+            <h3 class="mk-list-card-title">{{ item.file_name or item.nome or item.title or 'Relatório' }}</h3>
+            <p class="mk-list-card-subtitle">
+              {{ item.nome_contrato or item.contract_name or item.contract_label or ('Contrato #' ~ item.contract_id if item.contract_id else 'Registro operacional') }}
+            </p>
+          </div>
+          
+          <div class="mk-list-card-progress">
+            <div class="mk-progress-text">Processamento concluído</div>
+            <div class="mk-progress-bar-bg">
+              <div class="mk-progress-bar-fill" style="width: 100%;"></div>
+            </div>
+          </div>
+          
+          <div class="mk-list-card-actions">
+            <span class="mk-badge mk-badge-success">Finalizado</span>
+            <a href="{{ url_for('result_detail', result_id=item.id) if item.id else '#' }}" class="mk-btn mk-btn-ghost" style="min-height: 32px; padding: 0 12px; font-size: 12px;">Abrir</a>
+          </div>
+        </article>
+      {% else %}
+        <div class="mk-empty-state">
+          <p>Nenhum relatório recente encontrado.</p>
         </div>
-        <div class="mk-quick-item">
-          <span class="mk-quick-dot"></span>
-          <p>{{ total_ativos }} contratos ativos na base</p>
-        </div>
-      </div>
-    </section>
+      {% endfor %}
+    </div>
+  </section>
 
-    <section class="mk-panel">
+  <section class="mk-two-col mk-bottom-grid">
+    <section class="mk-panel" id="actions">
       <div class="mk-panel-head">
-        <h2 class="mk-panel-title">Acoes rapidas</h2>
+        <h2 class="mk-panel-title">Ações Rápidas</h2>
       </div>
       <div class="mk-action-list">
         {% if can_access('contratos') %}
         <a href="{{ url_for('web_contracts_new') }}" class="mk-action-item">
           <span class="mk-action-icon">
-            <svg viewBox="0 0 24 24" fill="none">
-              <path d="M12 5v14"></path>
-              <path d="M5 12h14"></path>
-            </svg>
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
           </span>
           <span class="mk-action-copy">
             <strong>Novo contrato</strong>
@@ -148,63 +181,13 @@
         {% endif %}
         <a href="{{ url_for('results_list') }}" class="mk-action-item">
           <span class="mk-action-icon">
-            <svg viewBox="0 0 24 24" fill="none">
-              <path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"></path>
-              <path d="M15 3v4h4"></path>
-            </svg>
+            <svg viewBox="0 0 24 24" fill="none"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"></path><path d="M15 3v4h4"></path></svg>
           </span>
           <span class="mk-action-copy">
-            <strong>Ver relatorios</strong>
-            <small>Abrir a lista com os ultimos arquivos.</small>
+            <strong>Ver relatórios</strong>
+            <small>Abrir a lista com os últimos arquivos.</small>
           </span>
         </a>
-        <a href="{{ url_for('results_list') }}" class="mk-action-item">
-          <span class="mk-action-icon">
-            <svg viewBox="0 0 24 24" fill="none">
-              <path d="M12 3v12"></path>
-              <path d="M7 10l5 5 5-5"></path>
-              <rect x="4" y="18" width="16" height="3" rx="1.5"></rect>
-            </svg>
-          </span>
-          <span class="mk-action-copy">
-            <strong>Resultados</strong>
-            <small>Consultar saidas e downloads filtrados.</small>
-          </span>
-        </a>
-      </div>
-    </section>
-  </section>
-
-  <section class="mk-two-col mk-bottom-grid">
-    <section class="mk-panel" id="reports">
-      <div class="mk-panel-head">
-        <h2 class="mk-panel-title">Relatorios recentes</h2>
-        <a href="{{ url_for('results_list') }}" class="mk-inline-link">Ver todos</a>
-      </div>
-      <div class="mk-list">
-        {% for item in recent_reports[:5] %}
-          <article class="mk-list-row">
-            <div class="mk-list-main">
-              <span class="mk-row-icon">
-                <svg viewBox="0 0 24 24" fill="none">
-                  <path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"></path>
-                  <path d="M15 3v4h4"></path>
-                </svg>
-              </span>
-              <div>
-                <p class="mk-row-title">{{ item.file_name or item.nome or item.title or 'Relatorio' }}</p>
-                <p class="mk-row-subtitle">
-                  {{ item.nome_contrato or item.contract_name or item.contract_label or ('Contrato #' ~ item.contract_id if item.contract_id else 'Registro operacional') }}
-                </p>
-              </div>
-            </div>
-            <span class="mk-pill">Arquivo</span>
-          </article>
-        {% else %}
-          <article class="mk-list-row">
-            <p class="mk-row-title">Nenhum relatorio recente</p>
-          </article>
-        {% endfor %}
       </div>
     </section>
 
@@ -222,7 +205,7 @@
               </div>
             </div>
             <span class="mk-pill {% if (item.status_contrato or item.status)=='ativo' %}is-success{% else %}is-warning{% endif %}">
-              {{ item.status_contrato or item.status or 'Atencao' }}
+              {{ item.status_contrato or item.status or 'Atenção' }}
             </span>
           </article>
         {% else %}
@@ -235,4 +218,3 @@
   </section>
 </div>
 {% endblock %}
-

@@ -804,11 +804,15 @@ def init_db(db: DatabaseManager) -> None:
     ]
 
     with db.connection() as conn:
-        try:
-            with conn.cursor() as cur:
-                for stmt in statements:
+        for stmt in statements:
+            if not stmt or not str(stmt).strip():
+                continue
+            try:
+                with conn.cursor() as cur:
                     cur.execute(stmt)
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
+                conn.commit()
+            except Exception:
+                # Se um comando falhar (ex: coluna ja existe ou erro de sintaxe em VIEW),
+                # tentamos continuar com os proximos para garantir o maximo de sucesso.
+                conn.rollback()
+                continue

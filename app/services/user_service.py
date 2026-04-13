@@ -62,7 +62,7 @@ class UserService:
             "email": str(user_row.get("email", "") or ""),
             "role": str(user_row.get("role", "") or ""),
             "status": str(user_row.get("status", "") or ""),
-            "contractor_name": str(user_row.get("contractor_name", "") or "").strip(),
+            "contractor_name": str(user_row.get("contractor_name", "") or "").strip() if "contractor_name" in user_row else "",
             "authorized_contract_ids": authorized_contract_ids,
             "contract_ids": authorized_contract_ids,
             "approved_by": user_row.get("approved_by"),

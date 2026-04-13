@@ -1,55 +1,69 @@
 {% extends "base.html" %}
+
+{% block title %}Cadastro{% endblock %}
+
 {% block content %}
-<section class="page-hero compact">
-  <div class="page-hero-grid">
-    <div>
-      <div class="hero-eyebrow">Cadastro</div>
-      <h2 class="hero-title">Criar nova conta</h2>
-      <p class="hero-subtitle">Cadastre um usuario para acessar a interface web com autenticacao e manter o backend atual intacto.</p>
-    </div>
-    <div class="hero-stat-grid">
-      <div class="hero-stat">
-        <div class="hero-stat-label">Seguranca</div>
-        <div class="hero-stat-value">bcrypt</div>
-        <div class="hero-stat-subtitle">Senha protegida no banco</div>
+<div class="mk-auth-shell">
+  <div class="mk-auth-visual">
+    <div class="mk-auth-glass-card">
+      <div class="mk-auth-glass-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="8.5" cy="7" r="4"></circle>
+          <line x1="20" y1="8" x2="20" y2="14"></line>
+          <line x1="17" y1="11" x2="23" y2="11"></line>
+        </svg>
       </div>
-      <div class="hero-stat">
-        <div class="hero-stat-label">Token</div>
-        <div class="hero-stat-value">JWT</div>
-        <div class="hero-stat-subtitle">Pronto para expansao futura</div>
-      </div>
+      <div class="mk-auth-glass-value">bcrypt</div>
+      <div class="mk-auth-glass-label">Segurança Máxima</div>
+      <p style="color: rgba(255,255,255,0.6); margin-top: 20px; font-size: 15px; line-height: 1.6;">
+        Suas senhas são protegidas por algoritmos de criptografia de nível bancário.
+      </p>
     </div>
   </div>
-</section>
+  
+  <div class="mk-auth-form-side">
+    <div class="mk-auth-form-card">
+      <header class="mk-auth-form-header">
+        <h1 class="mk-auth-form-title">Criar nova conta</h1>
+        <p class="mk-auth-form-subtitle">Cadastre-se para acessar o sistema de gestão.</p>
+      </header>
 
-{% if error_message %}
-  <div class="notice error">{{ error_message }}</div>
-{% endif %}
+      {% if error_message %}
+        <div class="notice error" style="margin-bottom: 24px;">{{ error_message }}</div>
+      {% endif %}
 
-<section class="section">
-  <h3>Cadastro de usuario</h3>
-  <div class="body">
-    <form method="post" action="{{ url_for('web_register') }}">
-      <input type="hidden" name="next" value="{{ next_url }}">
-      <div class="grid-2">
+      <form method="post" action="{{ url_for('web_register') }}" class="mk-auth-form">
+        <input type="hidden" name="next" value="{{ next_url }}">
+        
         <div class="field">
-          <label for="email">Email</label>
-          <input id="email" name="email" type="email" value="{{ form_data.email }}" placeholder="voce@empresa.com" required>
+          <label for="email">E-mail</label>
+          <input id="email" name="email" type="email" value="{{ form_data.email }}" placeholder="voce@empresa.com" required autofocus>
         </div>
+        
         <div class="field">
           <label for="password">Senha</label>
-          <input id="password" name="password" type="password" placeholder="Minimo 8 caracteres" required>
+          <input id="password" name="password" type="password" placeholder="Mínimo 8 caracteres" required>
         </div>
+
         <div class="field">
           <label for="confirm_password">Confirmar senha</label>
           <input id="confirm_password" name="confirm_password" type="password" placeholder="Repita a senha" required>
         </div>
-      </div>
-      <p class="muted">Ja possui conta? <a href="{{ url_for('web_login', next=next_url) }}">Fazer login</a>.</p>
-      <div class="actions">
-        <button type="submit">Criar conta</button>
-      </div>
-    </form>
+
+        <div style="margin-bottom: 30px;">
+          <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; text-transform: none; font-weight: 500; color: var(--mk-text-soft);">
+            <input type="checkbox" name="terms" required style="width: 18px; height: 18px; margin: 0;"> Aceito os termos de uso
+          </label>
+        </div>
+
+        <button type="submit" class="mk-auth-btn">Criar minha conta</button>
+        
+        <p style="text-align: center; margin-top: 30px; color: var(--mk-text-soft); font-size: 14px;">
+          Já possui conta? <a href="{{ url_for('web_login', next=next_url) }}" style="color: #60a5fa; font-weight: 700;">Fazer login</a>
+        </p>
+      </form>
+    </div>
   </div>
-</section>
+</div>
 {% endblock %}
