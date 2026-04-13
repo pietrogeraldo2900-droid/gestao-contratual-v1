@@ -4715,3 +4715,271 @@ body.auth-shell-mode .gerencial-page-v4 .pgm4-empty {
   .mk-auth-visual { display: none; }
   .mk-auth-form-side { width: 100%; border-left: none; }
 }
+
+/* =====================================================
+   PREMIUM UX LAYER — micro-interactions & polish
+   ===================================================== */
+
+/* ---------- Custom scrollbar ---------- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(96, 165, 250, 0.22);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(96, 165, 250, 0.4);
+}
+
+/* ---------- Entrance animations ---------- */
+@keyframes mk-fade-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes mk-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes mk-hero-glow {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%       { opacity: 0.85; transform: scale(1.06); }
+}
+
+@keyframes mk-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+@keyframes mk-pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+  70%  { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
+/* Page shell: stagger children on load */
+.mk-page-shell > * {
+  animation: mk-fade-up 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.mk-page-shell > *:nth-child(1) { animation-delay: 0.04s; }
+.mk-page-shell > *:nth-child(2) { animation-delay: 0.10s; }
+.mk-page-shell > *:nth-child(3) { animation-delay: 0.17s; }
+.mk-page-shell > *:nth-child(4) { animation-delay: 0.24s; }
+.mk-page-shell > *:nth-child(5) { animation-delay: 0.31s; }
+
+/* KPI cards: staggered entrance + 3D lift */
+.mk-kpi-card {
+  transform-origin: center bottom;
+  transition: border-color 220ms ease, box-shadow 220ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: mk-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.mk-kpi-card:nth-child(1) { animation-delay: 0.14s; }
+.mk-kpi-card:nth-child(2) { animation-delay: 0.20s; }
+.mk-kpi-card:nth-child(3) { animation-delay: 0.26s; }
+.mk-kpi-card:nth-child(4) { animation-delay: 0.32s; }
+
+.mk-kpi-card:hover,
+.mk-kpi-card:focus-within {
+  transform: translateY(-5px) scale(1.012);
+  border-color: rgba(96, 165, 250, 0.38);
+  box-shadow: 0 28px 60px rgba(8, 15, 35, 0.6), 0 0 0 1px rgba(96, 165, 250, 0.15);
+}
+
+/* ---------- Animated hero gradient orb ---------- */
+.mk-hero::after {
+  content: "";
+  position: absolute;
+  top: -40%;
+  right: -8%;
+  width: 340px;
+  height: 340px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.28), transparent 62%);
+  pointer-events: none;
+  animation: mk-hero-glow 6s ease-in-out infinite;
+}
+.mk-hero { position: relative; overflow: hidden; }
+
+/* ---------- Sidebar: active indicator glow ---------- */
+body.auth-shell-mode .sidebar-link.nav-link.active,
+body.auth-shell-mode .sidebar-link.nav-link.is-active,
+body.auth-shell-mode .sidebar-link.nav-link[aria-current="page"] {
+  position: relative;
+}
+body.auth-shell-mode .sidebar-link.nav-link.active::before,
+body.auth-shell-mode .sidebar-link.nav-link.is-active::before,
+body.auth-shell-mode .sidebar-link.nav-link[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: 20%;
+  height: 60%;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #60a5fa, #2563eb);
+  box-shadow: 0 0 10px rgba(96, 165, 250, 0.6);
+}
+
+body.auth-shell-mode .sidebar-link.nav-link {
+  transition: background 180ms ease, border-color 180ms ease, color 180ms ease, transform 120ms ease;
+}
+body.auth-shell-mode .sidebar-link.nav-link:hover {
+  transform: translateX(3px);
+}
+
+/* ---------- Primary button shimmer ---------- */
+.mk-btn-primary,
+.pgm-btn-primary,
+.mk-auth-btn {
+  position: relative;
+  overflow: hidden;
+}
+.mk-btn-primary::after,
+.pgm-btn-primary::after,
+.mk-auth-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.18) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.mk-btn-primary:hover::after,
+.pgm-btn-primary:hover::after,
+.mk-auth-btn:hover::after {
+  opacity: 1;
+  animation: mk-shimmer 0.65s ease forwards;
+}
+
+/* ---------- Icon containers: soft glow on hover ---------- */
+.mk-kpi-icon,
+.mk-action-icon,
+.mk-row-icon,
+.pgm-exec-icon,
+.pgm-filter-icon {
+  transition: background 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+.mk-kpi-card:hover .mk-kpi-icon {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(96, 165, 250, 0.32);
+  box-shadow: 0 0 16px rgba(59, 130, 246, 0.25);
+}
+
+/* ---------- KPI value number: subtle glow ---------- */
+.mk-kpi-value {
+  text-shadow: 0 0 28px rgba(96, 165, 250, 0.18);
+}
+
+/* ---------- Table rows: smooth hover highlight ---------- */
+body.auth-shell-mode table tbody tr {
+  transition: background 140ms ease;
+}
+body.auth-shell-mode table tbody tr:hover td {
+  background: rgba(59, 130, 246, 0.07);
+}
+
+/* ---------- Action items: horizontal slide on hover ---------- */
+.mk-action-item {
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.mk-action-item:hover {
+  transform: translateX(4px);
+  border-color: rgba(96, 165, 250, 0.28);
+}
+
+/* ---------- Pills: animated border on hover ---------- */
+.mk-pill {
+  transition: border-color 160ms ease, background 160ms ease;
+}
+.mk-pill:hover {
+  border-color: rgba(96, 165, 250, 0.35);
+  background: rgba(96, 165, 250, 0.1);
+}
+
+/* ---------- Quick-dot: pulse animation ---------- */
+.mk-quick-dot {
+  animation: mk-pulse-ring 2.4s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+}
+
+/* ---------- Focus ring: premium style ---------- */
+body.auth-shell-mode input:focus,
+body.auth-shell-mode textarea:focus,
+body.auth-shell-mode select:focus {
+  border-color: rgba(96, 165, 250, 0.65);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18), 0 0 12px rgba(59, 130, 246, 0.12);
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+/* ---------- Panel entrance ---------- */
+.mk-panel,
+.mk-two-col > *,
+.mk-bottom-grid > * {
+  animation: mk-fade-up 0.46s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.22s;
+}
+
+/* ---------- Auth login card: entrance ---------- */
+.mk-auth-form-card {
+  animation: mk-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.08s;
+}
+.mk-auth-glass-card {
+  animation: mk-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.18s;
+}
+
+/* ---------- Section header: slide in ---------- */
+body.auth-shell-mode .section {
+  animation: mk-fade-up 0.44s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.18s;
+}
+
+/* ---------- pgm exec cards: stagger ---------- */
+.pgm-exec-card {
+  transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: mk-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.pgm-exec-card:nth-child(1) { animation-delay: 0.10s; }
+.pgm-exec-card:nth-child(2) { animation-delay: 0.17s; }
+.pgm-exec-card:nth-child(3) { animation-delay: 0.24s; }
+.pgm-exec-card:nth-child(4) { animation-delay: 0.31s; }
+.pgm-exec-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(96, 165, 250, 0.28);
+  box-shadow: 0 24px 52px rgba(8, 15, 35, 0.55);
+}
+
+/* ---------- Reduced motion: respect user preference ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .mk-page-shell > *,
+  .mk-kpi-card,
+  .mk-panel,
+  .mk-two-col > *,
+  .mk-bottom-grid > *,
+  .mk-auth-form-card,
+  .mk-auth-glass-card,
+  body.auth-shell-mode .section,
+  .pgm-exec-card {
+    animation: none !important;
+  }
+  .mk-hero::after {
+    animation: none;
+  }
+  .mk-quick-dot {
+    animation: none;
+  }
+}
