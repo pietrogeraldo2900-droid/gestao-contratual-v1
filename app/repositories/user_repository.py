@@ -26,11 +26,11 @@ def _get_user_select_fields(conn) -> str:
     """
     try:
         with conn.cursor() as cur:
-            cur.execute(\"\"\"
+            cur.execute("""
                 SELECT column_name 
                 FROM information_schema.columns 
                 WHERE table_name = 'users'
-            \"\"\")
+            """)
             existing_columns = {row[0] for row in cur.fetchall()}
             
             if not existing_columns:
@@ -45,11 +45,11 @@ def _get_user_select_fields(conn) -> str:
 def _get_user_keys(conn) -> list[str]:
     try:
         with conn.cursor() as cur:
-            cur.execute(\"\"\"
+            cur.execute("""
                 SELECT column_name 
                 FROM information_schema.columns 
                 WHERE table_name = 'users'
-            \"\"\")
+            """)
             existing_columns = {row[0] for row in cur.fetchall()}
             return [f for f in _USER_KEYS_ALL if f in existing_columns]
     except Exception:
