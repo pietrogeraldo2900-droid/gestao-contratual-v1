@@ -151,7 +151,7 @@
           
           <div class="mk-list-card-actions">
             <span class="mk-badge mk-badge-success">Finalizado</span>
-            <a href="{{ url_for('result_detail', result_id=item.id) if item.id else '#' }}" class="mk-btn mk-btn-ghost" style="min-height: 32px; padding: 0 12px; font-size: 12px;">Abrir</a>
+            <a href="{{ url_for('result_detail', output_name=item.file_name) if item.file_name else '#' }}" class="mk-btn mk-btn-ghost" style="min-height: 32px; padding: 0 12px; font-size: 12px;">Abrir</a>
           </div>
         </article>
       {% else %}
