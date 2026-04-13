@@ -313,6 +313,7 @@ class ConferenceService:
                     field="Quantidade verificada",
                     default="0",
                 ),
+                "verificado_informado": True,
                 "status": self._normalize_status(payload.get("status"), default="observacao"),
                 "observacao_tecnica": str(payload.get("observacao_tecnica", "") or "").strip(),
                 "local_verificado": str(payload.get("local_verificado", "") or "").strip(),
