@@ -27,7 +27,6 @@ Sistema Python/Flask para processar mensagens operacionais, gerar saidas CSV/Exc
 |-- data/
 |-- docs/
 |-- samples/
-|-- scripts/
 |-- templates/
 `-- tests/
 ```
