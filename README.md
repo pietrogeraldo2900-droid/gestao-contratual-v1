@@ -26,7 +26,6 @@ Sistema Python/Flask para processar mensagens operacionais, gerar saidas CSV/Exc
 |-- config/
 |-- data/
 |-- docs/
-|-- samples/
 |-- templates/
 `-- tests/
 ```
@@ -42,14 +41,11 @@ Sistema Python/Flask para processar mensagens operacionais, gerar saidas CSV/Exc
 - `data/runtime`: dados gerados em execucao
 - `data/drafts`: rascunhos temporarios da web
 - `scripts`: utilitarios operacionais e atalhos `.bat`
-- `samples`: entradas de exemplo
 
 ## Consolidacao final da raiz
 
 - `interface.py` (wrapper) removido da raiz.
 - `processar_pasta_txt.py` (wrapper) removido da raiz.
-- `entrada_interface.txt` movido para `samples/entrada_interface.txt`.
-- `entrada_interface.txt` na raiz agora e ignorado no `.gitignore` (arquivo temporario de runtime).
 
 ## Configuracao centralizada
 
