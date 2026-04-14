@@ -33,10 +33,10 @@
   {% set chart_max = 1 %}
 {% endif %}
 {% set dashboard_donut_items = [
-  {'label': 'Contratos ativos', 'value': active_contract_count, 'color': '#56a8ff'},
-  {'label': 'Contratos pendentes', 'value': pending_contract_count, 'color': '#3de0c2'},
-  {'label': 'Relatórios recentes', 'value': recent_reports_count, 'color': '#7f8cff'},
-  {'label': 'Relatórios históricos', 'value': recent_report_history_count, 'color': '#f5be4f'},
+  {'label': 'Contratos ativos', 'value': active_contract_count, 'tone': 'blue'},
+  {'label': 'Contratos pendentes', 'value': pending_contract_count, 'tone': 'cyan'},
+  {'label': 'Relatórios recentes', 'value': recent_reports_count, 'tone': 'violet'},
+  {'label': 'Relatórios históricos', 'value': recent_report_history_count, 'tone': 'amber'},
 ] %}
 {% set donut_total = dashboard_donut_items | map(attribute='value') | list | sum %}
 {% if donut_total < 1 %}
@@ -136,15 +136,16 @@
     ) %}
       <div class="hero-layout">
         <div class="glass">
-          <div class="card-head" style="margin-bottom: 12px; align-items: center;">
-            <div style="font-weight: 700; font-size: 16px;">Performance do recorte</div>
+          <div class="card-head dashboard-chart-head">
+            <div class="dashboard-chart-title">Performance do recorte</div>
             {{ action_chip('Métricas', active=True) }}
           </div>
           <div class="bars">
             {% for item in dashboard_chart_items %}
               {% set bar_height = 24 + ((item.value / chart_max) * 72) %}
+              {% set bar_height_class = ((bar_height | round(0) | int + 2) // 5) * 5 %}
               <div class="bar-col">
-                <div class="bar{{ ' small-alt' if loop.index is even }}" style="height: {{ bar_height | round(0) }}%;"></div>
+                <div class="bar{{ ' small-alt' if loop.index is even }} dashboard-chart-bar bar-h-{{ bar_height_class }}"></div>
                 <div class="bar-value">{{ item.value }}</div>
                 <div class="bar-label">{{ item.label }}</div>
               </div>
@@ -176,7 +177,7 @@
         <div class="legend">
           {% for item in dashboard_donut_items %}
             <div class="legend-item">
-              <span class="legend-dot" style="background: {{ item.color }}"></span>
+              <span class="legend-dot legend-dot--{{ item.tone }}"></span>
               {{ item.label }}
               <strong>{{ ((item.value / donut_total) * 100) | round(0) }}%</strong>
             </div>
@@ -203,7 +204,7 @@
               <p>{{ report_contract }}</p>
               <span class="sr-only">{{ item.numero_contrato or item.contract_code or ('CTR-' ~ ('%03d' % item.contract_id) if item.contract_id else '') }}</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="dashboard-file-row-actions">
               {{ status_badge('Finalizado', tone='success', class_name='status-ok') }}
               {{ secondary_button('Abrir', href=report_href) }}
             </div>

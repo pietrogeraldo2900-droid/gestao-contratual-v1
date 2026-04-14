@@ -1,30 +1,22 @@
 :root {
-  --bg: #040b17;
-  --bg-soft: #071321;
-  --surface-1: rgba(255,255,255,0.04);
-  --surface-2: rgba(255,255,255,0.055);
-  --surface-3: rgba(255,255,255,0.075);
-  --line: rgba(255,255,255,0.09);
-  --line-strong: rgba(255,255,255,0.14);
-  --text: #f5f8ff;
-  --muted: rgba(235,241,255,0.68);
-  --muted-2: rgba(235,241,255,0.44);
-  --blue: #3b82f6;
-  --blue-2: #60a5fa;
-  --cyan: #67e8f9;
-  --green: #34d399;
-  --amber: #fbbf24;
-  --violet: #8b5cf6;
-  --danger: #fb7185;
-  --shadow-card: 0 18px 60px rgba(0,0,0,0.28);
-  --shadow-soft: 0 8px 26px rgba(0,0,0,0.18);
-  --radius-xl: 28px;
-  --radius-lg: 22px;
-  --radius-md: 18px;
-  --radius-sm: 14px;
-  --sidebar-width: 272px;
-  --max-width: 1520px;
-  --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --bg: var(--bg-app);
+  --bg-soft: var(--bg-canvas);
+  --surface-1: var(--bg-surface-1);
+  --surface-2: var(--bg-surface-2);
+  --surface-3: var(--bg-surface-3);
+  --line: var(--border-subtle);
+  --line-strong: var(--border-strong);
+  --text: var(--text-primary);
+  --muted: var(--text-secondary);
+  --muted-2: var(--text-muted);
+  --blue: var(--accent-blue);
+  --blue-2: var(--accent-blue);
+  --cyan: var(--accent-cyan);
+  --green: var(--accent-green);
+  --amber: var(--accent-amber);
+  --violet: var(--accent-violet);
+  --danger: var(--accent-red);
+  --shadow-card: var(--shadow-deep);
 }
 
 body.auth-shell-mode {
@@ -291,10 +283,99 @@ body.auth-shell-mode .dashboard-shell .app-context {
   background: rgba(28, 94, 173, 0.12);
 }
 
+.ds-shell-brand,
+.ds-shell-sidebar-body,
+.ds-shell-topbar-kicker,
+.ds-panel-eyebrow,
+.ds-field-label,
+.ds-space-between--start {
+  display: block;
+}
+
+.ds-shell-brand {
+  display: grid;
+  gap: 6px;
+}
+
+.ds-shell-brand-kicker,
+.ds-shell-topbar-kicker,
+.ds-panel-eyebrow,
+.ds-field-label {
+  margin: 0;
+}
+
+.ds-shell-brand-title {
+  margin: 0;
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+.ds-shell-brand-subtitle {
+  margin: 0;
+  color: var(--muted-2);
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.ds-shell-sidebar-body {
+  display: grid;
+}
+
+.ds-shell-topbar-kicker,
+.ds-panel-eyebrow,
+.ds-field-label {
+  color: var(--muted-2);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.ds-row--wrap {
+  flex-wrap: wrap;
+}
+
+.ds-panel-eyebrow {
+  margin-bottom: 10px;
+  letter-spacing: 0.28em;
+  color: rgba(191, 224, 255, 0.72);
+}
+
+.ds-panel-title {
+  margin: 8px 0 0;
+}
+
+.ds-space-between--start {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.dashboard-chart-head {
+  margin-bottom: 12px;
+  align-items: center;
+}
+
+.dashboard-chart-title {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.dashboard-file-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .topbar {
   border: 1px solid var(--line);
   background: linear-gradient(180deg, rgba(12,30,58,0.92), rgba(9,20,39,0.86));
-  border-radius: 28px;
+  border-radius: var(--radius-xl);
   padding: 22px 26px;
   box-shadow: var(--shadow-card);
   display: flex;
@@ -393,7 +474,7 @@ body.auth-shell-mode .dashboard-shell .app-context {
   background: linear-gradient(90deg, rgba(59,130,246,1), rgba(45,212,191,0.95));
   color: white;
   border: 0;
-  box-shadow: 0 16px 40px rgba(31,99,255,0.28);
+  box-shadow: var(--shadow-cta);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -427,7 +508,7 @@ body.auth-shell-mode .dashboard-shell .app-context {
   align-self: flex-start;
   gap: 8px;
   padding: 10px 12px;
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--line);
   background: rgba(255,255,255,0.04);
   font-size: 11px;
@@ -459,7 +540,7 @@ body.auth-shell-mode .dashboard-shell .app-context {
 }
 
 .delta {
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
   padding: 9px 12px;
   font-size: 13px;
   font-weight: 700;
@@ -509,7 +590,7 @@ body.auth-shell-mode .dashboard-shell .app-context {
 .glass {
   border: 1px solid var(--line);
   background: rgba(0,0,0,0.16);
-  border-radius: 24px;
+  border-radius: var(--radius-lg);
   padding: 18px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
 }
@@ -530,6 +611,30 @@ body.auth-shell-mode .dashboard-shell .app-context {
   box-shadow: 0 0 24px rgba(59,130,246,0.20);
 }
 .bar.small-alt { background: linear-gradient(180deg, rgba(127,140,255,0.95), rgba(101,91,255,0.95)); }
+.dashboard-chart-bar {
+  height: 100%;
+}
+.bar-h-0 { height: 0%; }
+.bar-h-5 { height: 5%; }
+.bar-h-10 { height: 10%; }
+.bar-h-15 { height: 15%; }
+.bar-h-20 { height: 20%; }
+.bar-h-25 { height: 25%; }
+.bar-h-30 { height: 30%; }
+.bar-h-35 { height: 35%; }
+.bar-h-40 { height: 40%; }
+.bar-h-45 { height: 45%; }
+.bar-h-50 { height: 50%; }
+.bar-h-55 { height: 55%; }
+.bar-h-60 { height: 60%; }
+.bar-h-65 { height: 65%; }
+.bar-h-70 { height: 70%; }
+.bar-h-75 { height: 75%; }
+.bar-h-80 { height: 80%; }
+.bar-h-85 { height: 85%; }
+.bar-h-90 { height: 90%; }
+.bar-h-95 { height: 95%; }
+.bar-h-100 { height: 100%; }
 .bar-label { font-size: 12px; color: var(--muted-2); }
 .bar-value { font-size: 12px; color: #dbeafe; font-weight: 700; }
 
@@ -547,7 +652,7 @@ body.auth-shell-mode .dashboard-shell .app-context {
   align-items: center;
   gap: 6px;
   padding: 10px 12px;
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--line);
   background: rgba(255,255,255,0.04);
   font-size: 13px;
@@ -575,7 +680,7 @@ body.auth-shell-mode .dashboard-shell .app-context {
   width: 100%;
   height: 100%;
   border-radius: 999px;
-  background: #071321;
+  background: var(--bg-canvas);
   border: 1px solid rgba(255,255,255,0.06);
   display: grid;
   place-items: center;
@@ -589,6 +694,10 @@ body.auth-shell-mode .dashboard-shell .app-context {
 .legend { display: grid; gap: 14px; min-width: 220px; }
 .legend-item { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--muted); }
 .legend-dot { width: 10px; height: 10px; border-radius: 999px; }
+.legend-dot--blue { background: var(--accent-blue); }
+.legend-dot--cyan { background: var(--accent-cyan); }
+.legend-dot--violet { background: var(--accent-violet); }
+.legend-dot--amber { background: var(--accent-amber); }
 .legend-item strong { margin-left: auto; color: var(--text); }
 
 .bottom-grid {
@@ -611,7 +720,7 @@ body.auth-shell-mode .dashboard-shell .app-context {
 .file-row h4 { margin: 0; font-size: 16px; }
 .file-row p { margin: 6px 0 0; color: var(--muted-2); font-size: 13px; }
 .status-ok {
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
   padding: 9px 12px;
   font-size: 12px;
   font-weight: 700;
