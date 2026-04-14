@@ -1,0 +1,30 @@
+- generic [ref=e2]:
+  - generic [ref=e4]:
+    - img [ref=e6]
+    - generic [ref=e9]: 100%
+    - generic [ref=e10]: Acesso Protegido
+    - paragraph [ref=e11]: Sessão web autenticada com proteção de dados em tempo real.
+  - generic [ref=e13]:
+    - banner [ref=e14]:
+      - heading "Bem-vindo de volta" [level=1] [ref=e15]
+      - paragraph [ref=e16]: Faça login para acessar o painel gerencial.
+    - generic [ref=e17]:
+      - generic [ref=e18]:
+        - generic [ref=e19]: E-mail
+        - textbox "E-mail" [active] [ref=e20]:
+          - /placeholder: voce@empresa.com
+      - generic [ref=e21]:
+        - generic [ref=e22]:
+          - generic [ref=e23]: Senha
+          - link "Esqueceu a senha?" [ref=e24] [cursor=pointer]:
+            - /url: "#"
+        - textbox "Senha" [ref=e25]:
+          - /placeholder: Digite sua senha
+      - generic [ref=e27] [cursor=pointer]:
+        - checkbox "Lembrar-me" [ref=e28]
+        - text: Lembrar-me
+      - button "Entrar na plataforma" [ref=e29] [cursor=pointer]
+      - paragraph [ref=e30]:
+        - text: Ainda não possui conta?
+        - link "Criar cadastro" [ref=e31] [cursor=pointer]:
+          - /url: /cadastro?next=/

@@ -1,0 +1,39 @@
+- generic [ref=e2]:
+  - generic [ref=e4]:
+    - img [ref=e6]
+    - generic [ref=e9]: 100%
+    - generic [ref=e10]: Acesso Protegido
+    - paragraph [ref=e11]: Sessao web autenticada com protecao de dados em tempo real.
+    - generic [ref=e12]:
+      - generic [ref=e13]: Workspace seguro
+      - heading "Operacao, contratos e leitura executiva no mesmo cockpit." [level=2] [ref=e14]
+      - paragraph [ref=e15]: Entre no fluxo principal com a mesma linguagem visual usada nas areas operacionais, analiticas e de rastreabilidade.
+      - list [ref=e16]:
+        - listitem [ref=e17]: Entradas operacionais guiadas, com revisao clara antes do processamento.
+        - listitem [ref=e18]: Historico, resultados e paineis no mesmo contexto de navegacao.
+        - listitem [ref=e19]: Interface dark premium com foco em leitura, densidade controlada e menos ruido.
+  - generic [ref=e21]:
+    - generic [ref=e22]: SaaS Premium Dark
+    - banner [ref=e23]:
+      - heading "Bem-vindo de volta" [level=1] [ref=e24]
+      - paragraph [ref=e25]: Faca login para acessar o painel gerencial.
+    - generic [ref=e26]:
+      - generic [ref=e27]:
+        - generic [ref=e28]: E-mail
+        - textbox "E-mail" [active] [ref=e29]:
+          - /placeholder: voce@empresa.com
+      - generic [ref=e30]:
+        - generic [ref=e31]:
+          - generic [ref=e32]: Senha
+          - link "Esqueceu a senha?" [ref=e33] [cursor=pointer]:
+            - /url: "#"
+        - textbox "Senha" [ref=e34]:
+          - /placeholder: Digite sua senha
+      - generic [ref=e36] [cursor=pointer]:
+        - checkbox "Lembrar-me" [ref=e37]
+        - text: Lembrar-me
+      - button "Entrar na plataforma" [ref=e38] [cursor=pointer]
+      - paragraph [ref=e39]:
+        - text: Ainda nao possui conta?
+        - link "Criar cadastro" [ref=e40] [cursor=pointer]:
+          - /url: /cadastro?next=/dashboard

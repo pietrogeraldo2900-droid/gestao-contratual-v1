@@ -14,49 +14,60 @@
       </div>
       <div class="mk-auth-glass-value">100%</div>
       <div class="mk-auth-glass-label">Acesso Protegido</div>
-      <p style="color: rgba(255,255,255,0.6); margin-top: 20px; font-size: 15px; line-height: 1.6;">
-        Sessão web autenticada com proteção de dados em tempo real.
+      <p class="mk-auth-visual-note">
+        Sessao web autenticada com protecao de dados em tempo real.
       </p>
+      <div class="mk-auth-visual-copy">
+        <span class="mk-auth-visual-badge">Workspace seguro</span>
+        <h2>Operacao, contratos e leitura executiva no mesmo cockpit.</h2>
+        <p>Entre no fluxo principal com a mesma linguagem visual usada nas areas operacionais, analiticas e de rastreabilidade.</p>
+        <ul class="mk-auth-visual-list">
+          <li>Entradas operacionais guiadas, com revisao clara antes do processamento.</li>
+          <li>Historico, resultados e paineis no mesmo contexto de navegacao.</li>
+          <li>Interface dark premium com foco em leitura, densidade controlada e menos ruido.</li>
+        </ul>
+      </div>
     </div>
   </div>
-  
+
   <div class="mk-auth-form-side">
     <div class="mk-auth-form-card">
+      <div class="mk-auth-form-kicker">SaaS Premium Dark</div>
       <header class="mk-auth-form-header">
         <h1 class="mk-auth-form-title">Bem-vindo de volta</h1>
-        <p class="mk-auth-form-subtitle">Faça login para acessar o painel gerencial.</p>
+        <p class="mk-auth-form-subtitle">Faca login para acessar o painel gerencial.</p>
       </header>
 
       {% if error_message %}
-        <div class="notice error" style="margin-bottom: 24px;">{{ error_message }}</div>
+        <div class="notice error mk-auth-notice">{{ error_message }}</div>
       {% endif %}
 
       <form method="post" action="{{ url_for('web_login') }}" class="mk-auth-form">
         <input type="hidden" name="next" value="{{ next_url }}">
-        
+
         <div class="field">
           <label for="email">E-mail</label>
           <input id="email" name="email" type="email" value="{{ form_data.email }}" placeholder="voce@empresa.com" required autofocus>
         </div>
-        
+
         <div class="field">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <label for="password" style="margin-bottom: 0;">Senha</label>
-            <a href="#" style="font-size: 12px; color: #60a5fa; font-weight: 600;">Esqueceu a senha?</a>
+          <div class="mk-auth-inline-row">
+            <label for="password">Senha</label>
+            <a href="#" class="mk-auth-inline-link">Esqueceu a senha?</a>
           </div>
           <input id="password" name="password" type="password" placeholder="Digite sua senha" required>
         </div>
 
-        <div style="margin-bottom: 30px;">
-          <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; text-transform: none; font-weight: 500; color: var(--mk-text-soft);">
-            <input type="checkbox" name="remember" style="width: 18px; height: 18px; margin: 0;"> Lembrar-me
+        <div>
+          <label class="mk-auth-checkbox">
+            <input type="checkbox" name="remember"> Lembrar-me
           </label>
         </div>
 
         <button type="submit" class="mk-auth-btn">Entrar na plataforma</button>
-        
-        <p style="text-align: center; margin-top: 30px; color: var(--mk-text-soft); font-size: 14px;">
-          Ainda não possui conta? <a href="{{ url_for('web_register', next=next_url) }}" style="color: #60a5fa; font-weight: 700;">Criar cadastro</a>
+
+        <p class="mk-auth-footer">
+          Ainda nao possui conta? <a href="{{ url_for('web_register', next=next_url) }}">Criar cadastro</a>
         </p>
       </form>
     </div>

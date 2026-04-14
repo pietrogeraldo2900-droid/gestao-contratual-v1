@@ -1,0 +1,124 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: Operacao, consolidacao e leitura executiva
+        - heading "Centro gerencial de relatorios de obra" [level=1] [ref=e7]
+        - paragraph [ref=e8]: Fluxo unico para processar mensagens, consolidar bases, revisar inconsistencias e apresentar indicadores executivos com mais clareza.
+      - navigation [ref=e9]:
+        - link "Login" [ref=e10] [cursor=pointer]:
+          - /url: /login
+        - link "Cadastro" [ref=e11] [cursor=pointer]:
+          - /url: /cadastro
+  - main [ref=e12]:
+    - generic [ref=e13]:
+      - generic [ref=e14]:
+        - generic [ref=e15]:
+          - generic [ref=e16]:
+            - generic [ref=e17]: Rastreabilidade operacional
+            - heading "Historico operacional" [level=2] [ref=e18]
+            - paragraph [ref=e19]: Leitura executiva da janela selecionada, com filtros, nao mapeados e tabela principal, preservando a rastreabilidade de arquivos e alertas.
+            - generic [ref=e20]:
+              - generic [ref=e21]: Historico completo
+              - generic [ref=e22]: 0 exibidos
+              - generic [ref=e23]: 0 erro(s)
+              - generic [ref=e24]: 0 nao mapeados
+          - generic [ref=e25]:
+            - generic [ref=e26]:
+              - generic [ref=e27]: Total na janela
+              - generic [ref=e28]: "0"
+              - generic [ref=e29]: Registros disponiveis no recorte
+            - generic [ref=e30]:
+              - generic [ref=e31]: Exibindo
+              - generic [ref=e32]: "0"
+              - generic [ref=e33]: Linhas apos aplicar os filtros
+        - generic [ref=e34]:
+          - link "Filtros" [ref=e35] [cursor=pointer]:
+            - /url: "#filtros-operacionais"
+          - link "Nao mapeados" [ref=e36] [cursor=pointer]:
+            - /url: "#gestao-nao-mapeados"
+          - link "Tabela principal" [ref=e37] [cursor=pointer]:
+            - /url: "#tabela-principal"
+          - link "Janela 7 dias" [ref=e38] [cursor=pointer]:
+            - /url: /history?nm_days=7&nm_runs=120
+      - generic [ref=e39]:
+        - generic [ref=e40]:
+          - generic [ref=e41]: Total da janela
+          - generic [ref=e42]: "0"
+          - generic [ref=e43]: Processamentos presentes no recorte selecionado
+        - generic [ref=e44]:
+          - generic [ref=e45]: Sucesso
+          - generic [ref=e46]: "0"
+          - generic [ref=e47]: Execucoes com status consolidado como sucesso
+        - generic [ref=e48]:
+          - generic [ref=e49]: Erro
+          - generic [ref=e50]: "0"
+          - generic [ref=e51]: Registros marcados com falha operacional
+        - generic [ref=e52]:
+          - generic [ref=e53]: Exibindo
+          - generic [ref=e54]: "0"
+          - generic [ref=e55]: Quantidade apos o filtro atual
+      - generic [ref=e56]:
+        - heading "Filtros operacionais" [level=3] [ref=e57]
+        - generic [ref=e58]:
+          - paragraph [ref=e59]: Aplique os recortes de leitura sem alterar a logica de historico, ocorrencias ou janela de nao mapeados.
+          - generic [ref=e60]:
+            - generic [ref=e61]:
+              - generic [ref=e62]: Busca livre
+              - textbox "Nucleo, equipe, municipio, logradouro, status..." [ref=e63]
+            - generic [ref=e64]:
+              - generic [ref=e65]: Status
+              - combobox [ref=e66]:
+                - option "Todos" [selected]
+                - option "Sucesso"
+                - option "Erro"
+            - generic [ref=e67]:
+              - generic [ref=e68]: Nucleo
+              - 'textbox "Ex.: Mississipi" [ref=e69]'
+            - generic [ref=e70]:
+              - generic [ref=e71]: Alertas
+              - combobox [ref=e72]:
+                - option "Todos" [selected]
+                - option "Com alerta"
+                - option "Sem alerta"
+          - generic [ref=e73]:
+            - link "Somente erro" [ref=e74] [cursor=pointer]:
+              - /url: /history?status=erro
+            - link "Somente com alerta" [ref=e75] [cursor=pointer]:
+              - /url: /history?alertas=com_alerta
+            - link "Janela 7 dias (nao mapeados)" [ref=e76] [cursor=pointer]:
+              - /url: /history?nm_days=7&nm_runs=120
+            - link "Limpar filtros" [ref=e77] [cursor=pointer]:
+              - /url: /history
+          - group [ref=e78]:
+            - generic "Filtros avancados" [ref=e79] [cursor=pointer]
+          - generic [ref=e80]:
+            - button "Aplicar filtros" [ref=e81] [cursor=pointer]
+            - button "Limpar" [ref=e82] [cursor=pointer]
+      - generic [ref=e83]:
+        - heading "Gestao de servicos nao mapeados" [level=3] [ref=e84]
+        - generic [ref=e85]:
+          - paragraph [ref=e86]: "Janela: ultimos 1 dia(s) | Ate 120 processamentos analisados."
+          - generic [ref=e87]:
+            - generic [ref=e88]:
+              - generic [ref=e89]: Itens nao mapeados
+              - generic [ref=e90]: "0"
+              - generic [ref=e91]: Registros sem correspondencia automatica
+            - generic [ref=e92]:
+              - generic [ref=e93]: Termos distintos
+              - generic [ref=e94]: "0"
+              - generic [ref=e95]: Base para consolidacao de alias
+            - generic [ref=e96]:
+              - generic [ref=e97]: Runs com nao mapeado
+              - generic [ref=e98]: "0"
+              - generic [ref=e99]: Processamentos que exigiram revisao
+            - generic [ref=e100]:
+              - generic [ref=e101]: Ultima ocorrencia
+              - generic [ref=e102]: "-"
+              - generic [ref=e103]: Sinal mais recente da janela monitorada
+          - generic [ref=e104]: Nenhum servico nao mapeado encontrado na janela selecionada.
+      - generic [ref=e105]:
+        - heading "Tabela principal" [level=3] [ref=e106]
+        - generic [ref=e107]:
+          - paragraph [ref=e108]: Registros consolidados de historico e ocorrencias com navegação, arquivos gerados e caminhos tecnicos preservados.
+          - generic [ref=e109]: Nenhum processamento registrado para os filtros informados.

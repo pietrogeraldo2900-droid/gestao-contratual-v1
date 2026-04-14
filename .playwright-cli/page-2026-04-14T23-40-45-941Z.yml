@@ -1,0 +1,43 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - link "Gestao Contratual" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e6]: GC
+        - generic [ref=e7]:
+          - generic [ref=e8]: Operacao, contratos e leitura executiva
+          - strong [ref=e9]: Gestao Contratual
+      - generic "Contexto da experiencia" [ref=e10]:
+        - generic [ref=e11]: Contratos
+        - generic [ref=e12]: Premium dark
+      - navigation [ref=e13]:
+        - link "Login" [ref=e14] [cursor=pointer]:
+          - /url: /login
+        - link "Cadastro" [ref=e15] [cursor=pointer]:
+          - /url: /cadastro
+  - main [ref=e16]:
+    - generic [ref=e18]:
+      - generic [ref=e19]:
+        - generic [ref=e20]: Modulo de contratos
+        - heading "Contratos cadastrados" [level=2] [ref=e21]
+        - paragraph [ref=e22]: Lista simples para consulta rapida e alimentacao inicial do produto. Novos contratos criados aqui ja aparecem no dashboard.
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - generic [ref=e25]: Total exibido
+          - generic [ref=e26]: "0"
+          - generic [ref=e27]: Registros carregados da base
+        - generic [ref=e28]:
+          - generic [ref=e29]: Fluxo
+          - generic [ref=e30]: MVP
+          - generic [ref=e31]: Criacao e listagem web
+    - generic [ref=e32]: O modulo de contratos ainda nao esta disponivel neste ambiente. Tente novamente depois que a conexao com banco estiver ativa.
+    - generic [ref=e33]:
+      - link "Novo contrato" [ref=e34] [cursor=pointer]:
+        - /url: /contratos/novo
+        - button "Novo contrato" [ref=e35]
+      - link "Voltar ao dashboard" [ref=e36] [cursor=pointer]:
+        - /url: /dashboard
+        - button "Voltar ao dashboard" [ref=e37]
+    - generic [ref=e38]:
+      - heading "Lista de contratos" [level=3] [ref=e39]
+      - paragraph [ref=e41]: Nenhum contrato cadastrado ainda. Use o botao "Novo contrato" para iniciar.

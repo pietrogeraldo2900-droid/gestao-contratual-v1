@@ -1,0 +1,219 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - link "Gestao Contratual" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e6]: GC
+        - generic [ref=e7]:
+          - generic [ref=e8]: Operacao, contratos e leitura executiva
+          - strong [ref=e9]: Gestao Contratual
+      - generic "Contexto da experiencia" [ref=e10]:
+        - generic [ref=e11]: Entradas
+        - generic [ref=e12]: Premium dark
+      - navigation [ref=e13]:
+        - link "Login" [ref=e14] [cursor=pointer]:
+          - /url: /login
+        - link "Cadastro" [ref=e15] [cursor=pointer]:
+          - /url: /cadastro
+  - main [ref=e16]:
+    - generic [ref=e17]:
+      - generic [ref=e18]:
+        - generic [ref=e19]:
+          - generic [ref=e20]: Fluxo operacional
+          - heading "Nova entrada" [level=2] [ref=e21]
+          - paragraph [ref=e22]: Concentre a mensagem principal na tela, revise o contexto com seguranca e avance em 3 etapas sem sair do padrao premium do dashboard.
+        - generic [ref=e23]:
+          - link "Etapa 1" [ref=e24] [cursor=pointer]:
+            - /url: "#entry-message"
+          - link "Etapa 2" [ref=e25] [cursor=pointer]:
+            - /url: "#entry-context"
+          - link "Etapa 3" [ref=e26] [cursor=pointer]:
+            - /url: "#entry-review"
+          - link "Historico operacional" [ref=e27] [cursor=pointer]:
+            - /url: /history
+          - link "Resultados gerados" [ref=e28] [cursor=pointer]:
+            - /url: /resultados
+      - region "Resumo rapido da entrada" [ref=e29]:
+        - article [ref=e30]:
+          - generic [ref=e31]: Nucleos cadastrados
+          - strong [ref=e32]: "15"
+          - generic [ref=e33]: Base pronta para autopreenchimento seguro
+        - article [ref=e34]:
+          - generic [ref=e35]: Contratos carregados
+          - strong [ref=e36]: "0"
+          - generic [ref=e37]: Vinculo opcional para a revisao operacional
+        - article [ref=e38]:
+          - generic [ref=e39]: Preenchimentos aplicados
+          - strong [ref=e40]: "0"
+          - generic [ref=e41]: Defaults inteligentes mantidos no contexto
+      - generic [ref=e43]:
+        - main [ref=e44]:
+          - region "Etapas da entrada" [ref=e45]:
+            - article [ref=e46]:
+              - generic [ref=e47]: "1"
+              - generic [ref=e48]:
+                - strong [ref=e49]: Mensagem
+                - generic [ref=e50]: Conteudo principal
+            - article [ref=e51]:
+              - generic [ref=e52]: "2"
+              - generic [ref=e53]:
+                - strong [ref=e54]: Contexto
+                - generic [ref=e55]: Vinculos operacionais
+            - article [ref=e56]:
+              - generic [ref=e57]: "3"
+              - generic [ref=e58]:
+                - strong [ref=e59]: Revisao
+                - generic [ref=e60]: Antes de processar
+          - article [ref=e61]:
+            - generic [ref=e62]:
+              - generic [ref=e63]:
+                - generic [ref=e64]: Mensagem operacional
+                - heading "Mensagem principal" [level=3] [ref=e65]
+                - paragraph [ref=e66]: Cole a mensagem completa do WhatsApp e use o contexto operacional apenas se precisar corrigir ou orientar o processamento.
+              - generic [ref=e68]: Etapa 1
+            - generic [ref=e70]:
+              - generic [ref=e71]:
+                - generic [ref=e72]: Mensagem WhatsApp
+                - textbox "Mensagem WhatsApp" [ref=e73]:
+                  - /placeholder: Cole aqui a mensagem completa...
+              - generic [ref=e74]:
+                - button "Analisar mensagem" [ref=e75] [cursor=pointer]
+                - button "Salvar rascunho local" [ref=e76] [cursor=pointer]
+                - button "Recuperar rascunho" [ref=e77] [cursor=pointer]
+                - button "Limpar campos" [ref=e78] [cursor=pointer]
+              - paragraph [ref=e79]: Nesta etapa voce apenas analisa a mensagem. Os arquivos finais sao gerados na revisao.
+              - paragraph [ref=e80]: Rascunho local desativado ate salvar.
+          - generic [ref=e81]:
+            - article [ref=e82]:
+              - generic [ref=e83]:
+                - generic [ref=e84]:
+                  - generic [ref=e85]: Contexto operacional
+                  - heading "Vinculo e defaults" [level=3] [ref=e86]
+                  - paragraph [ref=e87]: Preencha apenas o necessario para orientar a leitura da mensagem com consistencia.
+                - generic [ref=e89]: Etapa 2
+              - generic [ref=e92]:
+                - generic [ref=e93]:
+                  - generic [ref=e94]: Data
+                  - textbox "Data" [ref=e95]:
+                    - /placeholder: dd/mm/aaaa
+                - generic [ref=e96]:
+                  - generic [ref=e97]: Nucleo
+                  - combobox "Nucleo Nucleo sem cadastro de referencia." [ref=e98]:
+                    - option "Selecione um nucleo" [selected]
+                    - option "Amcaps"
+                    - option "Ayrosa"
+                    - option "Baronesa"
+                    - option "Bonança"
+                    - option "Cerejas"
+                    - option "Jardim Munhoz"
+                    - option "Jardim Olinda"
+                    - option "José Bonifácio"
+                    - option "Mississipi"
+                    - option "Morro do Sabão"
+                    - option "Patrocínio"
+                    - option "Santa Terezinha"
+                    - option "Savoy"
+                    - option "Vila Menck"
+                    - option "Votupoca"
+                  - paragraph [ref=e99]: Nucleo sem cadastro de referencia.
+                - generic [ref=e100]:
+                  - generic [ref=e101]: Logradouro
+                  - textbox "Logradouro" [ref=e102]:
+                    - /placeholder: Use / ; ou quebra de linha para multiplos logradouros
+                - generic [ref=e103]:
+                  - generic [ref=e104]: Municipio
+                  - combobox "Municipio" [ref=e105]
+                - generic [ref=e106]:
+                  - generic [ref=e107]: Equipe
+                  - combobox "Equipe" [ref=e108]
+                - generic [ref=e109]:
+                  - generic [ref=e110]: Contrato (opcional)
+                  - 'spinbutton "Contrato (opcional) Modo fallback: informe o ID manualmente quando a lista de contratos nao estiver disponivel." [ref=e111]'
+                  - paragraph [ref=e112]: "Modo fallback: informe o ID manualmente quando a lista de contratos nao estiver disponivel."
+            - article [ref=e113]:
+              - generic [ref=e114]:
+                - generic [ref=e115]:
+                  - generic [ref=e116]: Leitura rapida
+                  - heading "Multiplos valores" [level=3] [ref=e117]
+                  - paragraph [ref=e118]: Use esta previa apenas quando a mensagem trouxer mais de um logradouro ou mais de uma equipe.
+                - generic [ref=e120]: Auxilio
+              - generic [ref=e123]:
+                - generic [ref=e124]:
+                  - generic [ref=e125]: Logradouros identificados (0)
+                  - list [ref=e126]:
+                    - listitem [ref=e127]: Nenhum logradouro separado.
+                - generic [ref=e128]:
+                  - generic [ref=e129]: Equipes identificadas (0)
+                  - list [ref=e130]:
+                    - listitem [ref=e131]: Nenhuma equipe separada.
+        - complementary [ref=e132]:
+          - article [ref=e133]:
+            - generic [ref=e134]:
+              - generic [ref=e135]:
+                - generic [ref=e136]: Preview extraido
+                - heading "Resumo vivo" [level=3] [ref=e137]
+                - paragraph [ref=e138]: O painel acompanha a leitura extraida da mensagem em tempo real.
+              - generic [ref=e140]: Ao vivo
+            - generic [ref=e142]:
+              - generic [ref=e143]:
+                - generic [ref=e144]: Mensagem
+                - strong [ref=e145]: Nenhuma mensagem colada ainda.
+              - generic [ref=e146]:
+                - article [ref=e147]:
+                  - generic [ref=e148]: Status
+                  - strong [ref=e149]: Aguardando mensagem
+                - article [ref=e150]:
+                  - generic [ref=e151]: Contexto
+                  - strong [ref=e152]: 0 campo(s)
+                - article [ref=e153]:
+                  - generic [ref=e154]: Multiplos
+                  - strong [ref=e155]: 0 item(ns)
+              - generic [ref=e156]:
+                - article [ref=e157]:
+                  - generic [ref=e158]: Data
+                  - strong [ref=e159]: Nao informada
+                - article [ref=e160]:
+                  - generic [ref=e161]: Nucleo
+                  - strong [ref=e162]: Nao informado
+                - article [ref=e163]:
+                  - generic [ref=e164]: Municipio
+                  - strong [ref=e165]: Nao informado
+                - article [ref=e166]:
+                  - generic [ref=e167]: Equipe
+                  - strong [ref=e168]: Nao informada
+                - article [ref=e169]:
+                  - generic [ref=e170]: Contrato
+                  - strong [ref=e171]: Nao vinculado
+              - generic [ref=e172]:
+                - generic [ref=e173]:
+                  - generic [ref=e174]: Contexto aplicado
+                  - generic [ref=e175]: Os dados acima serao recalculados automaticamente a cada edicao.
+                - generic [ref=e176]:
+                  - generic [ref=e177]: Qualidade da entrada
+                  - generic [ref=e178]: Aguardando analise da mensagem para atualizar o painel.
+          - article [ref=e179]:
+            - generic [ref=e180]:
+              - generic [ref=e181]:
+                - generic [ref=e182]: Revisao
+                - heading "Antes de processar" [level=3] [ref=e183]
+                - paragraph [ref=e184]: Confirme os principais campos antes de enviar para analise e geracao.
+              - generic [ref=e186]: Etapa 3
+            - generic [ref=e189]:
+              - article [ref=e190]:
+                - generic [ref=e191]: Mensagem
+                - strong [ref=e192]: Curta ou nao informada
+              - article [ref=e193]:
+                - generic [ref=e194]: Nucleo
+                - strong [ref=e195]: Nao informado
+              - article [ref=e196]:
+                - generic [ref=e197]: Municipio
+                - strong [ref=e198]: Nao informado
+              - article [ref=e199]:
+                - generic [ref=e200]: Equipes
+                - strong [ref=e201]: Nao informadas
+              - article [ref=e202]:
+                - generic [ref=e203]: Logradouros
+                - strong [ref=e204]: Nao informados
+              - article [ref=e205]:
+                - generic [ref=e206]: Contrato
+                - strong [ref=e207]: Nao vinculado

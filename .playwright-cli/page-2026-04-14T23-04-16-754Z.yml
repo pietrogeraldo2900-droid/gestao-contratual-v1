@@ -1,0 +1,38 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: Operacao, consolidacao e leitura executiva
+        - heading "Centro gerencial de relatorios de obra" [level=1] [ref=e7]
+        - paragraph [ref=e8]: Fluxo unico para processar mensagens, consolidar bases, revisar inconsistencias e apresentar indicadores executivos com mais clareza.
+      - navigation [ref=e9]:
+        - link "Login" [ref=e10] [cursor=pointer]:
+          - /url: /login
+        - link "Cadastro" [ref=e11] [cursor=pointer]:
+          - /url: /cadastro
+  - main [ref=e12]:
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - generic [ref=e16]: Modulo de contratos
+        - heading "Contratos cadastrados" [level=2] [ref=e17]
+        - paragraph [ref=e18]: Lista simples para consulta rapida e alimentacao inicial do produto. Novos contratos criados aqui ja aparecem no dashboard.
+      - generic [ref=e19]:
+        - generic [ref=e20]:
+          - generic [ref=e21]: Total exibido
+          - generic [ref=e22]: "0"
+          - generic [ref=e23]: Registros carregados da base
+        - generic [ref=e24]:
+          - generic [ref=e25]: Fluxo
+          - generic [ref=e26]: MVP
+          - generic [ref=e27]: Criacao e listagem web
+    - generic [ref=e28]: O modulo de contratos ainda nao esta disponivel neste ambiente. Tente novamente depois que a conexao com banco estiver ativa.
+    - generic [ref=e29]:
+      - link "Novo contrato" [ref=e30] [cursor=pointer]:
+        - /url: /contratos/novo
+        - button "Novo contrato" [ref=e31]
+      - link "Voltar ao dashboard" [ref=e32] [cursor=pointer]:
+        - /url: /dashboard
+        - button "Voltar ao dashboard" [ref=e33]
+    - generic [ref=e34]:
+      - heading "Lista de contratos" [level=3] [ref=e35]
+      - paragraph [ref=e37]: Nenhum contrato cadastrado ainda. Use o botao "Novo contrato" para iniciar.

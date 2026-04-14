@@ -15,35 +15,46 @@
         </svg>
       </div>
       <div class="mk-auth-glass-value">bcrypt</div>
-      <div class="mk-auth-glass-label">Segurança Máxima</div>
-      <p style="color: rgba(255,255,255,0.6); margin-top: 20px; font-size: 15px; line-height: 1.6;">
-        Suas senhas são protegidas por algoritmos de criptografia de nível bancário.
+      <div class="mk-auth-glass-label">Seguranca Maxima</div>
+      <p class="mk-auth-visual-note">
+        Suas senhas sao protegidas por algoritmos de criptografia de nivel bancario.
       </p>
+      <div class="mk-auth-visual-copy">
+        <span class="mk-auth-visual-badge">Onboarding governado</span>
+        <h2>Crie a conta e entre no fluxo com o mesmo padrao premium do produto.</h2>
+        <p>O cadastro foi pensado para acesso seguro, aprovacao clara e continuidade entre autenticacao, operacao e leitura executiva.</p>
+        <ul class="mk-auth-visual-list">
+          <li>Cadastro simples para entrar rapido no ambiente web.</li>
+          <li>Linguagem visual consistente entre acesso, operacao e dashboards.</li>
+          <li>Base pronta para evoluir permissoes, usuarios e contratos sem improviso.</li>
+        </ul>
+      </div>
     </div>
   </div>
-  
+
   <div class="mk-auth-form-side">
     <div class="mk-auth-form-card">
+      <div class="mk-auth-form-kicker">SaaS Premium Dark</div>
       <header class="mk-auth-form-header">
         <h1 class="mk-auth-form-title">Criar nova conta</h1>
-        <p class="mk-auth-form-subtitle">Cadastre-se para acessar o sistema de gestão.</p>
+        <p class="mk-auth-form-subtitle">Cadastre-se para acessar o sistema de gestao.</p>
       </header>
 
       {% if error_message %}
-        <div class="notice error" style="margin-bottom: 24px;">{{ error_message }}</div>
+        <div class="notice error mk-auth-notice">{{ error_message }}</div>
       {% endif %}
 
       <form method="post" action="{{ url_for('web_register') }}" class="mk-auth-form">
         <input type="hidden" name="next" value="{{ next_url }}">
-        
+
         <div class="field">
           <label for="email">E-mail</label>
           <input id="email" name="email" type="email" value="{{ form_data.email }}" placeholder="voce@empresa.com" required autofocus>
         </div>
-        
+
         <div class="field">
           <label for="password">Senha</label>
-          <input id="password" name="password" type="password" placeholder="Mínimo 8 caracteres" required>
+          <input id="password" name="password" type="password" placeholder="Minimo 8 caracteres" required>
         </div>
 
         <div class="field">
@@ -51,16 +62,16 @@
           <input id="confirm_password" name="confirm_password" type="password" placeholder="Repita a senha" required>
         </div>
 
-        <div style="margin-bottom: 30px;">
-          <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; text-transform: none; font-weight: 500; color: var(--mk-text-soft);">
-            <input type="checkbox" name="terms" required style="width: 18px; height: 18px; margin: 0;"> Aceito os termos de uso
+        <div>
+          <label class="mk-auth-checkbox">
+            <input type="checkbox" name="terms" required> Aceito os termos de uso
           </label>
         </div>
 
         <button type="submit" class="mk-auth-btn">Criar minha conta</button>
-        
-        <p style="text-align: center; margin-top: 30px; color: var(--mk-text-soft); font-size: 14px;">
-          Já possui conta? <a href="{{ url_for('web_login', next=next_url) }}" style="color: #60a5fa; font-weight: 700;">Fazer login</a>
+
+        <p class="mk-auth-footer">
+          Ja possui conta? <a href="{{ url_for('web_login', next=next_url) }}">Fazer login</a>
         </p>
       </form>
     </div>

@@ -7,9 +7,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=20260413">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/app-shell.css') }}?v=20260413">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}?v=20260413">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=20260414">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app-shell.css') }}?v=20260414">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}?v=20260414">
   {% block extra_head %}{% endblock %}
 </head>
 {% set endpoint = request.endpoint or "" %}
@@ -343,15 +343,21 @@
         <main class="app-content container {% if endpoint == 'dashboard' %}dashboard-main{% endif %}">
   {% else %}
     {% if endpoint not in auth_endpoints %}
-    <header>
+    <header class="public-shell-header">
       <div class="header-shell">
-        <div class="topbar">
-          <div class="brand-block">
-            <div class="brand-kicker">Operacao, consolidacao e leitura executiva</div>
-            <h1>Centro gerencial de relatorios de obra</h1>
-            <p class="brand-subtitle">Fluxo unico para processar mensagens, consolidar bases, revisar inconsistencias e apresentar indicadores executivos com mais clareza.</p>
+        <div class="public-topbar">
+          <a href="{{ url_for('index') }}" class="public-brand" aria-label="Gestao Contratual">
+            <span class="public-brand-mark" aria-hidden="true">GC</span>
+            <div class="public-brand-copy">
+              <span class="public-brand-kicker">Operacao, contratos e leitura executiva</span>
+              <strong class="public-brand-title">Gestao Contratual</strong>
+            </div>
+          </a>
+          <div class="public-topbar-meta" aria-label="Contexto da experiencia">
+            <span class="public-topbar-pill">{{ endpoint_titles.get(endpoint, 'Painel web') }}</span>
+            <span class="public-topbar-pill public-topbar-pill--soft">Premium dark</span>
           </div>
-          <nav>
+          <nav class="public-nav">
             <a href="{{ url_for('web_login') }}" class="{% if endpoint == 'web_login' %}active{% endif %}">Login</a>
             <a href="{{ url_for('web_register') }}" class="{% if endpoint in auth_endpoints %}active{% endif %}">Cadastro</a>
           </nav>
