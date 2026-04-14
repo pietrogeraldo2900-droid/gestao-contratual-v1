@@ -145,15 +145,11 @@ python main.py consolidate-master "C:\caminho\saidas" --output "C:\caminho\BASE_
 ## Scripts operacionais (`scripts/`)
 
 - `abrir_interface_web.bat` (web oficial)
-- `abrir_interface.bat` (desktop legado Tkinter)
 - `processar_arquivo_txt.bat`
 - `processar_arquivo_e_atualizar_base_mestra.bat`
-- `processar_pasta_txt.bat`
 - `atualizar_base_mestra.bat`
 - `consolidar_saidas_em_base_mestra.bat`
 - `processar_exemplo.bat`
-- `interface_legacy.py`
-- `processar_pasta_txt.py`
 
 ## Docker (preparacao para hospedagem)
 
