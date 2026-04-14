@@ -1,0 +1,170 @@
+{% macro app_shell(title='Gestão Contratual', subtitle='Painel operacional', topbar_actions='', sidebar_content='') -%}
+<div class="ds-app-shell">
+  <aside class="ds-sidebar">
+    <div style="padding: 24px; border-bottom: 1px solid var(--border-subtle)">
+      <div class="ds-eyebrow" style="margin-bottom: 8px;">SaaS Premium</div>
+      <div style="font-size: 24px; font-weight: 600;">{{ title }}</div>
+      <div style="margin-top: 4px; color: var(--text-muted);">{{ subtitle }}</div>
+    </div>
+    <div style="padding: 16px; display: flex; flex-direction: column; gap: 18px;">
+      {{ sidebar_content|safe }}
+    </div>
+  </aside>
+  <main class="ds-main">
+    <header class="ds-topbar">
+      <div>
+        <div class="ds-eyebrow" style="margin-bottom: 4px;">Preview premium</div>
+        <div style="font-size: 24px; font-weight: 600;">{{ title }}</div>
+      </div>
+      <div class="ds-row" style="flex-wrap: wrap;">{{ topbar_actions|safe }}</div>
+    </header>
+    <div class="ds-content">{{ caller() }}</div>
+  </main>
+</div>
+{%- endmacro %}
+
+{% macro hero_header(eyebrow=None, title='', subtitle=None, actions='', class_name='') -%}
+<section class="topbar card ds-hero-header{{ ' ' ~ class_name if class_name }}">
+  <div>
+    {% if eyebrow %}<div class="eyebrow">{{ eyebrow }}</div>{% endif %}
+    <h2 class="ds-hero-header__title">{{ title }}</h2>
+    {% if subtitle %}<p class="ds-hero-header__subtitle">{{ subtitle }}</p>{% endif %}
+  </div>
+  {% if actions %}
+  <div class="topbar-actions">{{ actions|trim|safe }}</div>
+  {% endif %}
+</section>
+{%- endmacro %}
+
+{% macro kpi_card(label, value, description=None, delta=None, delta_tone='info', class_name='') -%}
+<article class="card metric-card ds-kpi-card{{ ' ' ~ class_name if class_name }}">
+  <div class="metric-label ds-kpi-card__label">{{ label }}</div>
+  <div>
+    <div class="metric-row">
+      <h3 class="metric-value ds-kpi-card__value">{{ value }}</h3>
+      {% if delta %}<div class="delta">{{ delta }}</div>{% endif %}
+    </div>
+    {% if description %}<div class="metric-note ds-kpi-card__description">{{ description }}</div>{% endif %}
+  </div>
+</article>
+{%- endmacro %}
+
+{% macro premium_panel(eyebrow=None, title='', subtitle=None, action='', class_name='') -%}
+<article class="card card-body ds-panel{{ ' ' ~ class_name if class_name }}">
+  <div class="card-head ds-panel-header">
+    <div>
+      {% if eyebrow %}<div class="eyebrow" style="margin-bottom: 0; color: var(--muted-2);">{{ eyebrow }}</div>{% endif %}
+      <h3 class="ds-title" style="margin-top: 8px;">{{ title }}</h3>
+      {% if subtitle %}<p class="muted-copy ds-subtitle">{{ subtitle }}</p>{% endif %}
+    </div>
+    {% if action %}<div>{{ action|trim|safe }}</div>{% endif %}
+  </div>
+  <div class="ds-panel-body">{{ caller() }}</div>
+</article>
+{%- endmacro %}
+
+{% macro action_chip(label, active=False, href=None, class_name='') -%}
+{% set classes = 'chip ds-chip' ~ (' active ds-chip--active' if active else '') ~ (' ' ~ class_name if class_name) %}
+{% if href %}
+<a href="{{ href }}" class="{{ classes }}">{{ label }}</a>
+{% else %}
+<button type="button" class="{{ classes }}">{{ label }}</button>
+{% endif %}
+{%- endmacro %}
+
+{% macro status_badge(label, tone='info', class_name='') -%}
+{% set badge_class = 'badge ds-badge ds-badge--' ~ tone ~ (' ' ~ class_name if class_name) %}
+<span class="{{ badge_class }}">{{ label }}</span>
+{%- endmacro %}
+
+{% macro primary_button(label, href=None, class_name='') -%}
+{% set classes = 'btn-primary ds-btn ds-btn-primary' ~ (' ' ~ class_name if class_name) %}
+{% if href %}
+<a href="{{ href }}" class="{{ classes }}">{{ label }}</a>
+{% else %}
+<button type="button" class="{{ classes }}">{{ label }}</button>
+{% endif %}
+{%- endmacro %}
+
+{% macro secondary_button(label, href=None, class_name='') -%}
+{% set classes = 'btn-soft ds-btn ds-btn-secondary' ~ (' ' ~ class_name if class_name) %}
+{% if href %}
+<a href="{{ href }}" class="{{ classes }}">{{ label }}</a>
+{% else %}
+<button type="button" class="{{ classes }}">{{ label }}</button>
+{% endif %}
+{%- endmacro %}
+
+{% macro danger_button(label, href=None, class_name='') -%}
+{% set classes = 'btn-danger ds-btn ds-btn-danger' ~ (' ' ~ class_name if class_name) %}
+{% if href %}
+<a href="{{ href }}" class="{{ classes }}">{{ label }}</a>
+{% else %}
+<button type="button" class="{{ classes }}">{{ label }}</button>
+{% endif %}
+{%- endmacro %}
+
+{% macro input_field(label=None, name='', value='', placeholder='', type='text', class_name='') -%}
+<label class="field">
+  {% if label %}<span class="ds-eyebrow" style="margin-bottom: 8px;">{{ label }}</span>{% endif %}
+  <input
+    class="ds-input{{ ' ' ~ class_name if class_name }}"
+    name="{{ name }}"
+    value="{{ value }}"
+    placeholder="{{ placeholder }}"
+    type="{{ type }}"
+  >
+</label>
+{%- endmacro %}
+
+{% macro textarea_field(label=None, name='', value='', placeholder='', class_name='') -%}
+<label class="field">
+  {% if label %}<span class="ds-eyebrow" style="margin-bottom: 8px;">{{ label }}</span>{% endif %}
+  <textarea
+    class="ds-textarea{{ ' ' ~ class_name if class_name }}"
+    name="{{ name }}"
+    placeholder="{{ placeholder }}"
+  >{{ value }}</textarea>
+</label>
+{%- endmacro %}
+
+{% macro data_table(headers=[], rows=[], empty_state='Nenhum registro encontrado.') -%}
+<div class="ds-table-wrap">
+  <table class="ds-table">
+    <thead>
+      <tr>
+        {% for header in headers %}
+          <th>{{ header }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% if rows %}
+        {% for row in rows %}
+          <tr>
+            {% for cell in row %}
+              <td>{{ cell }}</td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="{{ headers|length if headers else 1 }}">{{ empty_state }}</td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+{%- endmacro %}
+
+{% macro insight_card(title, description, badge=None, tone='info', class_name='') -%}
+<article class="insight-item ds-insight-card{{ ' ' ~ class_name if class_name }}">
+  <div class="ds-space-between" style="align-items: flex-start;">
+    <div>
+      <h4>{{ title }}</h4>
+      <p>{{ description }}</p>
+    </div>
+    {% if badge %}{{ status_badge(badge, tone=tone) }}{% endif %}
+  </div>
+</article>
+{%- endmacro %}

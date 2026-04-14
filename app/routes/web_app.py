@@ -1102,7 +1102,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         if role == ROLE_CONTRATADA and require_contract_for_contractor and not contract_id:
             return False
         if contract_id is None:
-            return False
+            return not require_contract_for_contractor
         return int(contract_id) in allowed_contract_ids
 
     def _deny_scoped_access():
@@ -1492,8 +1492,14 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                 500,
             )
 
-        flash("Seu cadastro foi recebido e esta aguardando aprovacao.", "info")
-        return redirect(url_for("web_login", next=next_url))
+        registration_status = str(user.get("status", "") or "").strip().lower()
+        if registration_status == "pending":
+            flash("Seu cadastro foi recebido e esta aguardando aprovacao.", "info")
+            return redirect(url_for("web_login", next=next_url))
+
+        _set_web_auth_session(user)
+        flash("Cadastro realizado com sucesso.", "success")
+        return redirect(_resolve_next(_default_home_endpoint_for_role(user.get("role", ""))))
 
     @app.get("/register")
     def web_register_redirect():

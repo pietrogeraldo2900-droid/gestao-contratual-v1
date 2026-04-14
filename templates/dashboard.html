@@ -1,220 +1,234 @@
 {% extends "base.html" %}
+{% from "design_system/components.html" import action_chip, hero_header, insight_card, kpi_card, premium_panel, primary_button, secondary_button, status_badge %}
 
 {% block title %}Dashboard{% endblock %}
 
-{% block content %}
-{% set total_ativos = contracts|selectattr('status_contrato', 'equalto', 'ativo')|list|length %}
-{% set total_recentes_lista = recent_reports|length %}
-{% set ultimo_processamento = '-' %}
-{% if recent_reports %}
-  {% set ultimo_processamento = recent_reports[0].created_at or recent_reports[0].data or '-' %}
-{% endif %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system/tokens.css') }}?v=20260413">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system/foundations.css') }}?v=20260413">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard-premium.css') }}?v=20260413">
+{% endblock %}
 
-<div class="mk-page-shell">
-  <header class="mk-hero">
-    <div>
-      <p class="mk-kicker">Painel executivo</p>
-      <h1 class="mk-page-title">Dashboard</h1>
-      <span class="sr-only">Dashboard operacional</span>
-    </div>
-    <div class="mk-hero-actions">
-      {% if can_access('contratos') %}
-      <a href="{{ url_for('web_contracts_new') }}" class="mk-btn mk-btn-primary">Novo contrato</a>
-      {% endif %}
-      <a href="{{ url_for('results_list') }}" class="mk-btn mk-btn-ghost">Resultados</a>
-    </div>
-  </header>
+{% block content %}
+{% set active_contracts = contracts|selectattr('status_contrato', 'equalto', 'ativo')|list %}
+{% set active_contract_count = active_contracts|length %}
+{% set total_contract_count = total_contracts %}
+{% set pending_contract_count = total_contract_count - active_contract_count if total_contract_count > active_contract_count else 0 %}
+{% set recent_report_history_count = total_reports - recent_reports_count if total_reports > recent_reports_count else 0 %}
+{% set latest_report = recent_reports[0] if recent_reports else none %}
+{% set latest_report_name = latest_report.file_name or latest_report.nome or latest_report.title or 'Relatorio' if latest_report else 'Sem relatorio recente' %}
+{% set latest_report_contract = latest_report.nome_contrato or latest_report.contract_name or latest_report.contract_label or ('Contrato #' ~ latest_report.contract_id if latest_report and latest_report.contract_id else 'Registro operacional') %}
+{% set dashboard_subtitle = 'Versão premium do painel principal, com hierarquia mais elegante, cards mais espaçosos, leitura executiva real, menos ruído visual e sensação de produto SaaS enterprise.' %}
+{% set dashboard_chart_items = [
+  {'label': 'Ativ.', 'value': active_contract_count},
+  {'label': 'Tot.', 'value': total_contract_count},
+  {'label': 'Rel.', 'value': total_reports},
+  {'label': 'Recent.', 'value': recent_reports_count},
+  {'label': 'Hist.', 'value': recent_report_history_count},
+  {'label': 'Pend.', 'value': pending_contract_count},
+  {'label': 'Últ.', 'value': 1 if latest_report else 0},
+] %}
+{% set chart_max = dashboard_chart_items | map(attribute='value') | list | max %}
+{% if chart_max < 1 %}
+  {% set chart_max = 1 %}
+{% endif %}
+{% set dashboard_donut_items = [
+  {'label': 'Contratos ativos', 'value': active_contract_count, 'color': '#56a8ff'},
+  {'label': 'Contratos pendentes', 'value': pending_contract_count, 'color': '#3de0c2'},
+  {'label': 'Relatórios recentes', 'value': recent_reports_count, 'color': '#7f8cff'},
+  {'label': 'Relatórios históricos', 'value': recent_report_history_count, 'color': '#f5be4f'},
+] %}
+{% set donut_total = dashboard_donut_items | map(attribute='value') | list | sum %}
+{% if donut_total < 1 %}
+  {% set donut_total = 1 %}
+{% endif %}
+{% set dashboard_insights = [
+  {
+    'title': latest_report_name,
+    'description': (latest_report_contract ~ ' • Arquivo mais recente disponível.') if latest_report else 'Nenhum arquivo recente carregado na janela atual.',
+    'badge': 'Atualizado' if latest_report else 'Pendente',
+    'tone': 'info'
+  },
+  {
+    'title': 'Contratos ativos',
+    'description': active_contract_count ~ ' ativos de ' ~ total_contract_count ~ ' contratos visíveis no recorte carregado.',
+    'badge': 'Base',
+    'tone': 'success'
+  },
+  {
+    'title': 'Janela recente',
+    'description': recent_reports_count ~ ' relatórios nos últimos ' ~ recent_window_days ~ ' dias.',
+    'badge': 'Janela',
+    'tone': 'warning'
+  }
+] %}
+{% set dashboard_recommendations = [] %}
+{% if total_contract_count == 0 %}
+  {% set _ = dashboard_recommendations.append({
+    'title': 'Cadastrar primeiro contrato',
+    'description': 'Ainda não há contratos visíveis no painel. Crie o primeiro cadastro para começar a leitura executiva.'
+  }) %}
+{% elif pending_contract_count > 0 %}
+  {% set _ = dashboard_recommendations.append({
+    'title': 'Revisar contratos pendentes',
+    'description': pending_contract_count ~ ' contratos não estão como ativos no recorte atual e merecem conferência.'
+  }) %}
+{% else %}
+  {% set _ = dashboard_recommendations.append({
+    'title': 'Base contratual estabilizada',
+    'description': 'Todos os contratos carregados aparecem como ativos no painel atual.'
+  }) %}
+{% endif %}
+{% if recent_reports_count == 0 %}
+  {% set _ = dashboard_recommendations.append({
+    'title': 'Gerar novos relatórios',
+    'description': 'Nenhum relatório recente foi identificado na janela de ' ~ recent_window_days ~ ' dias.'
+  }) %}
+{% else %}
+  {% set _ = dashboard_recommendations.append({
+    'title': 'Abrir relatórios recentes',
+    'description': 'Existem ' ~ recent_reports_count ~ ' relatórios recentes prontos para validação e compartilhamento.'
+  }) %}
+{% endif %}
+{% set _ = dashboard_recommendations.append({
+  'title': 'Consolidar leitura institucional',
+  'description': 'Use os dados atuais para abrir a visão executiva e compartilhar o status do período.'
+}) %}
+
+{% set top_actions %}
+  {{ action_chip('Resumo', active=True, href='#summary') }}
+  {{ action_chip('Resultados', href='#recent-reports') }}
+  {% if can_access('contratos') %}
+    {{ secondary_button('Novo contrato', href=url_for('web_contracts_new')) }}
+  {% endif %}
+  {{ primary_button('Exportar visão', href=url_for('results_list')) }}
+{% endset %}
+
+<div class="dashboard-premium-shell" id="summary">
+  {{ hero_header(
+    eyebrow='Painel executivo',
+    title='Dashboard',
+    subtitle=dashboard_subtitle,
+    actions=top_actions
+  ) }}
+  <span class="sr-only">Dashboard operacional</span>
+  <a class="sr-only" href="{{ url_for('web_contracts_list') }}">Contratos</a>
 
   {% if warning_message %}
-    <div class="notice warning">{{ warning_message }}</div>
+    <div class="dashboard-premium-notice dashboard-premium-notice--warning">{{ warning_message }}</div>
   {% endif %}
   {% if empty_state_message %}
-    <div class="notice info">{{ empty_state_message }}</div>
+    <div class="dashboard-premium-notice dashboard-premium-notice--info">{{ empty_state_message }}</div>
   {% endif %}
 
-  <section class="mk-kpi-grid">
-    <article class="mk-kpi-card" tabindex="0">
-      <div class="mk-kpi-icon">
-        <svg viewBox="0 0 24 24" fill="none">
-          <rect x="4" y="5" width="16" height="14" rx="2"></rect>
-          <path d="M8 3v4"></path>
-          <path d="M16 3v4"></path>
-        </svg>
-      </div>
-      <p class="mk-kpi-label">Contratos Ativos</p>
-      <p class="mk-kpi-value">{{ total_ativos }}</p>
-      <div class="mk-kpi-sparkline" style="color: #34d399;">
-        <svg viewBox="0 0 100 30" preserveAspectRatio="none">
-          <path d="M0,25 Q15,10 30,20 T60,15 T100,5" fill="none" stroke="currentColor" stroke-width="2" />
-        </svg>
-      </div>
-      <div class="mk-kpi-detail">
-        <p class="mk-kpi-detail-title">Base contratual</p>
-        <ul class="mk-kpi-detail-list">
-          <li>{{ total_ativos }} ativos</li>
-          <li>Base mestre do sistema</li>
-        </ul>
-      </div>
-    </article>
-
-    <article class="mk-kpi-card" tabindex="0">
-      <div class="mk-kpi-icon">
-        <svg viewBox="0 0 24 24" fill="none">
-          <path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"></path>
-          <path d="M15 3v4h4"></path>
-        </svg>
-      </div>
-      <p class="mk-kpi-label">Relatórios</p>
-      <p class="mk-kpi-value">{{ total_reports }}</p>
-      <div class="mk-kpi-sparkline" style="color: #f59e0b;">
-        <svg viewBox="0 0 100 30" preserveAspectRatio="none">
-          <path d="M0,20 Q20,25 40,15 T70,22 T100,10" fill="none" stroke="currentColor" stroke-width="2" />
-        </svg>
-      </div>
-      <div class="mk-kpi-detail">
-        <p class="mk-kpi-detail-title">Relatórios recentes</p>
-        <ul class="mk-kpi-detail-list">
-          <li>{{ recent_reports_count }} novos</li>
-          <li>Arquivos vinculados</li>
-        </ul>
-      </div>
-    </article>
-
-    <article class="mk-kpi-card" tabindex="0">
-      <div class="mk-kpi-icon">
-        <svg viewBox="0 0 24 24" fill="none">
-          <path d="M3 12h4l2.5-5 5 10 2.5-5H21"></path>
-        </svg>
-      </div>
-      <p class="mk-kpi-label">Operação</p>
-      <p class="mk-kpi-value">{{ total_ativos }}</p>
-      <div class="mk-kpi-sparkline" style="color: #60a5fa;">
-        <svg viewBox="0 0 100 30" preserveAspectRatio="none">
-          <path d="M0,15 Q25,5 50,25 T100,10" fill="none" stroke="currentColor" stroke-width="2" />
-        </svg>
-      </div>
-      <div class="mk-kpi-detail">
-        <p class="mk-kpi-detail-title">Execução operacional</p>
-        <ul class="mk-kpi-detail-list">
-          <li>{{ total_ativos }} contratos ativos</li>
-          <li>Fluxo operacional protegido</li>
-        </ul>
-      </div>
-    </article>
-
-    <article class="mk-kpi-card" tabindex="0">
-      <div class="mk-kpi-icon">
-        <svg viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="8"></circle>
-          <path d="M12 8v4l3 2"></path>
-        </svg>
-      </div>
-      <p class="mk-kpi-label">Recentes</p>
-      <p class="mk-kpi-value">{{ total_recentes_lista }}</p>
-      <div class="mk-kpi-sparkline" style="color: #fb7185;">
-        <svg viewBox="0 0 100 30" preserveAspectRatio="none">
-          <path d="M0,28 Q30,20 50,25 T100,15" fill="none" stroke="currentColor" stroke-width="2" />
-        </svg>
-      </div>
-      <div class="mk-kpi-detail">
-        <p class="mk-kpi-detail-title">Atividade recente</p>
-        <ul class="mk-kpi-detail-list">
-          <li>Janela de {{ recent_window_days }} dias</li>
-          <li>Último: {{ ultimo_processamento }}</li>
-        </ul>
-      </div>
-    </article>
+  <section class="metrics">
+    {{ kpi_card('Contratos ativos', active_contract_count, 'Base contratual disponível', delta='+' ~ active_contract_count ~ ' ativos') }}
+    {{ kpi_card('Contratos totais', total_contract_count, 'Cadastros mestres no sistema', delta='+' ~ total_contract_count ~ ' total') }}
+    {{ kpi_card('Relatórios totais', total_reports, 'Arquivos gerados pelo pipeline', delta='+' ~ recent_reports_count ~ ' recentes') }}
+    {{ kpi_card('Janela recente', recent_reports_count, recent_window_days ~ ' dias de análise', delta='Hoje ' ~ recent_reports_count) }}
   </section>
 
-  <section class="mk-panel">
-    <div class="mk-panel-head">
-      <h2 class="mk-panel-title">Relatórios Recentes</h2>
-      <a href="{{ url_for('results_list') }}" class="mk-inline-link">Ver todos</a>
-    </div>
-    
-    <div class="mk-list-container">
-      {% for item in recent_reports[:5] %}
-        <article class="mk-list-card">
-          <div class="mk-list-card-info">
-            <h3 class="mk-list-card-title">{{ item.file_name or item.nome or item.title or 'Relatório' }}</h3>
-            <p class="mk-list-card-subtitle">
-              {{ item.nome_contrato or item.contract_name or item.contract_label or ('Contrato #' ~ item.contract_id if item.contract_id else 'Registro operacional') }}
-            </p>
+  <section class="grid-main">
+    {% call premium_panel(
+      eyebrow='Hero insight',
+      title='Resumo executivo em tempo real',
+      action=status_badge('Insight automático', tone='info')
+    ) %}
+      <div class="hero-layout">
+        <div class="glass">
+          <div class="card-head" style="margin-bottom: 12px; align-items: center;">
+            <div style="font-weight: 700; font-size: 16px;">Performance do recorte</div>
+            {{ action_chip('Métricas', active=True) }}
           </div>
-          
-          <div class="mk-list-card-progress">
-            <div class="mk-progress-text">Processamento concluído</div>
-            <div class="mk-progress-bar-bg">
-              <div class="mk-progress-bar-fill" style="width: 100%;"></div>
-            </div>
-          </div>
-          
-          <div class="mk-list-card-actions">
-            <span class="mk-badge mk-badge-success">Finalizado</span>
-            <a href="{{ url_for('result_detail', output_name=item.file_name) if item.file_name else '#' }}" class="mk-btn mk-btn-ghost" style="min-height: 32px; padding: 0 12px; font-size: 12px;">Abrir</a>
-          </div>
-        </article>
-      {% else %}
-        <div class="mk-empty-state">
-          <p>Nenhum relatório recente encontrado.</p>
-        </div>
-      {% endfor %}
-    </div>
-  </section>
-
-  <section class="mk-two-col mk-bottom-grid">
-    <section class="mk-panel" id="actions">
-      <div class="mk-panel-head">
-        <h2 class="mk-panel-title">Ações Rápidas</h2>
-      </div>
-      <div class="mk-action-list">
-        {% if can_access('contratos') %}
-        <a href="{{ url_for('web_contracts_new') }}" class="mk-action-item">
-          <span class="mk-action-icon">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
-          </span>
-          <span class="mk-action-copy">
-            <strong>Novo contrato</strong>
-            <small>Criar um novo cadastro contratual.</small>
-          </span>
-        </a>
-        {% endif %}
-        <a href="{{ url_for('results_list') }}" class="mk-action-item">
-          <span class="mk-action-icon">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"></path><path d="M15 3v4h4"></path></svg>
-          </span>
-          <span class="mk-action-copy">
-            <strong>Ver relatórios</strong>
-            <small>Abrir a lista com os últimos arquivos.</small>
-          </span>
-        </a>
-      </div>
-    </section>
-
-    <section class="mk-panel" id="contracts">
-      <div class="mk-panel-head">
-        <h2 class="mk-panel-title">Contratos em foco</h2>
-      </div>
-      <div class="mk-list">
-        {% for item in contracts[:5] %}
-          <article class="mk-list-row">
-            <div class="mk-list-main">
-              <div>
-                <p class="mk-row-title">{{ item.nome_contrato or item.nome or item.title or 'Contrato' }}</p>
-                <p class="mk-row-subtitle">{{ item.numero_contrato or item.numero or item.contract_code or '-' }}</p>
+          <div class="bars">
+            {% for item in dashboard_chart_items %}
+              {% set bar_height = 24 + ((item.value / chart_max) * 72) %}
+              <div class="bar-col">
+                <div class="bar{{ ' small-alt' if loop.index is even }}" style="height: {{ bar_height | round(0) }}%;"></div>
+                <div class="bar-value">{{ item.value }}</div>
+                <div class="bar-label">{{ item.label }}</div>
               </div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="insight-list">
+          {% for insight in dashboard_insights %}
+            {{ insight_card(insight.title, insight.description, badge=insight.badge, tone=insight.tone) }}
+          {% endfor %}
+        </div>
+      </div>
+    {% endcall %}
+
+    {% call premium_panel(
+      eyebrow='Mix operacional',
+      title='Distribuição de atividade',
+      action=status_badge('Analytics', tone='info')
+    ) %}
+      <div class="donut-wrap">
+        <div class="donut">
+          <div class="donut-inner">
+            <div>
+              <h4>{{ total_reports or total_contract_count }}</h4>
+              <p>volume total</p>
             </div>
-            <span class="mk-pill {% if (item.status_contrato or item.status)=='ativo' %}is-success{% else %}is-warning{% endif %}">
-              {{ item.status_contrato or item.status or 'Atenção' }}
-            </span>
+          </div>
+        </div>
+        <div class="legend">
+          {% for item in dashboard_donut_items %}
+            <div class="legend-item">
+              <span class="legend-dot" style="background: {{ item.color }}"></span>
+              {{ item.label }}
+              <strong>{{ ((item.value / donut_total) * 100) | round(0) }}%</strong>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endcall %}
+  </section>
+
+  <section class="bottom-grid">
+    {% call premium_panel(
+      eyebrow='Relatorios recentes',
+      title='Arquivos com leitura mais limpa',
+      action=secondary_button('Ver todos', href=url_for('results_list'))
+    ) %}
+      <div class="file-list" id="recent-reports">
+        {% for item in recent_reports[:3] %}
+          {% set report_name = item.file_name or item.nome or item.title or 'Relatorio' %}
+          {% set report_contract = item.nome_contrato or item.contract_name or item.contract_label or ('Contrato #' ~ item.contract_id if item.contract_id else 'Registro operacional') %}
+          {% set report_href = url_for('result_detail', output_name=item.file_name) if item.file_name else '#' %}
+          <article class="file-row">
+            <div>
+              <h4>{{ report_name }}</h4>
+              <p>{{ report_contract }}</p>
+              <span class="sr-only">{{ item.numero_contrato or item.contract_code or ('CTR-' ~ ('%03d' % item.contract_id) if item.contract_id else '') }}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              {{ status_badge('Finalizado', tone='success', class_name='status-ok') }}
+              {{ secondary_button('Abrir', href=report_href) }}
+            </div>
           </article>
         {% else %}
-          <article class="mk-list-row">
-            <p class="mk-row-title">Nenhum contrato cadastrado</p>
+          <div class="dashboard-premium-empty">Nenhum relatório recente encontrado.</div>
+        {% endfor %}
+      </div>
+      <span class="sr-only">Relatorios recentes</span>
+    {% endcall %}
+
+    {% call premium_panel(
+      eyebrow='Próximos passos',
+      title='Ações recomendadas',
+      action=status_badge('Sugestões', tone='info')
+    ) %}
+      <div class="recommend-list">
+        {% for suggestion in dashboard_recommendations %}
+          <article class="recommend-item">
+            <h4>{{ suggestion.title }}</h4>
+            <p>{{ suggestion.description }}</p>
           </article>
         {% endfor %}
       </div>
-    </section>
+    {% endcall %}
   </section>
 </div>
 {% endblock %}

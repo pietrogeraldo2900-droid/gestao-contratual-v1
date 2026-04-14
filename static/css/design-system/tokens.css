@@ -1,0 +1,83 @@
+:root {
+  --bg-app: #040b17;
+  --bg-canvas: #071321;
+  --bg-surface-1: rgba(255, 255, 255, 0.03);
+  --bg-surface-2: rgba(255, 255, 255, 0.045);
+  --bg-surface-3: rgba(12, 29, 57, 0.92);
+  --bg-panel: rgba(0, 0, 0, 0.18);
+
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --border-accent: rgba(96, 165, 250, 0.28);
+
+  --text-primary: #f5f7fb;
+  --text-secondary: rgba(245, 247, 251, 0.78);
+  --text-muted: rgba(245, 247, 251, 0.56);
+  --text-soft: rgba(245, 247, 251, 0.40);
+
+  --accent-blue: #3b82f6;
+  --accent-cyan: #22d3ee;
+  --accent-violet: #8b5cf6;
+  --accent-green: #34d399;
+  --accent-amber: #fbbf24;
+  --accent-red: #f87171;
+
+  --state-success-bg: rgba(52, 211, 153, 0.12);
+  --state-success-border: rgba(52, 211, 153, 0.18);
+  --state-warning-bg: rgba(251, 191, 36, 0.12);
+  --state-warning-border: rgba(251, 191, 36, 0.20);
+  --state-danger-bg: rgba(248, 113, 113, 0.12);
+  --state-danger-border: rgba(248, 113, 113, 0.20);
+  --state-info-bg: rgba(59, 130, 246, 0.12);
+  --state-info-border: rgba(59, 130, 246, 0.22);
+
+  --gradient-brand: linear-gradient(135deg, #0c1d39 0%, #091427 100%);
+  --gradient-cta: linear-gradient(90deg, #3b82f6 0%, #22d3ee 100%);
+  --gradient-card: linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0.02) 100%);
+
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  --fs-hero: 56px;
+  --fs-h1: 40px;
+  --fs-h2: 32px;
+  --fs-h3: 24px;
+  --fs-h4: 20px;
+  --fs-body-lg: 16px;
+  --fs-body: 14px;
+  --fs-caption: 12px;
+  --fs-micro: 11px;
+
+  --lh-tight: 1.1;
+  --lh-title: 1.2;
+  --lh-body: 1.6;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  --radius-sm: 14px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+  --radius-xl: 28px;
+  --radius-2xl: 32px;
+
+  --shadow-soft: 0 10px 40px rgba(0, 0, 0, 0.25);
+  --shadow-deep: 0 20px 80px rgba(0, 0, 0, 0.35);
+  --shadow-cta: 0 18px 40px rgba(31, 99, 255, 0.28);
+  --shadow-inner: inset 0 1px 0 rgba(255,255,255,0.04);
+
+  --sidebar-width: 272px;
+  --header-height: 76px;
+  --content-max: 1600px;
+}
