@@ -1,7 +1,0 @@
-﻿id_frente,data_referencia,contrato,programa,nucleo,equipe,logradouro,status_frente,observacao_frente,arquivo_origem
-F001,09/03/2026,Oeste 1,Água Legal,Santa Terezinha,Sidney,Av. Deputado Emílio Carlos,producao_parcial,Atividades paralisadas no período da manhã devido à chuva. Serviço executado após fechamento da rede.,consolidado_2026_03_09.txt
-F002,09/03/2026,Oeste 1,Água Legal,Mississipi,Carlos,Viela Seis,sem_producao,"Atividades interrompidas devido à tempestade, impossibilitando abertura de valas e execução dos serviços.",consolidado_2026_03_09.txt
-F003,09/03/2026,Oeste 1,Água Legal,Mississipi,Weslyn,Viela Mississipi,producao_parcial,"Devido à chuva contínua durante todo o dia, não foi possível executar a escavação da vala.",consolidado_2026_03_09.txt
-F004,09/03/2026,Oeste 1,Água Legal,Cerejas,Reggis,Tv. Haitiana / Tv. do Bala / Tv. do Bete,com_producao,,consolidado_2026_03_09.txt
-F005,09/03/2026,Oeste 1,Água Legal,Cerejas,Amadeu / Maycon / Márcio,Travessa Haitiana / Rua Dezesseis,com_producao,,consolidado_2026_03_09.txt
-F006,09/03/2026,Oeste 1,Água Legal,Vila Dirce,Ezequiel,Recomposição Asfáltica,com_producao,,consolidado_2026_03_09.txt
