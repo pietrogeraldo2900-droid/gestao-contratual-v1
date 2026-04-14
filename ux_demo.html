@@ -1,0 +1,1818 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISG Auditoria — Demo UX Premium</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* ============================================================
+       DESIGN TOKENS — exact match from dashboard-redesign.css
+    ============================================================ */
+    :root {
+      --mk-bg:             #060b14;
+      --mk-bg-soft:        #08101c;
+      --mk-surface:        #0e1421;
+      --mk-surface-deep:   #080c16;
+      --mk-card-top:       rgba(17, 24, 39, 0.92);
+      --mk-card-bottom:    rgba(10, 15, 25, 0.96);
+      --mk-line:           rgba(255, 255, 255, 0.08);
+      --mk-line-strong:    rgba(59, 130, 246, 0.24);
+      --mk-text:           #f8fbff;
+      --mk-text-soft:      #94a3b8;
+      --mk-text-faint:     #64748b;
+      --mk-primary:        #1c5ead;
+      --mk-primary-strong: #2563eb;
+      --mk-primary-soft:   rgba(59, 130, 246, 0.16);
+      --mk-success-soft:   rgba(52, 211, 153, 0.16);
+      --mk-warning-soft:   rgba(245, 158, 11, 0.16);
+      --mk-shadow-lg:      0 24px 60px rgba(0, 0, 0, 0.34);
+      --mk-shadow-md:      0 16px 38px rgba(0, 0, 0, 0.28);
+      --mk-radius-xl:      30px;
+      --mk-radius-lg:      24px;
+      --mk-radius-md:      20px;
+      --mk-radius-sm:      14px;
+    }
+
+    /* ============================================================
+       KEYFRAME ANIMATIONS
+    ============================================================ */
+
+    /* Staggered entrance: slide up + fade in */
+    @keyframes mk-fade-up {
+      from {
+        opacity: 0;
+        transform: translateY(22px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Breathing orb in hero — 6s loop */
+    @keyframes mk-hero-glow {
+      0%   { transform: scale(1);    opacity: 0.55; }
+      50%  { transform: scale(1.22); opacity: 0.85; }
+      100% { transform: scale(1);    opacity: 0.55; }
+    }
+
+    /* Shimmer sweep on button hover */
+    @keyframes mk-shimmer {
+      0%   { background-position: -200% center; }
+      100% { background-position: 200% center; }
+    }
+
+    /* Pulse ring on blue dot */
+    @keyframes mk-pulse-ring {
+      0%   { box-shadow: 0 0 0 0   rgba(59, 130, 246, 0.55); }
+      70%  { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+      100% { box-shadow: 0 0 0 0   rgba(59, 130, 246, 0); }
+    }
+
+    /* Demo badge float */
+    @keyframes mk-badge-float {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-3px); }
+    }
+
+    /* ============================================================
+       RESET & BASE
+    ============================================================ */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: "Inter", system-ui, -apple-system, sans-serif;
+      color: var(--mk-text);
+      background:
+        radial-gradient(circle at top left,  rgba(37, 99, 235, 0.15), transparent 28%),
+        radial-gradient(circle at top right, rgba(28, 94, 173, 0.11), transparent 24%),
+        linear-gradient(180deg, var(--mk-bg) 0%, #070d17 100%);
+      min-height: 100vh;
+    }
+
+    /* Subtle grid overlay */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size: 36px 36px;
+      opacity: 0.06;
+      mask-image: linear-gradient(180deg, rgba(0,0,0,0.3), transparent 80%);
+      z-index: 0;
+    }
+
+    a { color: var(--mk-primary-strong); text-decoration: none; }
+
+    /* ============================================================
+       CUSTOM SCROLLBAR — 6px, rounded, blue-tinted thumb
+    ============================================================ */
+    ::-webkit-scrollbar            { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track      { background: rgba(255,255,255,0.03); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb      { background: rgba(59,130,246,0.32); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover{ background: rgba(59,130,246,0.52); }
+    * { scrollbar-width: thin; scrollbar-color: rgba(59,130,246,0.32) rgba(255,255,255,0.03); }
+
+    /* ============================================================
+       FLOATING DEMO BADGE
+    ============================================================ */
+    .demo-badge {
+      position: fixed;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(59, 130, 246, 0.38);
+      background: linear-gradient(135deg, rgba(28, 94, 173, 0.82), rgba(37, 99, 235, 0.68));
+      backdrop-filter: blur(14px);
+      color: #dbeafe;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      box-shadow: 0 8px 22px rgba(37, 99, 235, 0.28), inset 0 1px 0 rgba(255,255,255,0.12);
+      animation: mk-badge-float 3s ease-in-out infinite;
+      white-space: nowrap;
+    }
+
+    .demo-badge-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #60a5fa;
+      animation: mk-pulse-ring 2s ease infinite;
+    }
+
+    /* ============================================================
+       APP SHELL — sidebar + main
+    ============================================================ */
+    .app-shell {
+      display: flex;
+      min-height: 100vh;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ============================================================
+       SIDEBAR — fixed left, 248px, dark #08101c
+    ============================================================ */
+    .sidebar {
+      width: 248px;
+      min-width: 248px;
+      height: 100vh;
+      position: sticky;
+      top: 0;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 12px 12px 16px;
+      background: linear-gradient(180deg, #08101c 0%, #07101a 100%);
+      border-right: 1px solid var(--mk-line);
+      box-shadow: 4px 0 28px rgba(2, 8, 17, 0.32), inset -1px 0 0 rgba(255,255,255,0.02);
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    /* --- Brand block --- */
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 4px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .sidebar-logo-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      border: 1px solid rgba(59, 130, 246, 0.36);
+      background: linear-gradient(180deg, rgba(34, 99, 191, 0.42), rgba(16, 35, 64, 0.72));
+      color: #dbeafe;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.24);
+    }
+
+    .sidebar-brand-copy h2 {
+      color: var(--mk-text);
+      font-size: 16px;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      font-weight: 700;
+    }
+
+    .sidebar-brand-copy p {
+      margin-top: 2px;
+      color: var(--mk-text-soft);
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
+    /* --- Nav group --- */
+    .nav-group {
+      margin-top: 10px;
+    }
+
+    .nav-group-label {
+      display: block;
+      padding: 0 4px;
+      margin-bottom: 6px;
+      color: var(--mk-text-faint);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .nav-list {
+      display: grid;
+      gap: 3px;
+      list-style: none;
+    }
+
+    /* --- Nav link with active left-glow indicator --- */
+    .nav-link {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-height: 36px;
+      padding: 0 10px 0 14px;
+      border: 1px solid transparent;
+      border-radius: 12px;
+      color: #c5d3e4;
+      font-size: 13px;
+      font-weight: 500;
+      background: rgba(255,255,255,0.02);
+      text-decoration: none;
+      transition: color 160ms ease, background 160ms ease, border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+      overflow: hidden;
+    }
+
+    /* Active left-border glow indicator: 3px gradient line */
+    .nav-link::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 20%;
+      bottom: 20%;
+      width: 3px;
+      border-radius: 0 3px 3px 0;
+      background: linear-gradient(180deg, #60a5fa, #2563eb);
+      opacity: 0;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.72), 0 0 22px rgba(59, 130, 246, 0.38);
+      transition: opacity 200ms ease;
+    }
+
+    .nav-link.active::before { opacity: 1; }
+
+    .nav-link:hover {
+      color: #fff;
+      background: rgba(255,255,255,0.05);
+      border-color: rgba(255,255,255,0.08);
+      transform: translateX(3px);  /* slide right 3px on hover */
+    }
+
+    .nav-link.active {
+      color: #fff;
+      border-color: rgba(59, 130, 246, 0.35);
+      background: linear-gradient(180deg, rgba(34, 99, 191, 0.28), rgba(24, 39, 74, 0.32));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 16px rgba(37, 99, 235, 0.16);
+    }
+
+    .nav-link.active:hover {
+      transform: translateX(3px);
+    }
+
+    .nav-link-icon {
+      width: 16px;
+      height: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #93c5fd;
+      flex-shrink: 0;
+    }
+
+    .nav-link-icon svg {
+      width: 14px;
+      height: 14px;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+
+    /* --- Sidebar footer --- */
+    .sidebar-footer {
+      margin-top: auto;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .sidebar-user-email {
+      display: block;
+      color: var(--mk-text-faint);
+      font-size: 11px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding: 0 4px;
+    }
+
+    .sidebar-signout {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      padding: 0 10px;
+      margin-top: 6px;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      color: #dbe7fa;
+      background: rgba(255,255,255,0.02);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: 160ms ease;
+    }
+
+    .sidebar-signout:hover {
+      color: #fff;
+      background: rgba(255,255,255,0.05);
+      border-color: rgba(255,255,255,0.12);
+    }
+
+    /* ============================================================
+       MAIN CONTENT AREA
+    ============================================================ */
+    .main-content {
+      flex: 1;
+      min-width: 0;
+      padding: 48px 22px 40px;   /* extra top for demo badge */
+      display: grid;
+      gap: 20px;
+      align-content: start;
+    }
+
+    /* ============================================================
+       SECTION ENTRANCE ANIMATIONS — staggered mk-fade-up
+    ============================================================ */
+    .anim-section {
+      animation: mk-fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    .anim-section:nth-child(1) { animation-delay: 0.05s; }
+    .anim-section:nth-child(2) { animation-delay: 0.13s; }
+    .anim-section:nth-child(3) { animation-delay: 0.21s; }
+    .anim-section:nth-child(4) { animation-delay: 0.29s; }
+    .anim-section:nth-child(5) { animation-delay: 0.37s; }
+    .anim-section:nth-child(6) { animation-delay: 0.45s; }
+    .anim-section:nth-child(7) { animation-delay: 0.53s; }
+
+    /* ============================================================
+       HERO SECTION — mk-hero style
+    ============================================================ */
+    .mk-hero {
+      position: relative;
+      overflow: hidden;
+      border-radius: var(--mk-radius-xl);
+      border: 1px solid rgba(59, 130, 246, 0.22);
+      background: linear-gradient(90deg, rgba(7, 17, 33, 0.94), rgba(28, 94, 173, 0.74));
+      box-shadow: 0 20px 52px rgba(6, 18, 38, 0.48);
+      padding: 22px 26px;
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Animated radial orb — pulsing in top-right corner */
+    .mk-hero-orb {
+      position: absolute;
+      top: -60px;
+      right: -60px;
+      width: 260px;
+      height: 260px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.28) 0%, rgba(37, 99, 235, 0.14) 40%, transparent 70%);
+      pointer-events: none;
+      animation: mk-hero-glow 6s ease-in-out infinite;
+    }
+
+    .mk-kicker {
+      color: rgba(191, 219, 254, 0.92);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.24em;
+    }
+
+    .mk-kicker-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #60a5fa;
+      margin-right: 7px;
+      vertical-align: middle;
+      position: relative;
+      top: -1px;
+      animation: mk-pulse-ring 2.4s ease infinite;
+    }
+
+    .mk-page-title {
+      margin-top: 8px;
+      color: #fff;
+      font-size: clamp(36px, 4.2vw, 50px);
+      line-height: 0.94;
+      letter-spacing: -0.06em;
+      font-weight: 600;
+    }
+
+    .mk-hero-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ============================================================
+       BUTTONS with shimmer on hover
+    ============================================================ */
+    .mk-btn {
+      position: relative;
+      overflow: hidden;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 20px;
+      border-radius: 16px;
+      border: 1px solid transparent;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: 160ms ease;
+      white-space: nowrap;
+    }
+
+    /* Shimmer ::after pseudo-element — diagonal light sweep */
+    .mk-btn::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        105deg,
+        transparent 30%,
+        rgba(255, 255, 255, 0.22) 50%,
+        transparent 70%
+      );
+      background-size: 200% 100%;
+      background-position: -200% center;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .mk-btn:hover::after {
+      opacity: 1;
+      animation: mk-shimmer 0.6s ease forwards;
+    }
+
+    .mk-btn-primary {
+      color: #fff;
+      border-color: rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(8px);
+    }
+
+    .mk-btn-primary:hover {
+      background: rgba(255,255,255,0.20);
+      border-color: rgba(255,255,255,0.26);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 20px rgba(37, 99, 235, 0.22);
+    }
+
+    .mk-btn-ghost {
+      color: #e0eaff;
+      border-color: rgba(255,255,255,0.12);
+      background: rgba(9, 17, 29, 0.88);
+    }
+
+    .mk-btn-ghost:hover {
+      border-color: rgba(96, 165, 250, 0.32);
+      background: #0d1627;
+      transform: translateY(-1px);
+    }
+
+    .mk-btn-solid {
+      color: #fff;
+      border-color: rgba(96, 165, 250, 0.32);
+      background: linear-gradient(135deg, rgba(49, 87, 220, 0.96), rgba(37, 99, 235, 0.9));
+      box-shadow: 0 14px 30px rgba(30, 64, 175, 0.22);
+    }
+
+    .mk-btn-solid:hover {
+      filter: saturate(1.1) brightness(1.05);
+      transform: translateY(-2px);
+      box-shadow: 0 18px 36px rgba(30, 64, 175, 0.30);
+    }
+
+    /* ============================================================
+       KPI GRID — 4 cards
+    ============================================================ */
+    .mk-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .mk-kpi-card {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 28px;
+      background: linear-gradient(180deg, var(--mk-card-top), var(--mk-card-bottom));
+      padding: 20px 18px 18px;
+      min-height: 210px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.28);
+      transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+      cursor: default;
+    }
+
+    /* subtle top-left tint */
+    .mk-kpi-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.14), transparent 48%);
+    }
+
+    /* Lift + scale on hover */
+    .mk-kpi-card:hover {
+      transform: translateY(-5px) scale(1.012);
+      border-color: rgba(96, 165, 250, 0.34);
+      box-shadow: 0 24px 56px rgba(8, 15, 35, 0.58);
+    }
+
+    /* Icon glow on hover */
+    .mk-kpi-card:hover .mk-kpi-icon {
+      border-color: rgba(96, 165, 250, 0.44);
+      background: rgba(59, 130, 246, 0.18);
+      box-shadow: 0 0 18px rgba(59, 130, 246, 0.38);
+    }
+
+    .mk-kpi-icon {
+      position: relative;
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.05);
+      color: #93c5fd;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: 220ms ease;
+    }
+
+    .mk-kpi-icon svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+
+    .mk-kpi-label {
+      position: relative;
+      display: block;
+      margin-top: 14px;
+      color: #94a3b8;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.22em;
+    }
+
+    .mk-kpi-value {
+      position: relative;
+      display: block;
+      margin-top: 8px;
+      color: #fff;
+      font-size: clamp(38px, 3vw, 48px);
+      line-height: 0.95;
+      font-weight: 600;
+      letter-spacing: -0.05em;
+    }
+
+    /* Sparkline SVG at bottom */
+    .mk-kpi-sparkline {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 48px;
+      opacity: 0.55;
+      transition: opacity 200ms ease;
+    }
+
+    .mk-kpi-card:hover .mk-kpi-sparkline { opacity: 0.82; }
+
+    .mk-kpi-sparkline svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ============================================================
+       TWO-COLUMN PANELS
+    ============================================================ */
+    .mk-two-col {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: minmax(0, 1.5fr) minmax(300px, 0.9fr);
+    }
+
+    .mk-panel {
+      border-radius: var(--mk-radius-xl);
+      border: 1px solid rgba(255,255,255,0.10);
+      background: linear-gradient(180deg, rgba(14, 20, 33, 0.94), rgba(8, 12, 22, 0.98));
+      box-shadow: var(--mk-shadow-md);
+      padding: 20px;
+      overflow: hidden;
+    }
+
+    .mk-panel-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .mk-panel-title {
+      color: #fff;
+      font-size: 21px;
+      line-height: 1.06;
+      letter-spacing: -0.03em;
+      font-weight: 600;
+    }
+
+    .mk-inline-link {
+      color: #93c5fd;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: color 160ms ease;
+    }
+
+    .mk-inline-link:hover { color: #dbeafe; }
+
+    /* ---- Activity list (slides right on hover) ---- */
+    .mk-quick-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .mk-quick-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.03);
+      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+      cursor: default;
+    }
+
+    .mk-quick-item:hover {
+      transform: translateX(4px);  /* slide right */
+      border-color: rgba(96, 165, 250, 0.20);
+      background: rgba(255,255,255,0.055);
+    }
+
+    .mk-quick-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      animation: mk-pulse-ring 2.8s ease infinite;
+    }
+
+    .dot-blue   { background: #3b82f6; }
+    .dot-green  { background: #34d399; animation-delay: 0.4s; }
+    .dot-amber  { background: #f59e0b; animation-delay: 0.8s; }
+    .dot-red    { background: #f87171; animation-delay: 1.2s; }
+    .dot-purple { background: #a78bfa; animation-delay: 1.6s; }
+
+    .mk-quick-item-copy { flex: 1; min-width: 0; }
+
+    .mk-quick-item-copy strong {
+      display: block;
+      color: #f8fbff;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mk-quick-item-copy small {
+      display: block;
+      margin-top: 2px;
+      color: var(--mk-text-soft);
+      font-size: 12px;
+    }
+
+    .mk-quick-time {
+      color: var(--mk-text-faint);
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    /* ---- Action items (slide right 4px on hover) ---- */
+    .mk-action-list { display: grid; gap: 8px; }
+
+    .mk-action-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.03);
+      text-decoration: none;
+      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+    }
+
+    .mk-action-item:hover {
+      transform: translateX(4px);  /* slide right 4px */
+      border-color: rgba(96, 165, 250, 0.26);
+      background: rgba(255,255,255,0.055);
+    }
+
+    .mk-action-icon {
+      display: inline-flex;
+      width: 38px;
+      height: 38px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 13px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+      color: #93c5fd;
+      flex-shrink: 0;
+      transition: border-color 200ms ease, background 200ms ease, box-shadow 200ms ease;
+    }
+
+    .mk-action-item:hover .mk-action-icon {
+      border-color: rgba(96, 165, 250, 0.38);
+      background: rgba(59, 130, 246, 0.14);
+      box-shadow: 0 0 14px rgba(59, 130, 246, 0.28);
+    }
+
+    .mk-action-icon svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+
+    .mk-action-copy { flex: 1; min-width: 0; }
+
+    .mk-action-copy strong {
+      display: block;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.3;
+    }
+
+    .mk-action-copy small {
+      display: block;
+      margin-top: 3px;
+      color: var(--mk-text-soft);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .mk-action-arrow {
+      color: var(--mk-text-faint);
+      font-size: 18px;
+      font-weight: 300;
+      flex-shrink: 0;
+      transition: color 160ms ease, transform 160ms ease;
+    }
+
+    .mk-action-item:hover .mk-action-arrow {
+      color: #93c5fd;
+      transform: translateX(2px);
+    }
+
+    /* ============================================================
+       TABLE SECTION
+    ============================================================ */
+    .mk-table-section {
+      border-radius: var(--mk-radius-xl);
+      border: 1px solid rgba(255,255,255,0.10);
+      background: linear-gradient(180deg, rgba(14, 20, 33, 0.96), rgba(8, 12, 22, 0.99));
+      box-shadow: var(--mk-shadow-md);
+      overflow: hidden;
+    }
+
+    .mk-table-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .mk-table-title {
+      color: #fff;
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .mk-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 26px;
+      padding: 0 11px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.04);
+      color: #cbd5e1;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .mk-pill.is-success {
+      border-color: rgba(52, 211, 153, 0.22);
+      background: var(--mk-success-soft);
+      color: #c6f6dd;
+    }
+
+    .mk-pill.is-warning {
+      border-color: rgba(245, 158, 11, 0.22);
+      background: var(--mk-warning-soft);
+      color: #fde68a;
+    }
+
+    .mk-pill.is-info {
+      border-color: rgba(96, 165, 250, 0.22);
+      background: rgba(37, 99, 235, 0.14);
+      color: #bfdbfe;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 640px;
+      font-size: 13px;
+    }
+
+    thead th {
+      padding: 12px 16px;
+      text-align: left;
+      background: rgba(255,255,255,0.03);
+      color: #cbd5e1;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      white-space: nowrap;
+    }
+
+    tbody td {
+      padding: 13px 16px;
+      color: #dbe6f3;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      transition: background 180ms ease;
+    }
+
+    /* Table row smooth background highlight on hover */
+    tbody tr:hover td {
+      background: rgba(37, 99, 235, 0.07);
+    }
+
+    tbody tr:last-child td { border-bottom: 0; }
+
+    .td-name { color: #f8fbff; font-weight: 500; }
+    .td-mono { font-family: Consolas, "Courier New", monospace; font-size: 12px; color: #94a3b8; }
+    .td-date { color: #94a3b8; font-size: 12px; }
+
+    /* ============================================================
+       LOGIN PREVIEW CARD (at bottom)
+    ============================================================ */
+    .login-preview-wrapper {
+      display: flex;
+      gap: 0;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .section-divider {
+      width: 100%;
+      border: none;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      margin: 4px 0;
+    }
+
+    .login-section-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      color: var(--mk-text-faint);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .login-section-label::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: rgba(255,255,255,0.07);
+    }
+
+    .mk-auth-shell {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      border-radius: var(--mk-radius-xl);
+      border: 1px solid rgba(59, 130, 246, 0.18);
+      overflow: hidden;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.38);
+      animation: mk-fade-up 0.7s cubic-bezier(0.22,1,0.36,1) 0.6s both;
+    }
+
+    .mk-auth-visual {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(135deg, rgba(7, 17, 33, 0.96), rgba(28, 94, 173, 0.80));
+      padding: 40px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mk-auth-visual::before {
+      content: "";
+      position: absolute;
+      top: -80px;
+      right: -80px;
+      width: 320px;
+      height: 320px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.22) 0%, transparent 65%);
+      animation: mk-hero-glow 5s ease-in-out infinite;
+    }
+
+    .mk-auth-visual::after {
+      content: "";
+      position: absolute;
+      bottom: -60px;
+      left: -60px;
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(28, 94, 173, 0.18) 0%, transparent 65%);
+      animation: mk-hero-glow 7s ease-in-out infinite reverse;
+    }
+
+    .mk-auth-glass-card {
+      position: relative;
+      z-index: 1;
+      padding: 32px 28px;
+      border-radius: 28px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(16px);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.10);
+      text-align: center;
+      max-width: 280px;
+    }
+
+    .mk-auth-glass-icon {
+      display: inline-flex;
+      width: 56px;
+      height: 56px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.22);
+      background: rgba(255,255,255,0.10);
+      color: #dbeafe;
+      margin-bottom: 18px;
+    }
+
+    .mk-auth-glass-icon svg {
+      width: 26px;
+      height: 26px;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+
+    .mk-auth-glass-value {
+      color: #fff;
+      font-size: 48px;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -0.05em;
+    }
+
+    .mk-auth-glass-label {
+      margin-top: 6px;
+      color: rgba(219, 234, 254, 0.88);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+    }
+
+    /* --- Login form side --- */
+    .mk-auth-form-side {
+      background: linear-gradient(180deg, rgba(11, 17, 29, 0.98), rgba(7, 12, 22, 0.99));
+      padding: 40px 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mk-auth-form-card {
+      width: 100%;
+      max-width: 360px;
+    }
+
+    .mk-auth-form-title {
+      color: #fff;
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+    }
+
+    .mk-auth-form-subtitle {
+      margin-top: 8px;
+      color: var(--mk-text-soft);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .mk-auth-form { margin-top: 28px; }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .field label {
+      color: #94a3b8;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+    }
+
+    .field input {
+      width: 100%;
+      min-height: 44px;
+      padding: 0 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(14, 20, 33, 0.96);
+      color: #eef4ff;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 200ms ease, box-shadow 200ms ease;
+    }
+
+    .field input:focus {
+      border-color: rgba(59, 130, 246, 0.70);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+    }
+
+    .field input::placeholder { color: rgba(148, 163, 184, 0.5); }
+
+    .mk-auth-btn {
+      width: 100%;
+      min-height: 48px;
+      border-radius: 14px;
+      border: 1px solid rgba(96, 165, 250, 0.32);
+      background: linear-gradient(135deg, rgba(49, 87, 220, 0.96), rgba(37, 99, 235, 0.92));
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      box-shadow: 0 14px 32px rgba(37, 99, 235, 0.26);
+      position: relative;
+      overflow: hidden;
+      transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+      font-family: inherit;
+    }
+
+    .mk-auth-btn::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        105deg,
+        transparent 30%,
+        rgba(255,255,255,0.22) 50%,
+        transparent 70%
+      );
+      background-size: 200% 100%;
+      background-position: -200% center;
+      opacity: 0;
+    }
+
+    .mk-auth-btn:hover {
+      transform: translateY(-2px);
+      filter: saturate(1.08) brightness(1.04);
+      box-shadow: 0 20px 40px rgba(37, 99, 235, 0.34);
+    }
+
+    .mk-auth-btn:hover::after {
+      opacity: 1;
+      animation: mk-shimmer 0.6s ease forwards;
+    }
+
+    /* ============================================================
+       SECTION HEADER — shared
+    ============================================================ */
+    .section-header {
+      margin-bottom: 16px;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .section-kicker {
+      display: block;
+      color: var(--mk-text-faint);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .section-title {
+      color: #fff;
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+
+    /* ============================================================
+       RESPONSIVE — basic
+    ============================================================ */
+    @media (max-width: 1200px) {
+      .mk-kpi-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    }
+
+    @media (max-width: 920px) {
+      .sidebar { display: none; }
+      .mk-two-col { grid-template-columns: 1fr; }
+      .mk-auth-shell { grid-template-columns: 1fr; }
+      .mk-auth-visual { display: none; }
+    }
+
+    @media (max-width: 640px) {
+      .mk-kpi-grid { grid-template-columns: 1fr; }
+      .mk-hero { flex-direction: column; align-items: stretch; }
+      .mk-hero-actions { justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body class="auth-shell-mode">
+
+  <!-- ============================================================
+       FLOATING DEMO BADGE
+  ============================================================ -->
+  <div class="demo-badge" role="note" aria-label="Demonstração de melhorias de UX">
+    <span class="demo-badge-dot"></span>
+    DEMO &mdash; Melhorias de UX Premium aplicadas
+  </div>
+
+  <!-- ============================================================
+       APP SHELL
+  ============================================================ -->
+  <div class="app-shell">
+
+    <!-- =========================================================
+         SIDEBAR — fixed left, 248px
+    ========================================================= -->
+    <aside class="sidebar" aria-label="Navegação principal">
+
+      <!-- Brand -->
+      <div class="sidebar-brand">
+        <div class="sidebar-logo-mark" aria-hidden="true">SG</div>
+        <div class="sidebar-brand-copy">
+          <h2>SISG</h2>
+          <p>Auditoria</p>
+        </div>
+      </div>
+
+      <!-- Nav -->
+      <nav class="nav-group" aria-label="Menu principal">
+        <span class="nav-group-label">Principal</span>
+        <ul class="nav-list" role="list">
+          <li>
+            <a href="#hero" class="nav-link active" aria-current="page">
+              <span class="nav-link-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+              </span>
+              Dashboard
+            </a>
+          </li>
+          <li>
+            <a href="#" class="nav-link">
+              <span class="nav-link-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+              </span>
+              Entradas
+            </a>
+          </li>
+          <li>
+            <a href="#" class="nav-link">
+              <span class="nav-link-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4"/></svg>
+              </span>
+              Resultados
+            </a>
+          </li>
+          <li>
+            <a href="#" class="nav-link">
+              <span class="nav-link-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+              </span>
+              Histórico
+            </a>
+          </li>
+        </ul>
+      </nav>
+
+      <nav class="nav-group" aria-label="Gerenciamento">
+        <span class="nav-group-label">Gestão</span>
+        <ul class="nav-list" role="list">
+          <li>
+            <a href="#" class="nav-link">
+              <span class="nav-link-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-5 5 10 2.5-5H21"/></svg>
+              </span>
+              Gerencial
+            </a>
+          </li>
+        </ul>
+      </nav>
+
+      <!-- Footer -->
+      <div class="sidebar-footer">
+        <span class="sidebar-user-email">usuario@empresa.gov.br</span>
+        <div class="sidebar-signout" tabindex="0" role="button" aria-label="Sair da conta">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          Sair
+        </div>
+      </div>
+    </aside>
+
+    <!-- =========================================================
+         MAIN CONTENT
+    ========================================================= -->
+    <main class="main-content" aria-label="Conteúdo principal">
+
+      <!-- =====================================================
+           1. HERO — mk-hero style with animated orb
+      ===================================================== -->
+      <section id="hero" class="anim-section" aria-label="Cabeçalho executivo">
+        <header class="mk-hero">
+          <!-- Animated breathing orb -->
+          <div class="mk-hero-orb" aria-hidden="true"></div>
+
+          <div style="position:relative;z-index:1;">
+            <p class="mk-kicker">
+              <span class="mk-kicker-dot" aria-hidden="true"></span>
+              Painel executivo
+            </p>
+            <h1 class="mk-page-title">Dashboard</h1>
+          </div>
+
+          <div class="mk-hero-actions">
+            <a href="#" class="mk-btn mk-btn-primary">Novo contrato</a>
+            <a href="#" class="mk-btn mk-btn-ghost">Resultados</a>
+          </div>
+        </header>
+      </section>
+
+      <!-- =====================================================
+           2. KPI GRID — 4 cards with sparklines
+      ===================================================== -->
+      <section class="anim-section" aria-label="Indicadores-chave">
+        <div class="section-header">
+          <div>
+            <span class="section-kicker">Visão geral</span>
+            <h2 class="section-title">Indicadores</h2>
+          </div>
+          <a href="#" class="mk-inline-link">Relatório completo &rarr;</a>
+        </div>
+
+        <div class="mk-kpi-grid">
+          <!-- KPI 1: Contratos Ativos -->
+          <article class="mk-kpi-card" tabindex="0" aria-label="Contratos Ativos: 42">
+            <div class="mk-kpi-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 3v4"/><path d="M16 3v4"/></svg>
+            </div>
+            <span class="mk-kpi-label">Contratos Ativos</span>
+            <span class="mk-kpi-value">42</span>
+            <div class="mk-kpi-sparkline" style="color:#34d399;" aria-hidden="true">
+              <svg viewBox="0 0 120 40" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="sg1" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="currentColor" stop-opacity="0.28"/>
+                    <stop offset="100%" stop-color="currentColor" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <path d="M0,32 Q15,14 30,22 T60,16 T90,10 T120,4" fill="url(#sg1)"/>
+                <path d="M0,32 Q15,14 30,22 T60,16 T90,10 T120,4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </article>
+
+          <!-- KPI 2: Relatórios -->
+          <article class="mk-kpi-card" tabindex="0" aria-label="Relatórios: 187">
+            <div class="mk-kpi-icon" aria-hidden="true" style="color:#f59e0b;">
+              <svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4"/><path d="M9 12h6"/><path d="M9 16h4"/></svg>
+            </div>
+            <span class="mk-kpi-label">Relatórios</span>
+            <span class="mk-kpi-value">187</span>
+            <div class="mk-kpi-sparkline" style="color:#f59e0b;" aria-hidden="true">
+              <svg viewBox="0 0 120 40" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="sg2" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="currentColor" stop-opacity="0.28"/>
+                    <stop offset="100%" stop-color="currentColor" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <path d="M0,28 Q20,32 40,18 T70,24 T100,14 T120,8" fill="url(#sg2)"/>
+                <path d="M0,28 Q20,32 40,18 T70,24 T100,14 T120,8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </article>
+
+          <!-- KPI 3: Pendentes -->
+          <article class="mk-kpi-card" tabindex="0" aria-label="Pendentes: 8">
+            <div class="mk-kpi-icon" aria-hidden="true" style="color:#f87171;">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            </div>
+            <span class="mk-kpi-label">Pendentes</span>
+            <span class="mk-kpi-value">8</span>
+            <div class="mk-kpi-sparkline" style="color:#f87171;" aria-hidden="true">
+              <svg viewBox="0 0 120 40" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="sg3" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="currentColor" stop-opacity="0.28"/>
+                    <stop offset="100%" stop-color="currentColor" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <path d="M0,12 Q30,28 50,16 T80,30 T120,20" fill="url(#sg3)"/>
+                <path d="M0,12 Q30,28 50,16 T80,30 T120,20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </article>
+
+          <!-- KPI 4: Processados -->
+          <article class="mk-kpi-card" tabindex="0" aria-label="Processados: 179">
+            <div class="mk-kpi-icon" aria-hidden="true" style="color:#60a5fa;">
+              <svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-5 5 10 2.5-5H21"/></svg>
+            </div>
+            <span class="mk-kpi-label">Processados</span>
+            <span class="mk-kpi-value">179</span>
+            <div class="mk-kpi-sparkline" style="color:#60a5fa;" aria-hidden="true">
+              <svg viewBox="0 0 120 40" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="sg4" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="currentColor" stop-opacity="0.28"/>
+                    <stop offset="100%" stop-color="currentColor" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <path d="M0,34 Q25,20 50,28 T90,12 T120,6" fill="url(#sg4)"/>
+                <path d="M0,34 Q25,20 50,28 T90,12 T120,6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- =====================================================
+           3. TWO-COLUMN: Atividades + Ações Rápidas
+      ===================================================== -->
+      <section class="anim-section mk-two-col" aria-label="Atividades e ações">
+
+        <!-- Left: Atividades Recentes -->
+        <div class="mk-panel">
+          <div class="mk-panel-head">
+            <h2 class="mk-panel-title">Atividades Recentes</h2>
+            <a href="#" class="mk-inline-link">Ver todas</a>
+          </div>
+          <div class="mk-quick-list" role="list">
+            <div class="mk-quick-item" role="listitem">
+              <div class="mk-quick-dot dot-green" aria-hidden="true"></div>
+              <div class="mk-quick-item-copy">
+                <strong>Relatório CT-2024-087 processado</strong>
+                <small>Contrato Manutenção Predial — Concluído</small>
+              </div>
+              <span class="mk-quick-time">há 5 min</span>
+            </div>
+            <div class="mk-quick-item" role="listitem">
+              <div class="mk-quick-dot dot-blue" aria-hidden="true"></div>
+              <div class="mk-quick-item-copy">
+                <strong>Novo contrato cadastrado</strong>
+                <small>Empresa XYZ Ltda — Limpeza e Conservação</small>
+              </div>
+              <span class="mk-quick-time">há 22 min</span>
+            </div>
+            <div class="mk-quick-item" role="listitem">
+              <div class="mk-quick-dot dot-amber" aria-hidden="true"></div>
+              <div class="mk-quick-item-copy">
+                <strong>Auditoria pendente identificada</strong>
+                <small>CT-2024-064 — Revisão necessária</small>
+              </div>
+              <span class="mk-quick-time">há 1h</span>
+            </div>
+            <div class="mk-quick-item" role="listitem">
+              <div class="mk-quick-dot dot-purple" aria-hidden="true"></div>
+              <div class="mk-quick-item-copy">
+                <strong>Arquivo importado com sucesso</strong>
+                <small>relatorio_marco_2024.xlsx — 14 registros</small>
+              </div>
+              <span class="mk-quick-time">há 2h</span>
+            </div>
+            <div class="mk-quick-item" role="listitem">
+              <div class="mk-quick-dot dot-red" aria-hidden="true"></div>
+              <div class="mk-quick-item-copy">
+                <strong>Alerta: divergência encontrada</strong>
+                <small>CT-2024-031 — Valores inconsistentes</small>
+              </div>
+              <span class="mk-quick-time">há 3h</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Ações Rápidas -->
+        <div class="mk-panel">
+          <div class="mk-panel-head">
+            <h2 class="mk-panel-title">Ações Rápidas</h2>
+          </div>
+          <div class="mk-action-list">
+            <a href="#" class="mk-action-item">
+              <span class="mk-action-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+              </span>
+              <span class="mk-action-copy">
+                <strong>Novo contrato</strong>
+                <small>Criar um novo cadastro contratual no sistema.</small>
+              </span>
+              <span class="mk-action-arrow" aria-hidden="true">›</span>
+            </a>
+            <a href="#" class="mk-action-item">
+              <span class="mk-action-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4"/></svg>
+              </span>
+              <span class="mk-action-copy">
+                <strong>Ver relatórios</strong>
+                <small>Abrir a lista com os últimos arquivos processados.</small>
+              </span>
+              <span class="mk-action-arrow" aria-hidden="true">›</span>
+            </a>
+            <a href="#" class="mk-action-item">
+              <span class="mk-action-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              </span>
+              <span class="mk-action-copy">
+                <strong>Importar planilha</strong>
+                <small>Enviar arquivo .xlsx ou .csv para processamento.</small>
+              </span>
+              <span class="mk-action-arrow" aria-hidden="true">›</span>
+            </a>
+            <a href="#" class="mk-action-item">
+              <span class="mk-action-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-5 5 10 2.5-5H21"/></svg>
+              </span>
+              <span class="mk-action-copy">
+                <strong>Painel gerencial</strong>
+                <small>Visão executiva com gráficos e indicadores avançados.</small>
+              </span>
+              <span class="mk-action-arrow" aria-hidden="true">›</span>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- =====================================================
+           4. TABLE SECTION
+      ===================================================== -->
+      <section class="anim-section mk-table-section" aria-label="Contratos recentes">
+        <div class="mk-table-head">
+          <h2 class="mk-table-title">Contratos em Foco</h2>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <a href="#" class="mk-btn mk-btn-solid" style="min-height:36px;padding:0 14px;font-size:12px;border-radius:10px;">
+              Ver todos
+            </a>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Contrato</th>
+                <th>Empresa contratada</th>
+                <th>Objeto</th>
+                <th>Vigência</th>
+                <th>Status</th>
+                <th>Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="td-mono">CT-2024-087</td>
+                <td class="td-name">Empresa Alpha Serviços Ltda</td>
+                <td>Manutenção predial</td>
+                <td class="td-date">Dez 2024</td>
+                <td><span class="mk-pill is-success">Ativo</span></td>
+                <td class="td-mono">R$ 248.000</td>
+              </tr>
+              <tr>
+                <td class="td-mono">CT-2024-064</td>
+                <td class="td-name">Beta Limpeza e Conservação S/A</td>
+                <td>Limpeza e higiene</td>
+                <td class="td-date">Nov 2024</td>
+                <td><span class="mk-pill is-warning">Revisão</span></td>
+                <td class="td-mono">R$ 132.500</td>
+              </tr>
+              <tr>
+                <td class="td-mono">CT-2024-055</td>
+                <td class="td-name">Gamma Segurança Patrimonial</td>
+                <td>Vigilância e portaria</td>
+                <td class="td-date">Out 2024</td>
+                <td><span class="mk-pill is-success">Ativo</span></td>
+                <td class="td-mono">R$ 384.200</td>
+              </tr>
+              <tr>
+                <td class="td-mono">CT-2024-031</td>
+                <td class="td-name">Delta Tecnologia e Informática</td>
+                <td>Suporte de TI</td>
+                <td class="td-date">Set 2024</td>
+                <td><span class="mk-pill is-info">Análise</span></td>
+                <td class="td-mono">R$ 96.000</td>
+              </tr>
+              <tr>
+                <td class="td-mono">CT-2024-018</td>
+                <td class="td-name">Épsilon Jardinagem e Paisagismo</td>
+                <td>Manutenção de áreas verdes</td>
+                <td class="td-date">Ago 2024</td>
+                <td><span class="mk-pill is-success">Ativo</span></td>
+                <td class="td-mono">R$ 58.800</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- =====================================================
+           5. LOGIN PAGE PREVIEW (separate card at bottom)
+      ===================================================== -->
+      <section class="anim-section" aria-label="Preview da tela de login">
+        <div class="login-preview-wrapper">
+          <div class="login-section-label">
+            Preview — Tela de Login
+          </div>
+          <div class="mk-auth-shell" style="width:100%;">
+            <!-- Visual panel -->
+            <div class="mk-auth-visual">
+              <div class="mk-auth-glass-card">
+                <div class="mk-auth-glass-icon">
+                  <svg viewBox="0 0 24 24">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                </div>
+                <div class="mk-auth-glass-value">100%</div>
+                <div class="mk-auth-glass-label">Acesso Protegido</div>
+                <p style="color:rgba(255,255,255,0.62);margin-top:16px;font-size:13px;line-height:1.6;">
+                  Sessão autenticada com proteção de dados em tempo real.
+                </p>
+              </div>
+            </div>
+
+            <!-- Form panel -->
+            <div class="mk-auth-form-side">
+              <div class="mk-auth-form-card">
+                <header>
+                  <h2 class="mk-auth-form-title">Bem-vindo de volta</h2>
+                  <p class="mk-auth-form-subtitle">Faça login para acessar o painel gerencial.</p>
+                </header>
+                <form class="mk-auth-form" onsubmit="return false;" aria-label="Formulário de login">
+                  <div class="field">
+                    <label for="demo-email">E-mail</label>
+                    <input id="demo-email" type="email" placeholder="voce@empresa.gov.br" autocomplete="email">
+                  </div>
+                  <div class="field">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                      <label for="demo-pass" style="margin:0;">Senha</label>
+                      <a href="#" style="font-size:12px;color:#60a5fa;font-weight:600;">Esqueceu a senha?</a>
+                    </div>
+                    <input id="demo-pass" type="password" placeholder="Digite sua senha" autocomplete="current-password">
+                  </div>
+                  <div style="margin-bottom:26px;">
+                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--mk-text-soft);font-weight:500;text-transform:none;letter-spacing:normal;">
+                      <input type="checkbox" style="width:16px;height:16px;margin:0;accent-color:#2563eb;"> Lembrar-me
+                    </label>
+                  </div>
+                  <button type="submit" class="mk-auth-btn">Entrar na plataforma</button>
+                  <p style="text-align:center;margin-top:24px;color:var(--mk-text-soft);font-size:13px;">
+                    Ainda não possui conta? <a href="#" style="color:#60a5fa;font-weight:700;">Criar cadastro</a>
+                  </p>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Bottom padding -->
+      <div style="height:24px;" aria-hidden="true"></div>
+
+    </main><!-- /main-content -->
+  </div><!-- /app-shell -->
+
+  <script>
+    /* ============================================================
+       UX ENHANCEMENT SCRIPTS
+    ============================================================ */
+
+    /* ---- 1. Sidebar active link navigation (SPA-like) ---- */
+    document.querySelectorAll('.nav-link').forEach(function(link) {
+      link.addEventListener('click', function(e) {
+        if (this.getAttribute('href') === '#' || this.getAttribute('href') === '#hero') {
+          // do nothing special for demo
+        } else {
+          e.preventDefault();
+        }
+        document.querySelectorAll('.nav-link').forEach(function(l) {
+          l.classList.remove('active');
+          l.removeAttribute('aria-current');
+        });
+        this.classList.add('active');
+        this.setAttribute('aria-current', 'page');
+      });
+    });
+
+    /* ---- 2. KPI cards: ensure keyboard focus triggers hover style ---- */
+    document.querySelectorAll('.mk-kpi-card').forEach(function(card) {
+      card.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          // toggle a visual "selected" state briefly for demo
+          this.style.transform = 'translateY(-5px) scale(1.012)';
+          setTimeout(function() {
+            card.style.transform = '';
+          }, 400);
+        }
+      });
+    });
+
+    /* ---- 3. Stagger KPI card appearance on load ---- */
+    var kpiCards = document.querySelectorAll('.mk-kpi-card');
+    kpiCards.forEach(function(card, i) {
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(18px)';
+      card.style.transition = 'opacity 0.45s ease, transform 0.45s ease';
+      setTimeout(function() {
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0)';
+      }, 260 + i * 90);
+    });
+
+    /* ---- 4. Table row ripple hover ---- */
+    document.querySelectorAll('tbody tr').forEach(function(row) {
+      row.addEventListener('mouseenter', function() {
+        this.style.transition = 'background 180ms ease';
+      });
+    });
+
+    /* ---- 5. Action items: reinforce translateX via JS for browsers that need it ---- */
+    document.querySelectorAll('.mk-action-item, .mk-quick-item').forEach(function(item) {
+      item.addEventListener('mouseenter', function() {
+        this.style.willChange = 'transform';
+      });
+      item.addEventListener('mouseleave', function() {
+        this.style.willChange = 'auto';
+      });
+    });
+
+    /* ---- 6. Demo badge — tooltip on click ---- */
+    var badge = document.querySelector('.demo-badge');
+    if (badge) {
+      badge.addEventListener('click', function() {
+        this.textContent = 'CSS + JS inline — sem dependencias externas!';
+        var self = this;
+        setTimeout(function() {
+          self.innerHTML = '<span class="demo-badge-dot"></span>DEMO \u2014 Melhorias de UX Premium aplicadas';
+          /* restore dot animation */
+          var dot = self.querySelector('.demo-badge-dot');
+          if (dot) {
+            dot.style.width  = '7px';
+            dot.style.height = '7px';
+            dot.style.borderRadius = '50%';
+            dot.style.background = '#60a5fa';
+            dot.style.animation = 'mk-pulse-ring 2s ease infinite';
+          }
+        }, 2200);
+      });
+    }
+
+    /* ---- 7. Login button shimmer ---- */
+    var authBtn = document.querySelector('.mk-auth-btn');
+    if (authBtn) {
+      authBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        this.textContent = 'Autenticando...';
+        var self = this;
+        setTimeout(function() {
+          self.textContent = 'Entrar na plataforma';
+        }, 1800);
+      });
+    }
+
+    /* ---- 8. Input focus glow enhancement ---- */
+    document.querySelectorAll('.field input').forEach(function(input) {
+      input.addEventListener('focus', function() {
+        this.parentElement.style.filter = 'drop-shadow(0 0 8px rgba(59,130,246,0.18))';
+      });
+      input.addEventListener('blur', function() {
+        this.parentElement.style.filter = '';
+      });
+    });
+  </script>
+</body>
+</html>
