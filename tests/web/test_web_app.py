@@ -13,6 +13,21 @@ from docx import Document
 from app.routes.web_app import create_app
 
 
+class _InstitutionalLookupService:
+    def __init__(self) -> None:
+        self._user = {
+            "id": 1,
+            "email": "institucional@empresa.com",
+            "role": "superadmin",
+            "status": "ativo",
+        }
+
+    def get_user_by_id(self, user_id: int) -> dict[str, object] | None:
+        if int(user_id) == int(self._user["id"]):
+            return dict(self._user)
+        return None
+
+
 class WebAppTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -76,6 +91,14 @@ class WebAppTests(unittest.TestCase):
 
     def tearDown(self):
         self.tmp.cleanup()
+
+    def _auth_institutional_session(self) -> None:
+        self.app.config["USER_SERVICE"] = _InstitutionalLookupService()
+        with self.client.session_transaction() as session_data:
+            session_data["web_user_id"] = 1
+            session_data["web_user_email"] = "institucional@empresa.com"
+            session_data["web_user_role"] = "superadmin"
+            session_data["web_user_status"] = "ativo"
 
     def test_index_renderiza_copy_da_etapa_de_analise(self):
         resp = self.client.get("/")
@@ -1031,13 +1054,15 @@ EXECUCAO:
 
 
     def test_institucional_page_loads(self):
+        self._auth_institutional_session()
         resp = self.client.get("/institucional")
         self.assertEqual(resp.status_code, 200)
         html = resp.data.decode("utf-8")
         self.assertIn("Relatório institucional", html)
-        self.assertIn("Filtros de geração", html)
-        self.assertIn("Resumo executivo", html)
-        self.assertIn("Prévia técnica interna (revisão)", html)
+        self.assertIn("Filtros premium", html)
+        self.assertIn("Ações de exportação", html)
+        self.assertIn("Preview ao vivo", html)
+        self.assertIn("Hierarquia do resultado", html)
 
     def test_gerencial_page_loads_com_blocos_executivos(self):
         resp = self.client.get("/gerencial")
@@ -1234,6 +1259,7 @@ EXECUCAO:
         self.assertNotIn("Wesley", ranking_equipes)
 
     def test_institucional_gera_minuta_e_exporta_html_docx(self):
+        self._auth_institutional_session()
         output_dir = self.outputs_root / "saida_institucional_demo"
         output_dir.mkdir(parents=True, exist_ok=True)
 

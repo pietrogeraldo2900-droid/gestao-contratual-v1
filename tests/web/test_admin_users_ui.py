@@ -223,6 +223,68 @@ class AdminUsersUITests(unittest.TestCase):
         self.assertTrue(any(action["action"] == "user_approved" for action in audit.actions))
         tmp.cleanup()
 
+    def test_superadmin_sees_premium_user_management_layout(self):
+        app, tmp = _build_app_with_user("superadmin")
+
+        class FakeContract:
+            def __init__(self, contract_id: int):
+                self._id = contract_id
+
+            def to_dict(self):
+                return {
+                    "id": self._id,
+                    "numero_contrato": f"CTR-{self._id:03d}",
+                    "nome_contrato": f"Contrato {self._id}",
+                    "contratada_nome": "Prestadora A",
+                }
+
+        class FakeContractService:
+            def list_contracts(self, limit: int = 100):
+                _ = limit
+                return [FakeContract(1), FakeContract(2), FakeContract(3)]
+
+            def count_contracts(self):
+                return 3
+
+        repo = FakeUserRepository(
+            {
+                2: {
+                    "id": 2,
+                    "email": "pendente@empresa.com",
+                    "status": "pending",
+                    "role": "",
+                    "created_at": "",
+                },
+                3: {
+                    "id": 3,
+                    "email": "ativo@empresa.com",
+                    "status": "active",
+                    "role": "operador",
+                    "created_at": "",
+                    "last_login_at": "",
+                    "contractor_name": "Prestadora A",
+                    "authorized_contract_ids": [1, 2],
+                },
+            }
+        )
+        app.config["USER_REPOSITORY"] = repo
+        app.config["CONTRACTS_SERVICE"] = FakeContractService()
+        client = app.test_client()
+        with client.session_transaction() as sess:
+            sess["web_user_id"] = 1
+            sess["web_user_email"] = "super@empresa.com"
+
+        response = client.get("/admin/usuarios?user_id=2")
+        self.assertEqual(response.status_code, 200)
+        html = response.data.decode("utf-8")
+        self.assertIn("admin-users-page", html)
+        self.assertIn("admin-users-layout", html)
+        self.assertIn("Tabela principal", html)
+        self.assertIn("Painel lateral", html)
+        self.assertIn("pendente@empresa.com", html)
+        self.assertIn("Aprovar usuario", html)
+        tmp.cleanup()
+
     def test_role_change_reflects_route_access(self):
         app, tmp = _build_app_with_user("leitor")
         client = app.test_client()
@@ -243,8 +305,8 @@ class AdminUsersUITests(unittest.TestCase):
         response = client.get("/dashboard")
         self.assertEqual(response.status_code, 200)
         html = response.data.decode("utf-8")
-        self.assertNotIn(">Contratos<", html)
-        self.assertNotIn(">Nucleos<", html)
+        self.assertNotIn('nav-link-label">Contratos<', html)
+        self.assertNotIn('nav-link-label">Nucleos<', html)
         tmp.cleanup()
 
 

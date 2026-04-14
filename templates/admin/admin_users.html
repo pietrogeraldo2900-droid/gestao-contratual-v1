@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+{% from "design_system/components.html" import action_chip, hero_header, premium_panel, status_badge %}
+
+{% block title %}Gestao de usuarios{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system/tokens.css') }}?v=20260414">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system/foundations.css') }}?v=20260414">
+{% endblock %}
+
+{% set status_tones = {
+  'pending': 'warning',
+  'active': 'success',
+  'rejected': 'danger',
+  'disabled': 'info'
+} %}
+{% set status_labels = {
+  'pending': 'Pendente',
+  'active': 'Ativo',
+  'rejected': 'Rejeitado',
+  'disabled': 'Desativado'
+} %}
+{% set selected_status = selected_user.status|lower if selected_user and selected_user.status else '' %}
+{% set selected_contract_ids = selected_user.authorized_contract_ids if selected_user and selected_user.authorized_contract_ids is defined else [] %}
+{% set selected_contract_names = [] %}
+{% for contract_id in selected_contract_ids %}
+  {% set _ = selected_contract_names.append(contract_label_map.get(contract_id, contract_id)) %}
+{% endfor %}
+{% set selected_contract_count = selected_contract_names | length %}
+{% set pending_count = status_counts.get('pending', 0) %}
+{% set active_count = status_counts.get('active', 0) %}
+{% set selected_contract_preview = selected_contract_names[:3] %}
+{% set top_actions %}
+  {{ action_chip('Todos', active=not status_filter, href=url_for('admin_users')) }}
+  {{ action_chip('Pendentes', active=status_filter == 'pending', href=url_for('admin_users', status='pending')) }}
+  {{ action_chip('Ativos', active=status_filter == 'active', href=url_for('admin_users', status='active')) }}
+  {{ action_chip('Desativados', active=status_filter == 'disabled', href=url_for('admin_users', status='disabled')) }}
+{% endset %}
+
+{% block content %}
+<div class="admin-users-page">
+  {{ hero_header(
+    eyebrow='Governanca de acesso',
+    title='Gestao de usuarios',
+    subtitle='Aprovação, vínculo e governança de acesso em uma interface premium, com leitura clara, ações administrativas consistentes e foco no usuário selecionado.',
+    actions=top_actions
+  ) }}
+
+  <section class="admin-users-summary-grid">
+    <article class="admin-users-summary-card">
+      <p class="admin-users-summary-label">Usuarios totais</p>
+      <strong class="admin-users-summary-value">{{ total_users_count }}</strong>
+      <span class="admin-users-summary-note">Base completa carregada no painel.</span>
+    </article>
+    <article class="admin-users-summary-card">
+      <p class="admin-users-summary-label">Visiveis agora</p>
+      <strong class="admin-users-summary-value">{{ visible_users_count }}</strong>
+      <span class="admin-users-summary-note">Resultado do filtro atual da lista.</span>
+    </article>
+    <article class="admin-users-summary-card">
+      <p class="admin-users-summary-label">Pendentes</p>
+      <strong class="admin-users-summary-value">{{ pending_count }}</strong>
+      <span class="admin-users-summary-note">Contas aguardando aprovacao.</span>
+    </article>
+    <article class="admin-users-summary-card">
+      <p class="admin-users-summary-label">Ativos</p>
+      <strong class="admin-users-summary-value">{{ active_count }}</strong>
+      <span class="admin-users-summary-note">Usuarios liberados para operacao.</span>
+    </article>
+  </section>
+
+  {% if error_message %}
+    <div class="admin-users-notice">{{ error_message }}</div>
+  {% endif %}
+
+  <section class="admin-users-layout">
+    {% call premium_panel(
+      eyebrow='Tabela principal',
+      title='Usuarios cadastrados',
+      subtitle='Selecione uma linha para abrir o painel lateral de edição e manter a leitura administrativa consistente.',
+      action=status_badge(visible_users_count ~ ' visiveis', tone='info')
+    ) %}
+      {% if users %}
+        <div class="ds-table-wrap admin-users-table-wrap">
+          <table class="ds-table admin-users-table">
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Status</th>
+                <th>Papel</th>
+                <th>Vinculo</th>
+                <th>Datas</th>
+                <th>Acoes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for user in users %}
+                {% set row_selected = selected_user and user.id == selected_user.id %}
+                {% set user_contract_ids = user.authorized_contract_ids if user.authorized_contract_ids is defined else [] %}
+                {% set user_contract_names = [] %}
+                {% for contract_id in user_contract_ids %}
+                  {% set _ = user_contract_names.append(contract_label_map.get(contract_id, contract_id)) %}
+                {% endfor %}
+                {% set user_status = (user.status or '')|lower %}
+                {% set user_tone = status_tones.get(user_status, 'info') %}
+                <tr class="{{ 'is-selected' if row_selected }}">
+                  <td>
+                    <div class="admin-users-user-cell">
+                      <a class="admin-users-user-link" href="{{ url_for('admin_users', status=status_filter, user_id=user.id) }}">
+                        {{ user.email }}
+                      </a>
+                      <span class="admin-users-user-subtitle">ID {{ user.id }}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="admin-users-status-cell">
+                      {{ status_badge(status_labels.get(user_status, user.status or '-'), tone=user_tone) }}
+                    </div>
+                  </td>
+                  <td>
+                    <span class="admin-users-role-tag">{{ user.role or 'Sem papel' }}</span>
+                  </td>
+                  <td>
+                    <div class="admin-users-scope">
+                      <span class="admin-users-scope-label">{{ user.contractor_name or 'Sem contratada vinculada' }}</span>
+                      <div class="admin-users-contract-list">
+                        {% for contract_name in user_contract_names[:2] %}
+                          <span class="admin-users-contract-chip">{{ contract_name }}</span>
+                        {% endfor %}
+                        {% if user_contract_names|length > 2 %}
+                          <span class="admin-users-contract-chip admin-users-contract-chip--muted">+{{ user_contract_names|length - 2 }}</span>
+                        {% elif not user_contract_names %}
+                          <span class="admin-users-contract-chip admin-users-contract-chip--muted">Sem contratos</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="admin-users-dates">
+                      <span>{{ user.created_at or '-' }}</span>
+                      <span>{{ user.last_login_at or 'Sem login' }}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="admin-users-row-actions">
+                      <a href="{{ url_for('admin_users', status=status_filter, user_id=user.id) }}" class="btn-soft admin-users-row-action">Abrir</a>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="admin-users-empty-state">Nenhum usuario encontrado para o filtro atual.</div>
+      {% endif %}
+    {% endcall %}
+
+    {% call premium_panel(
+      eyebrow='Painel lateral',
+      title='Edicao do usuario',
+      subtitle='Revise status, papel e vinculos sem sair da tela principal.',
+      action=status_badge(status_labels.get(selected_status, 'Selecione um usuario'), tone=status_tones.get(selected_status, 'info'))
+    ) %}
+      {% if selected_user %}
+        <div class="admin-users-editor">
+          <div class="admin-users-editor-head">
+            <div>
+              <p class="admin-users-editor-kicker">Usuario em foco</p>
+              <h3 class="admin-users-editor-title">{{ selected_user.email }}</h3>
+              <p class="admin-users-editor-subtitle">ID {{ selected_user.id }}{% if selected_user.approved_by %} · aprovado por {{ selected_user.approved_by }}{% endif %}</p>
+            </div>
+            {{ status_badge(status_labels.get(selected_status, selected_user.status or '-'), tone=status_tones.get(selected_status, 'info')) }}
+          </div>
+
+          <div class="admin-users-meta-grid">
+            <article class="admin-users-meta-card">
+              <span class="admin-users-meta-label">Papel atual</span>
+              <strong>{{ selected_user.role or 'Sem papel' }}</strong>
+            </article>
+            <article class="admin-users-meta-card">
+              <span class="admin-users-meta-label">Contratada</span>
+              <strong>{{ selected_user.contractor_name or 'Nao vinculada' }}</strong>
+            </article>
+            <article class="admin-users-meta-card">
+              <span class="admin-users-meta-label">Contratos</span>
+              <strong>{{ selected_contract_count }}</strong>
+            </article>
+            <article class="admin-users-meta-card">
+              <span class="admin-users-meta-label">Ultimo login</span>
+              <strong>{{ selected_user.last_login_at or 'Sem login' }}</strong>
+            </article>
+          </div>
+
+          <div class="admin-users-scope-detail">
+            <span class="admin-users-meta-label">Vinculos visiveis</span>
+            <div class="admin-users-contract-list admin-users-contract-list--wrap">
+              {% if selected_user.contractor_name %}
+                <span class="admin-users-contract-chip">{{ selected_user.contractor_name }}</span>
+              {% endif %}
+              {% for contract_name in selected_contract_preview %}
+                <span class="admin-users-contract-chip">{{ contract_name }}</span>
+              {% endfor %}
+              {% if selected_contract_count > 3 %}
+                <span class="admin-users-contract-chip admin-users-contract-chip--muted">+{{ selected_contract_count - 3 }}</span>
+              {% elif not selected_contract_preview and not selected_user.contractor_name %}
+                <span class="admin-users-contract-chip admin-users-contract-chip--muted">Sem vinculos ativos</span>
+              {% endif %}
+            </div>
+          </div>
+
+          {% if selected_status == 'pending' %}
+            <form method="post" action="{{ url_for('admin_users_update', user_id=selected_user.id) }}" class="admin-users-form admin-users-form--stacked">
+              <input type="hidden" name="action" value="approve">
+              <div class="admin-users-form-grid">
+                <label class="field">
+                  <span class="ds-eyebrow ds-field-label">Papel</span>
+                  <select name="role" class="ds-select" required>
+                    <option value="" disabled {% if not selected_user.role %}selected{% endif %}>Selecione o papel</option>
+                    {% for role in roles %}
+                      <option value="{{ role }}" {% if selected_user.role == role %}selected{% endif %}>{{ role }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="ds-eyebrow ds-field-label">Contratada</span>
+                  <input type="text" name="contractor_name" class="ds-input" value="{{ selected_user.contractor_name or '' }}" list="contractor-options" placeholder="Nome da contratada">
+                </label>
+                <label class="field admin-users-field-wide">
+                  <span class="ds-eyebrow ds-field-label">Contratos autorizados</span>
+                  <select name="contract_ids" class="ds-select admin-users-multiselect" multiple size="6">
+                    {% for contract in contract_options %}
+                      <option value="{{ contract.id }}" {% if contract.id|int in selected_contract_ids %}selected{% endif %}>{{ contract.label }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+              </div>
+              <p class="admin-users-form-note">Aprovacao ativa o usuario com o papel e o escopo escolhidos acima.</p>
+              <div class="admin-users-form-actions">
+                <button type="submit" class="btn-primary">Aprovar usuario</button>
+              </div>
+            </form>
+
+            <form method="post" action="{{ url_for('admin_users_update', user_id=selected_user.id) }}" class="admin-users-form">
+              <input type="hidden" name="action" value="reject">
+              <p class="admin-users-form-note">Rejeicao encerra o fluxo de aprovacao sem liberar acesso.</p>
+              <div class="admin-users-form-actions">
+                <button type="submit" class="btn-danger">Rejeitar usuario</button>
+              </div>
+            </form>
+          {% else %}
+            <form method="post" action="{{ url_for('admin_users_update', user_id=selected_user.id) }}" class="admin-users-form">
+              <input type="hidden" name="action" value="set_role">
+              <div class="admin-users-form-grid">
+                <label class="field">
+                  <span class="ds-eyebrow ds-field-label">Papel</span>
+                  <select name="role" class="ds-select">
+                    {% for role in roles %}
+                      <option value="{{ role }}" {% if selected_user.role == role %}selected{% endif %}>{{ role }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="ds-eyebrow ds-field-label">Contratada</span>
+                  <input type="text" name="contractor_name" class="ds-input" value="{{ selected_user.contractor_name or '' }}" list="contractor-options" placeholder="Nome da contratada">
+                </label>
+                <label class="field admin-users-field-wide">
+                  <span class="ds-eyebrow ds-field-label">Contratos autorizados</span>
+                  <select name="contract_ids" class="ds-select admin-users-multiselect" multiple size="6">
+                    {% for contract in contract_options %}
+                      <option value="{{ contract.id }}" {% if contract.id|int in selected_contract_ids %}selected{% endif %}>{{ contract.label }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+              </div>
+              <p class="admin-users-form-note">Atualize o papel mantendo os mesmos controles de acesso do restante do sistema.</p>
+              <div class="admin-users-form-actions">
+                <button type="submit" class="btn-primary">Atualizar papel</button>
+              </div>
+            </form>
+
+            <form method="post" action="{{ url_for('admin_users_update', user_id=selected_user.id) }}" class="admin-users-form">
+              <input type="hidden" name="action" value="set_scope">
+              <div class="admin-users-form-grid">
+                <label class="field">
+                  <span class="ds-eyebrow ds-field-label">Contratada</span>
+                  <input type="text" name="contractor_name" class="ds-input" value="{{ selected_user.contractor_name or '' }}" list="contractor-options" placeholder="Nome da contratada">
+                </label>
+                <label class="field admin-users-field-wide">
+                  <span class="ds-eyebrow ds-field-label">Contratos autorizados</span>
+                  <select name="contract_ids" class="ds-select admin-users-multiselect" multiple size="6">
+                    {% for contract in contract_options %}
+                      <option value="{{ contract.id }}" {% if contract.id|int in selected_contract_ids %}selected{% endif %}>{{ contract.label }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+              </div>
+              <p class="admin-users-form-note">Use este bloco para ajustar apenas o escopo sem trocar o papel do usuário.</p>
+              <div class="admin-users-form-actions">
+                <button type="submit" class="btn-soft">Atualizar vinculos</button>
+              </div>
+            </form>
+
+            <form method="post" action="{{ url_for('admin_users_update', user_id=selected_user.id) }}" class="admin-users-form admin-users-form--footer">
+              {% if selected_user.status == 'disabled' %}
+                <input type="hidden" name="action" value="activate">
+                <p class="admin-users-form-note">Reative a conta para devolver o acesso ao fluxo operacional.</p>
+                <div class="admin-users-form-actions">
+                  <button type="submit" class="btn-primary">Reativar conta</button>
+                </div>
+              {% else %}
+                <input type="hidden" name="action" value="disable">
+                <p class="admin-users-form-note">Desativar bloqueia o acesso sem apagar o historico administrativo.</p>
+                <div class="admin-users-form-actions">
+                  <button type="submit" class="btn-danger">Desativar conta</button>
+                </div>
+              {% endif %}
+            </form>
+          {% endif %}
+        </div>
+      {% else %}
+        <div class="admin-users-empty-state">Nenhum usuario disponivel para edicao.</div>
+      {% endif %}
+    {% endcall %}
+  </section>
+
+  <datalist id="contractor-options">
+    {% for item in contractor_options %}
+      <option value="{{ item }}"></option>
+    {% endfor %}
+  </datalist>
+</div>
+{% endblock %}

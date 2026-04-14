@@ -2,6 +2,10 @@
 
 Sistema Python/Flask para processar mensagens operacionais, gerar saidas CSV/Excel, atualizar base mestra e operar via interface web local.
 
+## Orientacao do projeto
+
+Antes de alterar qualquer parte do sistema, consulte o [AGENTS.md](AGENTS.md). Ele descreve as regras de trabalho, prioridades, fluxo de validacao e cuidados de organizacao do projeto.
+
 ## Entrypoints oficiais
 
 - Aplicacao web oficial: `python run_web.py`
@@ -14,6 +18,8 @@ Sistema Python/Flask para processar mensagens operacionais, gerar saidas CSV/Exc
 
 ```text
 .
+|-- AGENTS.md
+|-- DESIGN_SYSTEM_PREMIUM.md
 |-- run_web.py
 |-- main.py
 |-- README.md
@@ -26,8 +32,34 @@ Sistema Python/Flask para processar mensagens operacionais, gerar saidas CSV/Exc
 |-- config/
 |-- data/
 |-- docs/
+|   `-- changelog/
+|-- static/
+|   |-- css/
+|   |   |-- app.css
+|   |   |-- app-shell.css
+|   |   |-- auth.css
+|   |   |-- design-system/
+|   |   `-- pages/
+|   `-- ...
 |-- templates/
-`-- tests/
+|   |-- base.html
+|   |-- design_system/
+|   |-- auth/
+|   |-- account/
+|   |-- admin/
+|   |-- dashboard/
+|   |-- entries/
+|   |-- contracts/
+|   |-- contractor/
+|   |-- conference/
+|   |-- inspection/
+|   |-- results/
+|   |-- catalog/
+|   `-- institutional/
+|-- tests/
+|   |-- unit/
+|   |-- integration/
+|   `-- web/
 ```
 
 ## Estrutura oficial por area
@@ -37,10 +69,17 @@ Sistema Python/Flask para processar mensagens operacionais, gerar saidas CSV/Exc
 - `app/services`: pipeline, relatorios e consolidadores
 - `app/utils`: utilitarios compartilhados
 - `config`: settings, dicionarios e template homologado
-- `data/seed`: dados base versionaveis
-- `data/runtime`: dados gerados em execucao
-- `data/drafts`: rascunhos temporarios da web
-- `scripts`: utilitarios operacionais e atalhos `.bat`
+- `DESIGN_SYSTEM_PREMIUM.md`: guia da base visual compartilhada
+- `data`: arquivos de apoio e, quando aplicavel, entradas ou artefatos temporarios do fluxo local
+- `docs/changelog`: historico de versoes
+- `static/css/design-system`: tokens e foundations compartilhados
+- `static/css/pages`: estilos especificos por tela
+- `static/css/app-shell.css`: shell autenticado do sistema
+- `static/css/auth.css`: estilos auxiliares de autenticacao e flash messages
+- `templates/base.html`: shell comum do Flask
+- `templates/design_system`: componentes compartilhados de interface
+- `templates/<dominio>`: telas organizadas por area funcional
+- `tests`: validacoes automatizadas do projeto
 
 ## Consolidacao final da raiz
 
@@ -85,12 +124,6 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-Atalho:
-
-```powershell
-.\scripts\instalar_dependencias.bat
-```
-
 ## Rodar aplicacao web (oficial)
 
 Se for rodar local com autenticacao, suba antes o Postgres:
@@ -110,36 +143,6 @@ python run_web.py --host 127.0.0.1 --port 5000
 ```
 
 Acesso local: [http://127.0.0.1:5000](http://127.0.0.1:5000)
-
-## Rodar fluxo legado/local (CLI)
-
-Processar um TXT:
-
-```powershell
-python main.py parse "C:\caminho\entrada.txt" --output "C:\caminho\saida"
-```
-
-Processar pasta de TXTs:
-
-```powershell
-python main.py batch "C:\caminho\pasta_txt"
-```
-
-Atualizar base mestra:
-
-```powershell
-python main.py update-master "C:\caminho\saida" --master-dir "C:\caminho\BASE_MESTRA"
-```
-
-Consolidar varias saidas:
-
-```powershell
-python main.py consolidate-master "C:\caminho\saidas" --output "C:\caminho\BASE_CONSOLIDADA"
-```
-
-## Scripts operacionais (`scripts/`)
-
-- `abrir_interface_web.bat` (web oficial)
 
 ## Docker (preparacao para hospedagem)
 
@@ -161,8 +164,6 @@ Com persistencia de runtime no host:
 docker run --rm -p 5000:5000 `
   -v "${PWD}\saidas:/app/saidas" `
   -v "${PWD}\BASE_MESTRA:/app/BASE_MESTRA" `
-  -v "${PWD}\data\runtime:/app/data/runtime" `
-  -v "${PWD}\data\drafts\web:/app/data/drafts/web" `
   sisg-web:latest
 ```
 
@@ -172,8 +173,6 @@ Pastas tratadas como runtime/local (nao codigo-fonte):
 
 - `BASE_MESTRA/`
 - `saidas/`
-- `data/runtime/`
-- `data/drafts/web/`
 
 `.gitignore` impede versionamento de caches e dados gerados, preservando `.gitkeep` quando aplicavel.
 
@@ -251,7 +250,7 @@ ORDER BY data_referencia DESC;
 ## Testes
 
 ```powershell
-python -m unittest tests.test_input_layer tests.test_legacy_parser_mapping tests.test_master_builder tests.test_integration_workflow tests.test_web_app -v
+python -m pytest -q
 ```
 
 ## Compatibilidade

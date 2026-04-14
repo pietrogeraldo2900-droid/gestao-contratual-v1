@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/institutional.css') }}?v=20260414">
+{% endblock %}
+
+{% block content %}
+{% set final = report.relatorio_final if report and report.relatorio_final is defined else report %}
+
+<section class="institutional-shell">
+  <section class="ds-hero-header institutional-hero">
+    <div class="institutional-hero__copy">
+      <p class="ds-eyebrow">Síntese institucional</p>
+      <h1 class="ds-hero-header__title">Relatório institucional</h1>
+      <p class="ds-hero-header__subtitle">Configure o recorte, revise a prévia consolidada e exporte a versão executiva sem alterar a lógica de geração do relatório.</p>
+      <div class="institutional-hero__chips">
+        <span class="ds-chip ds-chip--active">Minuta executiva</span>
+        <span class="ds-chip">Preview ao vivo</span>
+        <span class="ds-chip">Exportação HTML e DOCX</span>
+      </div>
+    </div>
+
+    <div class="institutional-hero__stats">
+      <article class="institutional-hero__stat">
+        <div class="institutional-hero__stat-label">Período</div>
+        <div class="institutional-hero__stat-value">{{ final.header.periodo if final is defined else '-' }}</div>
+        <div class="institutional-hero__stat-note">Recorte institucional ativo</div>
+      </article>
+      <article class="institutional-hero__stat">
+        <div class="institutional-hero__stat-label">Quantitativo real</div>
+        <div class="institutional-hero__stat-value">{{ final.indicadores_principais.total_volume_fmt if final is defined else 0 }}</div>
+        <div class="institutional-hero__stat-note">Volume consolidado no recorte</div>
+      </article>
+      <article class="institutional-hero__stat">
+        <div class="institutional-hero__stat-label">Núcleos</div>
+        <div class="institutional-hero__stat-value">{{ final.indicadores_principais.total_nucleos if final is defined else 0 }}</div>
+        <div class="institutional-hero__stat-note">Base de leitura executiva</div>
+      </article>
+      <article class="institutional-hero__stat">
+        <div class="institutional-hero__stat-label">Alertas</div>
+        <div class="institutional-hero__stat-value">{{ final.alertas_pendencias.processamentos_alerta if final is defined else 0 }}</div>
+        <div class="institutional-hero__stat-note">Pontos de atenção no recorte</div>
+      </article>
+    </div>
+  </section>
+
+  <div class="institutional-workspace">
+    <aside class="institutional-sidebar">
+      <section class="ds-panel institutional-panel">
+        <div class="ds-panel-header">
+          <div>
+            <p class="ds-eyebrow">Parâmetros</p>
+            <h2 class="ds-title">Filtros premium</h2>
+            <p class="ds-subtitle">Ajuste o período e os cortes antes de consolidar a minuta institucional.</p>
+          </div>
+          <span class="ds-badge ds-badge--info">Atualiza ao gerar</span>
+        </div>
+        <div class="ds-panel-body">
+          <form method="get" action="{{ url_for('institucional') }}" class="institutional-filter-form">
+            <div class="institutional-field-grid">
+              <div class="institutional-field">
+                <label for="obra_from">Período da obra (de)</label>
+                <input id="obra_from" class="ds-input" type="date" name="obra_from" value="{{ obra_from }}">
+              </div>
+              <div class="institutional-field">
+                <label for="obra_to">Período da obra (até)</label>
+                <input id="obra_to" class="ds-input" type="date" name="obra_to" value="{{ obra_to }}">
+              </div>
+              <div class="institutional-field">
+                <label for="processed_from">Processado em (de)</label>
+                <input id="processed_from" class="ds-input" type="date" name="processed_from" value="{{ processed_from }}">
+              </div>
+              <div class="institutional-field">
+                <label for="processed_to">Processado em (até)</label>
+                <input id="processed_to" class="ds-input" type="date" name="processed_to" value="{{ processed_to }}">
+              </div>
+              <div class="institutional-field">
+                <label for="nucleo">Núcleo</label>
+                <input id="nucleo" class="ds-input" name="nucleo" value="{{ nucleo }}" placeholder="Ex.: Mississipi">
+              </div>
+              <div class="institutional-field">
+                <label for="municipio">Município</label>
+                <input id="municipio" class="ds-input" name="municipio" value="{{ municipio }}" placeholder="Ex.: Carapicuíba">
+              </div>
+              <div class="institutional-field">
+                <label for="equipe">Equipe</label>
+                <input id="equipe" class="ds-input" name="equipe" value="{{ equipe }}" placeholder="Ex.: Weslyn">
+              </div>
+              <div class="institutional-field">
+                <label for="status">Status</label>
+                <select id="status" class="ds-select" name="status">
+                  <option value="" {% if not status_filter %}selected{% endif %}>Todos</option>
+                  <option value="sucesso" {% if status_filter == 'sucesso' %}selected{% endif %}>Sucesso</option>
+                  <option value="erro" {% if status_filter == 'erro' %}selected{% endif %}>Erro</option>
+                </select>
+              </div>
+              <div class="institutional-field">
+                <label for="alertas">Alertas</label>
+                <select id="alertas" class="ds-select" name="alertas">
+                  <option value="" {% if not alertas_filter %}selected{% endif %}>Todos</option>
+                  <option value="com_alerta" {% if alertas_filter == 'com_alerta' %}selected{% endif %}>Com alerta</option>
+                  <option value="sem_alerta" {% if alertas_filter == 'sem_alerta' %}selected{% endif %}>Sem alerta</option>
+                </select>
+              </div>
+              <div class="institutional-field">
+                <label for="top_n">Top N</label>
+                <input id="top_n" class="ds-input" type="number" min="3" max="50" name="top_n" value="{{ top_n }}">
+              </div>
+            </div>
+
+            <div class="institutional-form-actions">
+              <button type="submit" class="ds-btn ds-btn-primary">Gerar minuta</button>
+              <a class="ds-btn ds-btn-secondary" href="{{ url_for('institucional') }}">Limpar filtros</a>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="ds-panel institutional-panel">
+        <div class="ds-panel-header">
+          <div>
+            <p class="ds-eyebrow">Saída</p>
+            <h2 class="ds-title">Ações de exportação</h2>
+            <p class="ds-subtitle">Exporta o mesmo recorte aplicado na tela, sem alterar a minuta em edição.</p>
+          </div>
+        </div>
+        <div class="ds-panel-body">
+          <div class="institutional-export-actions">
+            <a class="ds-btn ds-btn-secondary" href="{{ url_for('institucional_export', formato='html', obra_from=obra_from, obra_to=obra_to, processed_from=processed_from, processed_to=processed_to, nucleo=nucleo, municipio=municipio, equipe=equipe, status=status_filter, alertas=alertas_filter, top_n=top_n) }}">Exportar HTML</a>
+            <a class="ds-btn ds-btn-secondary" href="{{ url_for('institucional_export', formato='docx', obra_from=obra_from, obra_to=obra_to, processed_from=processed_from, processed_to=processed_to, nucleo=nucleo, municipio=municipio, equipe=equipe, status=status_filter, alertas=alertas_filter, top_n=top_n) }}">Exportar DOCX</a>
+          </div>
+          <p class="institutional-export-note">O exportador reaproveita o recorte ativo e entrega a versão final pronta para compartilhamento.</p>
+        </div>
+      </section>
+
+      <section class="ds-panel institutional-panel institutional-snapshot">
+        <div class="ds-panel-header">
+          <div>
+            <p class="ds-eyebrow">Contexto</p>
+            <h2 class="ds-title">Hierarquia do resultado</h2>
+            <p class="ds-subtitle">Os parâmetros entram primeiro; o resultado consolidado aparece em destaque na área principal.</p>
+          </div>
+        </div>
+        <div class="ds-panel-body institutional-snapshot-grid">
+          <div class="institutional-snapshot-card">
+            <span class="institutional-snapshot-label">Filtros aplicados</span>
+            <strong>{{ (final.header.filtros_aplicados | length) if final is defined else 0 }}</strong>
+            <span>Campos levados para a minuta</span>
+          </div>
+          <div class="institutional-snapshot-card">
+            <span class="institutional-snapshot-label">Municípios</span>
+            <strong>{{ final.indicadores_principais.total_municipios if final is defined else 0 }}</strong>
+            <span>Base territorial do recorte</span>
+          </div>
+          <div class="institutional-snapshot-card">
+            <span class="institutional-snapshot-label">Equipes</span>
+            <strong>{{ final.indicadores_principais.total_equipes if final is defined else 0 }}</strong>
+            <span>Grupos mobilizados no período</span>
+          </div>
+        </div>
+      </section>
+    </aside>
+
+    <section class="ds-panel institutional-preview-panel">
+      <div class="ds-panel-header institutional-preview-header">
+        <div>
+          <p class="ds-eyebrow">Resultado</p>
+          <h2 class="ds-title">Preview ao vivo</h2>
+          <p class="ds-subtitle">A minuta institucional é renderizada com o recorte atual e atualiza quando os filtros são enviados novamente.</p>
+        </div>
+        <div class="institutional-preview-meta">
+          <span class="ds-chip ds-chip--active">Período: {{ final.header.periodo if final is defined else '-' }}</span>
+          <span class="ds-chip">Emissão: {{ final.header.emissao if final is defined else '-' }}</span>
+        </div>
+      </div>
+      <div class="ds-panel-body institutional-preview-body">
+        {% if not report.has_data %}
+          <div class="institutional-empty-state ds-badge ds-badge--warning">Nenhum processamento encontrado para os filtros aplicados.</div>
+        {% endif %}
+
+        <div class="institutional-preview-summary">
+          <article class="institutional-preview-stat">
+            <span class="institutional-preview-stat-label">Volume consolidado</span>
+            <strong>{{ final.indicadores_principais.total_volume_fmt if final is defined else 0 }}</strong>
+            <span>Indicador principal da leitura executiva</span>
+          </article>
+          <article class="institutional-preview-stat">
+            <span class="institutional-preview-stat-label">Execuções</span>
+            <strong>{{ final.indicadores_principais.total_execucoes if final is defined else 0 }}</strong>
+            <span>Registro operacional de apoio</span>
+          </article>
+          <article class="institutional-preview-stat">
+            <span class="institutional-preview-stat-label">Processamentos</span>
+            <strong>{{ final.indicadores_principais.total_processamentos if final is defined else 0 }}</strong>
+            <span>Mensagens consolidadas no recorte</span>
+          </article>
+          <article class="institutional-preview-stat">
+            <span class="institutional-preview-stat-label">Alertas</span>
+            <strong>{{ final.alertas_pendencias.processamentos_alerta if final is defined else 0 }}</strong>
+            <span>Ocorrências que pedem acompanhamento</span>
+          </article>
+        </div>
+
+        <div class="institutional-preview-intro">
+          <div class="institutional-preview-intro-copy">
+            <p class="institutional-preview-intro-label">Leitura executiva</p>
+            <h3>{{ final.header.titulo if final is defined else 'Relatório institucional' }}</h3>
+            <p>{{ final.conclusao if final is defined else '' }}</p>
+          </div>
+          <div class="institutional-preview-intro-side">
+            <p class="institutional-preview-intro-label">Filtros enviados</p>
+            <ul class="institutional-filter-list">
+              {% for item in final.header.filtros_aplicados %}
+                <li><strong>{{ item.label }}:</strong> {{ item.valor }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+
+        <div class="institutional-report-frame">
+          {% set show_previa_tecnica = true %}
+          {% include "institutional/institucional_sections.html" %}
+        </div>
+      </div>
+    </section>
+  </div>
+</section>
+{% endblock %}

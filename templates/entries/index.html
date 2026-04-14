@@ -1,0 +1,445 @@
+{% extends "base.html" %}
+{% from "design_system/components.html" import action_chip, hero_header, premium_panel, primary_button, secondary_button, status_badge %}
+
+{% block title %}Nova entrada{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/entries.css') }}?v=20260414">
+{% endblock %}
+
+{% block content %}
+{% set total_nucleos = (nucleo_reference.options|length) if nucleo_reference else 0 %}
+{% set contract_count = contract_options|length if contract_options else 0 %}
+{% set autofill_count = (autofill_info.applied|length) if autofill_info and autofill_info.applied else 0 %}
+{% set message_length = mensagem|length if mensagem else 0 %}
+{% set top_actions %}
+  {{ action_chip('Etapa 1', active=True, href='#entry-message') }}
+  {{ action_chip('Etapa 2', href='#entry-context') }}
+  {{ action_chip('Etapa 3', href='#entry-review') }}
+  {{ secondary_button('Historico operacional', href=url_for('history')) }}
+  {{ primary_button('Resultados gerados', href=url_for('results_list')) }}
+{% endset %}
+
+<div class="entry-premium-shell">
+  {{ hero_header(
+    eyebrow='Fluxo operacional',
+    title='Nova entrada',
+    subtitle='Concentre a mensagem principal na tela, revise o contexto com seguranca e avance em 3 etapas sem sair do padrao premium do dashboard.',
+    actions=top_actions,
+    class_name='entry-hero'
+  ) }}
+
+  <section class="entry-hero-metrics" aria-label="Resumo rapido da entrada">
+    <article class="entry-hero-metric">
+      <span class="entry-hero-metric-label">Nucleos cadastrados</span>
+      <strong class="entry-hero-metric-value">{{ total_nucleos }}</strong>
+      <span class="entry-hero-metric-note">Base pronta para autopreenchimento seguro</span>
+    </article>
+    <article class="entry-hero-metric">
+      <span class="entry-hero-metric-label">Contratos carregados</span>
+      <strong class="entry-hero-metric-value">{{ contract_count }}</strong>
+      <span class="entry-hero-metric-note">Vinculo opcional para a revisao operacional</span>
+    </article>
+    <article class="entry-hero-metric">
+      <span class="entry-hero-metric-label">Preenchimentos aplicados</span>
+      <strong class="entry-hero-metric-value">{{ autofill_count }}</strong>
+      <span class="entry-hero-metric-note">Defaults inteligentes mantidos no contexto</span>
+    </article>
+  </section>
+
+  {% if error_message %}
+    <div class="entry-alert entry-alert--error">{{ error_message }}</div>
+  {% endif %}
+
+  {% if autofill_info and autofill_info.applied %}
+    <div class="entry-alert entry-alert--info">
+      <div class="entry-alert__head">
+        {{ status_badge('Preenchimento automatico', tone='info') }}
+        <strong>Preenchimento automatico por nucleo</strong>
+      </div>
+      <div class="entry-alert__content">
+        {% for campo, valor in autofill_info.applied.items() %}
+          <span>{{ campo }} = {{ valor }}</span>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('preview') }}" class="entry-form">
+    <div class="entry-layout">
+      <main class="entry-main-column">
+        <section class="entry-stepper" aria-label="Etapas da entrada">
+          <article class="entry-step is-current" data-entry-step="1"><span class="entry-step-index">1</span><div class="entry-step-copy"><strong>Mensagem</strong><small>Conteudo principal</small></div></article>
+          <article class="entry-step" data-entry-step="2"><span class="entry-step-index">2</span><div class="entry-step-copy"><strong>Contexto</strong><small>Vinculos operacionais</small></div></article>
+          <article class="entry-step" data-entry-step="3"><span class="entry-step-index">3</span><div class="entry-step-copy"><strong>Revisao</strong><small>Antes de processar</small></div></article>
+        </section>
+
+        {% call premium_panel(eyebrow='Mensagem operacional', title='Mensagem principal', subtitle='Cole a mensagem completa do WhatsApp e use o contexto operacional apenas se precisar corrigir ou orientar o processamento.', action=status_badge('Etapa 1', tone='info'), class_name='entry-panel entry-panel--primary') %}
+          <div class="entry-primary-panel" id="entry-message">
+            <label class="entry-field" for="mensagem">
+              <span class="entry-field-label">Mensagem WhatsApp</span>
+              <textarea id="mensagem" name="mensagem" class="ds-textarea entry-textarea" placeholder="Cole aqui a mensagem completa...">{{ mensagem }}</textarea>
+            </label>
+            <div class="entry-actions">
+              <button type="submit" class="ds-btn ds-btn-primary entry-action-primary">Analisar mensagem</button>
+              <button type="button" class="ds-btn ds-btn-secondary" id="entry-save-draft">Salvar rascunho local</button>
+              <button type="button" class="ds-btn ds-btn-secondary" id="entry-restore-draft">Recuperar rascunho</button>
+              <button type="reset" class="ds-btn ds-btn-secondary">Limpar campos</button>
+            </div>
+            <p class="field-hint">Nesta etapa voce apenas analisa a mensagem. Os arquivos finais sao gerados na revisao.</p>
+            <p id="entry-draft-status" class="field-hint">Rascunho local desativado ate salvar.</p>
+          </div>
+        {% endcall %}
+
+        <section class="entry-secondary-grid" id="entry-context">
+          {% call premium_panel(eyebrow='Contexto operacional', title='Vinculo e defaults', subtitle='Preencha apenas o necessario para orientar a leitura da mensagem com consistencia.', action=status_badge('Etapa 2', tone='info'), class_name='entry-panel entry-panel--context') %}
+            <div class="entry-secondary-panel">
+              <div class="entry-grid-2">
+                <label class="entry-field" for="data"><span class="entry-field-label">Data</span><input id="data" name="data" class="ds-input entry-input" value="{{ form_data.data }}" placeholder="dd/mm/aaaa"></label>
+                <label class="entry-field" for="nucleo"><span class="entry-field-label">Nucleo</span><select id="nucleo" name="nucleo" class="ds-select entry-input"><option value="">Selecione um nucleo</option>{% if form_data.nucleo and form_data.nucleo not in (nucleo_reference.options if nucleo_reference else []) %}<option value="{{ form_data.nucleo }}" selected>{{ form_data.nucleo }} (manual)</option>{% endif %}{% for nome in (nucleo_reference.options if nucleo_reference else []) %}<option value="{{ nome }}" {% if form_data.nucleo == nome %}selected{% endif %}>{{ nome }}</option>{% endfor %}</select><p id="index-nucleo-profile" class="field-hint">Selecione um nucleo cadastrado para sugerir municipio e defaults com seguranca.</p></label>
+                <label class="entry-field" for="logradouro"><span class="entry-field-label">Logradouro</span><input id="logradouro" name="logradouro" class="ds-input entry-input" value="{{ form_data.logradouro }}" placeholder="Use / ; ou quebra de linha para multiplos logradouros"></label>
+                <label class="entry-field" for="municipio"><span class="entry-field-label">Municipio</span><input id="municipio" name="municipio" class="ds-input entry-input" value="{{ form_data.municipio }}" placeholder="Municipio" list="municipio-options"><datalist id="municipio-options">{% for entry in (nucleo_reference.entries if nucleo_reference else []) %}{% if entry.municipio %}<option value="{{ entry.municipio }}"></option>{% endif %}{% endfor %}</datalist></label>
+                <label class="entry-field" for="equipe"><span class="entry-field-label">Equipe</span><input id="equipe" name="equipe" class="ds-input entry-input" value="{{ form_data.equipe }}" placeholder="Use / ; ou quebra de linha para multiplas equipes" list="equipe-options"><datalist id="equipe-options">{% for entry in (nucleo_reference.entries if nucleo_reference else []) %}{% for equipe_nome in (entry.equipes_padrao or []) %}<option value="{{ equipe_nome }}"></option>{% endfor %}{% endfor %}</datalist></label>
+                <label class="entry-field" for="contract_id"><span class="entry-field-label">Contrato (opcional)</span>{% if contract_options %}<select id="contract_id" name="contract_id" class="ds-select entry-input"><option value="">Selecionar contrato</option>{% if form_data.contract_id and not (contract_options | selectattr('id', 'equalto', form_data.contract_id) | list) %}<option value="{{ form_data.contract_id }}" selected>Contrato manual ID {{ form_data.contract_id }}</option>{% endif %}{% for item in contract_options %}<option value="{{ item.id }}" {% if form_data.contract_id == item.id %}selected{% endif %}>{{ item.label }}</option>{% endfor %}</select><p class="field-hint">Selecione o contrato para vincular o processamento ao cadastro mestre.</p>{% else %}<input id="contract_id" name="contract_id" type="number" min="1" value="{{ form_data.contract_id }}" class="ds-input entry-input" placeholder="Ex.: 1"><p class="field-hint">Modo fallback: informe o ID manualmente quando a lista de contratos nao estiver disponivel.</p>{% endif %}</label>
+              </div>
+            </div>
+          {% endcall %}
+
+          {% call premium_panel(eyebrow='Leitura rapida', title='Multiplos valores', subtitle='Use esta previa apenas quando a mensagem trouxer mais de um logradouro ou mais de uma equipe.', action=status_badge('Auxilio', tone='warning'), class_name='entry-panel entry-panel--multi') %}
+            <div class="entry-secondary-panel">
+              <div class="entry-multi-preview-grid entry-multi-preview-grid--compact">
+                <div class="entry-multi-preview-card"><div class="entry-multi-preview-title">Logradouros identificados (<span id="index-logradouro-count">0</span>)</div><ul id="index-logradouro-list" class="entry-simple-list"></ul></div>
+                <div class="entry-multi-preview-card"><div class="entry-multi-preview-title">Equipes identificadas (<span id="index-equipe-count">0</span>)</div><ul id="index-equipe-list" class="entry-simple-list"></ul></div>
+              </div>
+            </div>
+          {% endcall %}
+        </section>
+      </main>
+
+      <aside class="entry-side-column">
+        {% call premium_panel(eyebrow='Preview extraido', title='Resumo vivo', subtitle='O painel acompanha a leitura extraida da mensagem em tempo real.', action=status_badge('Ao vivo', tone='success'), class_name='entry-panel entry-panel--preview') %}
+          <div class="entry-preview-panel">
+            <div class="entry-preview-snippet">
+              <span class="entry-preview-label">Mensagem</span>
+              <strong id="entry-preview-message">{{ mensagem[:160] if mensagem else 'Nenhuma mensagem colada ainda.' }}</strong>
+            </div>
+            <div class="entry-preview-metrics">
+              <article><span>Status</span><strong id="entry-preview-status">{{ 'Pronta (%s caracteres)'|format(message_length) if message_length >= 20 else 'Aguardando mensagem' }}</strong></article>
+              <article><span>Contexto</span><strong id="entry-preview-context">0 campos</strong></article>
+              <article><span>Multiplos</span><strong id="entry-preview-multiples">0 itens</strong></article>
+            </div>
+            <div class="entry-preview-detail-grid">
+              <article><span>Data</span><strong id="entry-preview-data">{{ form_data.data or 'Nao informada' }}</strong></article>
+              <article><span>Nucleo</span><strong id="entry-preview-nucleo">{{ form_data.nucleo or 'Nao informado' }}</strong></article>
+              <article><span>Municipio</span><strong id="entry-preview-municipio">{{ form_data.municipio or 'Nao informado' }}</strong></article>
+              <article><span>Equipe</span><strong id="entry-preview-equipe">{{ form_data.equipe or 'Nao informada' }}</strong></article>
+              <article><span>Contrato</span><strong id="entry-preview-contrato">{% if form_data.contract_id %}{% if contract_options %}{% set selected_contract = (contract_options | selectattr('id', 'equalto', form_data.contract_id) | list | first) %}{% if selected_contract %}{{ selected_contract.label }}{% else %}ID {{ form_data.contract_id }}{% endif %}{% else %}ID {{ form_data.contract_id }}{% endif %}{% else %}Nao vinculado{% endif %}</strong></article>
+            </div>
+            <div class="entry-preview-stack">
+              <div class="entry-preview-card"><div class="entry-preview-card__title">Contexto aplicado</div><div class="entry-preview-card__body" id="entry-preview-context-text">Os dados acima serao recalculados automaticamente a cada edicao.</div></div>
+              <div class="entry-preview-card"><div class="entry-preview-card__title">Qualidade da entrada</div><div class="entry-preview-card__body" id="entry-preview-quality-text">Aguardando analise da mensagem para atualizar o painel.</div></div>
+            </div>
+          </div>
+        {% endcall %}
+
+        {% call premium_panel(eyebrow='Revisao', title='Antes de processar', subtitle='Confirme os principais campos antes de enviar para analise e geracao.', action=status_badge('Etapa 3', tone='info'), class_name='entry-panel entry-panel--review') %}
+          <div class="entry-review-panel" id="entry-review">
+            <div class="entry-review-grid">
+              <article class="entry-review-item"><span>Mensagem</span><strong id="entry-review-message">Nao informada</strong></article>
+              <article class="entry-review-item"><span>Nucleo</span><strong id="entry-review-nucleo">Nao informado</strong></article>
+              <article class="entry-review-item"><span>Municipio</span><strong id="entry-review-municipio">Nao informado</strong></article>
+              <article class="entry-review-item"><span>Equipes</span><strong id="entry-review-equipes">Nao informadas</strong></article>
+              <article class="entry-review-item"><span>Logradouros</span><strong id="entry-review-logradouros">Nao informados</strong></article>
+              <article class="entry-review-item"><span>Contrato</span><strong id="entry-review-contrato">Nao vinculado</strong></article>
+            </div>
+          </div>
+        {% endcall %}
+      </aside>
+    </div>
+
+    <div class="entry-sticky-actions" aria-label="Acoes rapidas mobile">
+      <button type="submit" class="ds-btn ds-btn-primary">Ir para revisao</button>
+      <a href="{{ url_for('history') }}" class="ds-btn ds-btn-secondary">Historico</a>
+    </div>
+  </form>
+</div>
+
+<script>
+(function () {
+  const entryForm = document.querySelector('form[action$="/preview"]');
+  const nucleoInput = document.getElementById('nucleo');
+  const dataInput = document.getElementById('data');
+  const mensagemInput = document.getElementById('mensagem');
+  const municipioInput = document.getElementById('municipio');
+  const logradouroInput = document.getElementById('logradouro');
+  const equipeInput = document.getElementById('equipe');
+  const contractIdInput = document.getElementById('contract_id');
+  const profileHint = document.getElementById('index-nucleo-profile');
+  const logradouroList = document.getElementById('index-logradouro-list');
+  const equipeList = document.getElementById('index-equipe-list');
+  const logradouroCount = document.getElementById('index-logradouro-count');
+  const equipeCount = document.getElementById('index-equipe-count');
+  const saveDraftButton = document.getElementById('entry-save-draft');
+  const restoreDraftButton = document.getElementById('entry-restore-draft');
+  const draftStatus = document.getElementById('entry-draft-status');
+  const reviewMessage = document.getElementById('entry-review-message');
+  const reviewNucleo = document.getElementById('entry-review-nucleo');
+  const reviewMunicipio = document.getElementById('entry-review-municipio');
+  const reviewEquipes = document.getElementById('entry-review-equipes');
+  const reviewLogradouros = document.getElementById('entry-review-logradouros');
+  const reviewContrato = document.getElementById('entry-review-contrato');
+  const previewMessage = document.getElementById('entry-preview-message');
+  const previewStatus = document.getElementById('entry-preview-status');
+  const previewContext = document.getElementById('entry-preview-context');
+  const previewMultiples = document.getElementById('entry-preview-multiples');
+  const previewData = document.getElementById('entry-preview-data');
+  const previewNucleo = document.getElementById('entry-preview-nucleo');
+  const previewMunicipio = document.getElementById('entry-preview-municipio');
+  const previewEquipe = document.getElementById('entry-preview-equipe');
+  const previewContrato = document.getElementById('entry-preview-contrato');
+  const previewContextText = document.getElementById('entry-preview-context-text');
+  const previewQualityText = document.getElementById('entry-preview-quality-text');
+  const step1 = document.querySelector('[data-entry-step="1"]');
+  const step2 = document.querySelector('[data-entry-step="2"]');
+  const step3 = document.querySelector('[data-entry-step="3"]');
+  const DRAFT_KEY = 'sisg_entry_draft_v1';
+  const nucleoProfilesByKey = {{ (nucleo_reference.profiles_by_key if nucleo_reference else {}) | tojson }};
+
+  const normalizeKey = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const splitMulti = (value) => {
+    const raw = String(value || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+    if (!raw) return [];
+    const out = [];
+    const seen = new Set();
+    raw.split(/\s*(?:\/|;|\n)+\s*/).forEach((part) => {
+      const clean = String(part || '').replace(/^[\u2022\-*]+\s*/, '').trim();
+      if (!clean) return;
+      const key = normalizeKey(clean);
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      out.push(clean);
+    });
+    return out;
+  };
+
+  const renderList = (items, listEl, countEl, emptyText) => {
+    if (!listEl || !countEl) return;
+    listEl.innerHTML = '';
+    countEl.textContent = String(items.length);
+    if (!items.length) {
+      const li = document.createElement('li');
+      li.textContent = emptyText;
+      li.className = 'muted';
+      listEl.appendChild(li);
+      return;
+    }
+    items.forEach((item) => {
+      const li = document.createElement('li');
+      li.textContent = item;
+      listEl.appendChild(li);
+    });
+  };
+
+  const setStepState = (stepElement, mode) => {
+    if (!stepElement) return;
+    stepElement.classList.remove('is-current', 'is-complete');
+    if (mode === 'complete') stepElement.classList.add('is-complete');
+    if (mode === 'current') stepElement.classList.add('is-current');
+  };
+
+  const updatePreviewPanel = (logradouros = [], equipes = []) => {
+    const msg = String(mensagemInput ? mensagemInput.value : '').trim();
+    const nucleo = String(nucleoInput ? nucleoInput.value : '').trim();
+    const municipio = String(municipioInput ? municipioInput.value : '').trim();
+    const contratoId = String(contractIdInput ? contractIdInput.value : '').trim();
+    const contratoLabel = (() => {
+      if (contractIdInput && contractIdInput.tagName === 'SELECT') {
+        const selected = contractIdInput.options[contractIdInput.selectedIndex];
+        const text = selected ? String(selected.text || '').trim() : '';
+        if (text && text.toLowerCase() !== 'selecionar contrato') return text;
+      } else if (contratoId) {
+        return `ID ${contratoId}`;
+      }
+      return 'Nao vinculado';
+    })();
+
+    if (previewMessage) previewMessage.textContent = msg.length ? (msg.length > 160 ? `${msg.slice(0, 160)}...` : msg) : 'Nenhuma mensagem colada ainda.';
+    if (previewStatus) previewStatus.textContent = msg.length >= 20 ? `Pronta (${msg.length} caracteres)` : 'Aguardando mensagem';
+    if (previewContext) {
+      const contextCount = [
+        String(dataInput ? dataInput.value : '').trim(),
+        nucleo,
+        municipio,
+        String(logradouroInput ? logradouroInput.value : '').trim(),
+        String(equipeInput ? equipeInput.value : '').trim(),
+        contratoId,
+      ].filter(Boolean).length;
+      previewContext.textContent = `${contextCount} campo(s)`;
+    }
+    if (previewMultiples) previewMultiples.textContent = `${Math.max(logradouros.length, equipes.length)} item(ns)`;
+    if (previewData) previewData.textContent = String(dataInput ? dataInput.value : '').trim() || 'Nao informada';
+    if (previewNucleo) previewNucleo.textContent = nucleo || 'Nao informado';
+    if (previewMunicipio) previewMunicipio.textContent = municipio || 'Nao informado';
+    if (previewEquipe) previewEquipe.textContent = String(equipeInput ? equipeInput.value : '').trim() || 'Nao informada';
+    if (previewContrato) previewContrato.textContent = contratoLabel || 'Nao vinculado';
+    if (previewContextText) previewContextText.textContent = nucleo ? 'Defaults do nucleo serao reaplicados de forma segura a cada atualizacao.' : 'Os dados acima serao recalculados automaticamente a cada edicao.';
+    if (previewQualityText) {
+      if (!msg.length) previewQualityText.textContent = 'Aguardando analise da mensagem para atualizar o painel.';
+      else if (msg.length < 20) previewQualityText.textContent = 'Mensagem curta. Use a copia completa para uma leitura segura.';
+      else if (logradouros.length > 1 || equipes.length > 1) previewQualityText.textContent = 'Conteudo multiplo detectado e pronto para revisao assistida.';
+      else previewQualityText.textContent = 'Entrada consistente para seguir para revisao final.';
+    }
+  };
+
+  const updateReview = (logradouros = null, equipes = null) => {
+    const msg = String(mensagemInput ? mensagemInput.value : '').trim();
+    const nucleo = String(nucleoInput ? nucleoInput.value : '').trim();
+    const municipio = String(municipioInput ? municipioInput.value : '').trim();
+    const contratoId = String(contractIdInput ? contractIdInput.value : '').trim();
+    let contrato = '';
+    if (contractIdInput && contractIdInput.tagName === 'SELECT') {
+      const selected = contractIdInput.options[contractIdInput.selectedIndex];
+      contrato = selected ? String(selected.text || '').trim() : '';
+      if (!contratoId || !contrato || contrato.toLowerCase() === 'selecionar contrato') contrato = '';
+    } else if (contratoId) {
+      contrato = `ID ${contratoId}`;
+    }
+    const l = Array.isArray(logradouros) ? logradouros : splitMulti(logradouroInput ? logradouroInput.value : '');
+    const e = Array.isArray(equipes) ? equipes : splitMulti(equipeInput ? equipeInput.value : '');
+    if (reviewMessage) reviewMessage.textContent = msg.length >= 20 ? `Pronta (${msg.length} caracteres)` : 'Curta ou nao informada';
+    if (reviewNucleo) reviewNucleo.textContent = nucleo || 'Nao informado';
+    if (reviewMunicipio) reviewMunicipio.textContent = municipio || 'Nao informado';
+    if (reviewEquipes) reviewEquipes.textContent = e.length ? `${e.length} item(ns)` : 'Nao informadas';
+    if (reviewLogradouros) reviewLogradouros.textContent = l.length ? `${l.length} item(ns)` : 'Nao informados';
+    if (reviewContrato) reviewContrato.textContent = contrato || 'Nao vinculado';
+    updatePreviewPanel(l, e);
+  };
+
+  const refreshMultiPreview = () => {
+    const logradouros = splitMulti(logradouroInput ? logradouroInput.value : '');
+    const equipes = splitMulti(equipeInput ? equipeInput.value : '');
+    renderList(logradouros, logradouroList, logradouroCount, 'Nenhum logradouro separado.');
+    renderList(equipes, equipeList, equipeCount, 'Nenhuma equipe separada.');
+    updateReview(logradouros, equipes);
+    updateStepState(logradouros, equipes);
+  };
+
+  const updateStepState = (logradouros = null, equipes = null) => {
+    const msgSize = String(mensagemInput ? mensagemInput.value : '').trim().length;
+    const hasMsg = msgSize >= 20;
+    const hasContext = Boolean(
+      String(dataInput ? dataInput.value : '').trim() ||
+      String(nucleoInput ? nucleoInput.value : '').trim() ||
+      String(municipioInput ? municipioInput.value : '').trim() ||
+      String(equipeInput ? equipeInput.value : '').trim() ||
+      String(logradouroInput ? logradouroInput.value : '').trim() ||
+      String(contractIdInput ? contractIdInput.value : '').trim()
+    );
+    const l = Array.isArray(logradouros) ? logradouros : splitMulti(logradouroInput ? logradouroInput.value : '');
+    const e = Array.isArray(equipes) ? equipes : splitMulti(equipeInput ? equipeInput.value : '');
+    const hasReview = hasMsg && (hasContext || l.length > 0 || e.length > 0);
+    setStepState(step1, hasMsg ? 'complete' : 'current');
+    setStepState(step2, hasContext ? 'complete' : (hasMsg ? 'current' : ''));
+    setStepState(step3, hasReview ? 'complete' : (hasContext ? 'current' : ''));
+  };
+
+  const setDraftStatus = (text) => { if (draftStatus) draftStatus.textContent = text; };
+  const collectDraftPayload = () => ({
+    mensagem: String(mensagemInput ? mensagemInput.value : ''),
+    data: String(dataInput ? dataInput.value : ''),
+    nucleo: String(nucleoInput ? nucleoInput.value : ''),
+    logradouro: String(logradouroInput ? logradouroInput.value : ''),
+    municipio: String(municipioInput ? municipioInput.value : ''),
+    equipe: String(equipeInput ? equipeInput.value : ''),
+    contract_id: String(contractIdInput ? contractIdInput.value : ''),
+    updated_at: new Date().toISOString(),
+  });
+
+  const applyDraftPayload = (payload) => {
+    if (!payload || typeof payload !== 'object') return;
+    if (mensagemInput) mensagemInput.value = String(payload.mensagem || '');
+    if (dataInput) dataInput.value = String(payload.data || '');
+    if (nucleoInput) nucleoInput.value = String(payload.nucleo || '');
+    if (logradouroInput) logradouroInput.value = String(payload.logradouro || '');
+    if (municipioInput) municipioInput.value = String(payload.municipio || '');
+    if (equipeInput) equipeInput.value = String(payload.equipe || '');
+    if (contractIdInput) contractIdInput.value = String(payload.contract_id || '');
+  };
+
+  const applyProfileFromNucleo = () => {
+    if (!nucleoInput) return;
+    const key = normalizeKey(nucleoInput.value);
+    const profile = nucleoProfilesByKey[key];
+    if (!profile) {
+      if (profileHint) profileHint.textContent = 'Nucleo sem cadastro de referencia.';
+      return;
+    }
+    if (profileHint) {
+      const partes = [];
+      if (profile.municipio) partes.push('Municipio padrao: ' + profile.municipio);
+      if ((profile.logradouros_padrao || []).length) partes.push('Logradouros padrao: ' + profile.logradouros_padrao.join(' | '));
+      if ((profile.equipes_padrao || []).length) partes.push('Equipes padrao: ' + profile.equipes_padrao.join(' | '));
+      profileHint.textContent = partes.length ? partes.join(' | ') : 'Nucleo cadastrado sem defaults adicionais.';
+    }
+    if (municipioInput && !String(municipioInput.value || '').trim() && profile.municipio) municipioInput.value = profile.municipio;
+    if (logradouroInput && !String(logradouroInput.value || '').trim() && (profile.logradouros_padrao || []).length === 1) logradouroInput.value = profile.logradouros_padrao[0];
+    if (equipeInput && !String(equipeInput.value || '').trim() && (profile.equipes_padrao || []).length === 1) equipeInput.value = profile.equipes_padrao[0];
+    refreshMultiPreview();
+  };
+
+  if (saveDraftButton) saveDraftButton.addEventListener('click', () => {
+    try {
+      window.localStorage.setItem(DRAFT_KEY, JSON.stringify(collectDraftPayload()));
+      setDraftStatus('Rascunho local salvo neste navegador.');
+    } catch (e) {
+      setDraftStatus('Nao foi possivel salvar o rascunho local.');
+    }
+  });
+
+  if (restoreDraftButton) restoreDraftButton.addEventListener('click', () => {
+    try {
+      const raw = window.localStorage.getItem(DRAFT_KEY);
+      if (!raw) {
+        setDraftStatus('Nenhum rascunho local encontrado.');
+        return;
+      }
+      applyDraftPayload(JSON.parse(raw));
+      refreshMultiPreview();
+      applyProfileFromNucleo();
+      setDraftStatus('Rascunho local recuperado com sucesso.');
+    } catch (e) {
+      setDraftStatus('Nao foi possivel recuperar o rascunho local.');
+    }
+  });
+
+  if (nucleoInput) {
+    nucleoInput.addEventListener('change', applyProfileFromNucleo);
+    nucleoInput.addEventListener('blur', applyProfileFromNucleo);
+  }
+  if (mensagemInput) mensagemInput.addEventListener('input', () => { updateReview(); updateStepState(); });
+  if (dataInput) dataInput.addEventListener('input', () => { updateReview(); updateStepState(); });
+  if (municipioInput) municipioInput.addEventListener('input', () => { updateReview(); updateStepState(); });
+  if (logradouroInput) logradouroInput.addEventListener('input', refreshMultiPreview);
+  if (equipeInput) equipeInput.addEventListener('input', refreshMultiPreview);
+  if (contractIdInput) {
+    contractIdInput.addEventListener('input', () => { updateReview(); updateStepState(); });
+    contractIdInput.addEventListener('change', () => { updateReview(); updateStepState(); });
+  }
+
+  if (entryForm) {
+    entryForm.addEventListener('reset', () => {
+      window.setTimeout(() => {
+        refreshMultiPreview();
+        applyProfileFromNucleo();
+        setDraftStatus('Formulario limpo.');
+      }, 0);
+    });
+  }
+
+  applyProfileFromNucleo();
+  refreshMultiPreview();
+  updateReview();
+  updateStepState();
+})();
+</script>
+{% endblock %}

@@ -1,5 +1,13 @@
 {% extends "base.html" %}
+{% from "design_system/components.html" import hero_header, kpi_card, premium_panel, primary_button, secondary_button %}
+
 {% block title %}Painel Gerencial{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system/tokens.css') }}?v=20260414">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system/foundations.css') }}?v=20260414">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/gerencial.css') }}?v=20260414">
+{% endblock %}
 
 {% block content %}
 {% set kpi = dashboard.get('kpis_principais', {}) %}
@@ -19,9 +27,13 @@
 {% set radar_items = radar.get('items', []) %}
 {% set bi_mvp = dashboard.get('bi_mvp', {}) %}
 {% set bi_kpis = bi_mvp.get('kpis', {}) %}
+{% set timeline_items = bi_mvp.get('timeline', []) %}
+{% set top_servicos_items = bi_mvp.get('top_servicos', []) %}
 {% set categorias_total = categorias_items | map(attribute='value') | sum %}
 {% set max_nucleo_val = (nucleos_items[0].get('value', 0)|float if nucleos_items else 0.0) %}
 {% if max_nucleo_val <= 0 %}{% set max_nucleo_val = 1.0 %}{% endif %}
+{% set max_timeline_val = (timeline_items | map(attribute='volume_total') | list | max if timeline_items else 0.0) %}
+{% if max_timeline_val <= 0 %}{% set max_timeline_val = 1.0 %}{% endif %}
 {% set pretty_label_map = {
   'rede_agua': 'Rede de Agua',
   'ramal_agua': 'Ramal de Agua',
@@ -46,75 +58,86 @@
   {%- endif -%}
 {%- endmacro %}
 
-<div class="gerencial-page-v4" data-gerencial-v4>
-  <header class="pgm4-hero">
-    <div class="pgm4-hero-copy">
-      <h1>Painel Gerencial</h1>
-      <p>Recorte operacional consolidado para leitura executiva.</p>
-    </div>
-    <div class="pgm4-hero-actions">
-      <button type="button" class="pgm4-btn pgm4-btn-ghost" data-pgm4-toggle-filters>Filtros</button>
-      <a
-        class="pgm4-btn pgm4-btn-primary"
-        href="{{ url_for('gerencial_export_csv', contrato=contrato, obra_from=obra_from, obra_to=obra_to, processed_from=processed_from, processed_to=processed_to, nucleo=nucleo, municipio=municipio, equipe=equipe, status=status_filter, alertas=alertas_filter, top_n=top_n) }}"
-      >
-        Exportar CSV
-      </a>
-    </div>
-  </header>
+{% set hero_actions %}
+  {{ secondary_button('Filtros', href='#filters', class_name='gerencial-action-link') }}
+  {{ primary_button('Exportar CSV', href=url_for('gerencial_export_csv', contrato=contrato, obra_from=obra_from, obra_to=obra_to, processed_from=processed_from, processed_to=processed_to, nucleo=nucleo, municipio=municipio, equipe=equipe, status=status_filter, alertas=alertas_filter, top_n=top_n), class_name='gerencial-action-primary') }}
+{% endset %}
 
-  <section class="pgm4-filter-shell">
-    <div class="pgm4-filter-chips">
-      {% if contrato %}
-      <span class="pgm4-chip">Contrato: {{ contrato_label or contrato }}</span>
-      {% endif %}
-      {% if obra_from or obra_to %}
-      <span class="pgm4-chip">Periodo: {{ obra_from or '...' }} - {{ obra_to or '...' }}</span>
-      {% endif %}
-      {% if municipio %}
-      <span class="pgm4-chip">Municipio: {{ municipio }}</span>
-      {% endif %}
-      {% if nucleo %}
-      <span class="pgm4-chip">Nucleo: {{ nucleo }}</span>
-      {% endif %}
-      {% if status_filter %}
-      <span class="pgm4-chip">Status: {{ status_filter }}</span>
-      {% endif %}
-      {% if alertas_filter %}
-      <span class="pgm4-chip">Alertas: {{ alertas_filter }}</span>
-      {% endif %}
-      {% if not (contrato or obra_from or obra_to or municipio or nucleo or status_filter or alertas_filter) %}
-      <span class="pgm4-chip pgm4-chip-muted">Sem filtros ativos</span>
-      {% endif %}
+<div class="dashboard-premium-shell gerencial-page-v4" data-gerencial-v4>
+  {{ hero_header(
+    eyebrow='Painel gerencial',
+    title='Painel Gerencial',
+    subtitle='Leitura executiva com os dados reais do periodo, recorte operacional, radar de risco e leitura analitica premium sem alterar a logica da tela.',
+    actions=hero_actions
+  ) }}
+
+  <section class="gerencial-filter-rail" id="filters">
+    <div class="gerencial-filter-bar">
+      <div class="gerencial-filter-chips">
+        {% if contrato %}
+        <span class="gerencial-filter-chip">Contrato: {{ contrato_label or contrato }}</span>
+        {% endif %}
+        {% if obra_from or obra_to %}
+        <span class="gerencial-filter-chip">Periodo obra: {{ obra_from or '...' }} - {{ obra_to or '...' }}</span>
+        {% endif %}
+        {% if processed_from or processed_to %}
+        <span class="gerencial-filter-chip">Processado: {{ processed_from or '...' }} - {{ processed_to or '...' }}</span>
+        {% endif %}
+        {% if municipio %}
+        <span class="gerencial-filter-chip">Municipio: {{ municipio }}</span>
+        {% endif %}
+        {% if nucleo %}
+        <span class="gerencial-filter-chip">Nucleo: {{ nucleo }}</span>
+        {% endif %}
+        {% if equipe %}
+        <span class="gerencial-filter-chip">Equipe: {{ equipe }}</span>
+        {% endif %}
+        {% if status_filter %}
+        <span class="gerencial-filter-chip">Status: {{ status_filter }}</span>
+        {% endif %}
+        {% if alertas_filter %}
+        <span class="gerencial-filter-chip">Alertas: {{ alertas_filter }}</span>
+        {% endif %}
+        {% if not (contrato or obra_from or obra_to or processed_from or processed_to or municipio or nucleo or equipe or status_filter or alertas_filter) %}
+        <span class="gerencial-filter-chip gerencial-filter-chip--muted">Sem filtros ativos</span>
+        {% endif %}
+      </div>
+
+      <div class="gerencial-contract-strip" role="tablist" aria-label="Selecionar contrato">
+        <a
+          class="gerencial-contract-pill {% if not contrato %}is-active{% endif %}"
+          href="{{ url_for('gerencial', contrato='', obra_from=obra_from, obra_to=obra_to, processed_from=processed_from, processed_to=processed_to, nucleo=nucleo, municipio=municipio, equipe=equipe, status=status_filter, alertas=alertas_filter, top_n=top_n) }}"
+        >
+          Todos
+        </a>
+        {% for item in contract_cards or [] %}
+        <a
+          class="gerencial-contract-pill {% if contrato == item.value %}is-active{% endif %}"
+          href="{{ url_for('gerencial', contrato=item.value, obra_from=obra_from, obra_to=obra_to, processed_from=processed_from, processed_to=processed_to, nucleo=nucleo, municipio=municipio, equipe=equipe, status=status_filter, alertas=alertas_filter, top_n=top_n) }}"
+        >
+          {{ item.label }}
+        </a>
+        {% endfor %}
+        {% set contract_values = (contract_cards | map(attribute='value') | list) %}
+        {% if contrato and (contrato not in contract_values) %}
+        <a
+          class="gerencial-contract-pill is-active"
+          href="{{ url_for('gerencial', contrato=contrato, obra_from=obra_from, obra_to=obra_to, processed_from=processed_from, processed_to=processed_to, nucleo=nucleo, municipio=municipio, equipe=equipe, status=status_filter, alertas=alertas_filter, top_n=top_n) }}"
+        >
+          {{ contrato_label or contrato }}
+        </a>
+        {% endif %}
+      </div>
+
+      <div class="gerencial-filter-actions">
+        <button type="button" class="gerencial-filter-toggle" data-pgm4-toggle-filters>Filtros avancados</button>
+        <span class="gerencial-source-badge">{{ dashboard.get('source', 'database') | replace('_', ' ') | title }}</span>
+      </div>
     </div>
-    <div class="pgm4-contract-cards" role="tablist" aria-label="Selecionar contrato">
-      <a
-        class="pgm4-contract-card {% if not contrato %}is-active{% endif %}"
-        href="{{ url_for('gerencial', contrato='', obra_from=obra_from, obra_to=obra_to, processed_from=processed_from, processed_to=processed_to, nucleo=nucleo, municipio=municipio, equipe=equipe, status=status_filter, alertas=alertas_filter, top_n=top_n) }}"
-      >
-        Todos
-      </a>
-      {% for item in contract_cards or [] %}
-      <a
-        class="pgm4-contract-card {% if contrato == item.value %}is-active{% endif %}"
-        href="{{ url_for('gerencial', contrato=item.value, obra_from=obra_from, obra_to=obra_to, processed_from=processed_from, processed_to=processed_to, nucleo=nucleo, municipio=municipio, equipe=equipe, status=status_filter, alertas=alertas_filter, top_n=top_n) }}"
-      >
-        {{ item.label }}
-      </a>
-      {% endfor %}
-      {% set contract_values = (contract_cards | map(attribute='value') | list) %}
-      {% if contrato and (contrato not in contract_values) %}
-      <a
-        class="pgm4-contract-card is-active"
-        href="{{ url_for('gerencial', contrato=contrato, obra_from=obra_from, obra_to=obra_to, processed_from=processed_from, processed_to=processed_to, nucleo=nucleo, municipio=municipio, equipe=equipe, status=status_filter, alertas=alertas_filter, top_n=top_n) }}"
-      >
-        {{ contrato_label or contrato }}
-      </a>
-      {% endif %}
-    </div>
-    <form method="get" action="{{ url_for('gerencial') }}" class="pgm4-filter-form" data-pgm4-filter-form hidden>
+
+    <form method="get" action="{{ url_for('gerencial') }}" class="gerencial-filter-form" data-pgm4-filter-form hidden>
       <input type="hidden" name="contrato" value="{{ contrato }}">
-      <div class="pgm4-filter-grid">
+      <div class="gerencial-filter-grid">
         <label>Periodo obra (de)<input type="date" name="obra_from" value="{{ obra_from }}"></label>
         <label>Periodo obra (ate)<input type="date" name="obra_to" value="{{ obra_to }}"></label>
         <label>Processado (de)<input type="date" name="processed_from" value="{{ processed_from }}"></label>
@@ -138,123 +161,115 @@
         </label>
         <label>Top N<input type="number" min="3" max="50" name="top_n" value="{{ top_n }}"></label>
       </div>
-      <div class="pgm4-filter-actions">
-        <button type="submit" class="pgm4-btn pgm4-btn-primary">Aplicar filtros</button>
-        <a href="{{ url_for('gerencial') }}" class="pgm4-btn pgm4-btn-ghost">Limpar</a>
+      <div class="gerencial-filter-actions">
+        <button type="submit" class="gerencial-filter-submit">Aplicar filtros</button>
+        <a href="{{ url_for('gerencial') }}" class="gerencial-filter-reset">Limpar</a>
       </div>
     </form>
   </section>
 
-  <section class="pgm4-kpi-grid">
-    <article class="pgm4-kpi-card">
-      <span class="pgm4-kpi-label">PRA</span>
-      <strong>{{ kpi.get('prolongamento_rede_agua_total_fmt', '0') }}</strong>
-      <small>prol. rede agua</small>
-    </article>
-    <article class="pgm4-kpi-card">
-      <span class="pgm4-kpi-label">PRE</span>
-      <strong>{{ kpi.get('prolongamento_rede_esgoto_total_fmt', '0') }}</strong>
-      <small>prol. rede esgoto</small>
-    </article>
-    <article class="pgm4-kpi-card">
-      <span class="pgm4-kpi-label">Ligacoes Agua</span>
-      <strong>{{ kpi.get('ligacoes_agua_total_fmt', '0') }}</strong>
-      <small>volume consolidado</small>
-    </article>
-    <article class="pgm4-kpi-card">
-      <span class="pgm4-kpi-label">Ligacoes Esgoto</span>
-      <strong>{{ kpi.get('ligacoes_esgoto_total_fmt', '0') }}</strong>
-      <small>volume consolidado</small>
-    </article>
+  <section class="ds-grid ds-grid-4 gerencial-kpi-grid">
+    {{ kpi_card('Processamentos', kpi.get('total_processamentos', 0), 'Registros executados no recorte atual', delta='Base consolidada') }}
+    {{ kpi_card('Frentes', kpi.get('total_frentes', 0), 'Frentes acompanhadas na janela selecionada', delta='Fluxo operacional') }}
+    {{ kpi_card('Ocorrencias', kpi.get('total_ocorrencias', 0), 'Incidencias monitoradas pelo radar', delta='Sinal de risco') }}
+    {{ kpi_card('Mapeados', kpi.get('percentual_mapeado_fmt', '0') ~ '%', 'Participacao de itens com servico oficial', delta='Qualidade de mapeamento') }}
   </section>
 
-  <section class="pgm4-main-grid">
-    <article class="pgm4-panel">
-      <header class="pgm4-panel-header">
-        <h3>Bloco analitico principal</h3>
-      </header>
-      <nav class="pgm4-tabs" data-tab-group="principal">
+  <section class="gerencial-main-layout">
+    {% call premium_panel(
+      eyebrow='Bloco analitico principal',
+      title='Leitura operacional por dimensao',
+      subtitle='Os mesmos dados do backend reorganizados em uma leitura mais limpa, com navegacao por nucleo, servico, equipe e municipio.'
+    ) %}
+      <nav class="gerencial-tabs" data-tab-group="principal">
         <button type="button" class="is-active" data-tab="nucleos">Nucleos</button>
         <button type="button" data-tab="servicos">Servicos</button>
         <button type="button" data-tab="equipes">Equipes</button>
         <button type="button" data-tab="municipios">Municipios</button>
       </nav>
-      <div class="pgm4-tab-panels" data-tab-panels="principal">
+
+      <div class="gerencial-tab-panels" data-tab-panels="principal">
         <section class="is-active" data-tab-panel="nucleos">
           {% if nucleos_items %}
-          <div class="pgm4-bar-chart">
-            {% for row in nucleos_items[:7] %}
-            {% set ratio = ((row.get('value', 0)|float / max_nucleo_val) if max_nucleo_val else 0) %}
-            {% if ratio > 1 %}{% set ratio = 1 %}{% endif %}
-            {% if ratio < 0 %}{% set ratio = 0 %}{% endif %}
-            <article class="pgm4-bar-col">
-              <span class="bar" style="height: {{ '%.0f'|format(10 + (ratio * 86)) }}px;"></span>
-              <small>{{ row.get('value_display', row.get('value_fmt', '0')) }}</small>
-            </article>
-            {% endfor %}
-          </div>
-          <div class="pgm4-rank-list">
-            {% for row in nucleos_items[:5] %}
-            <article class="pgm4-rank-row">
-              <span>{{ pretty_metric_label(row.get('label', '-')) }}</span>
-              <strong>{{ row.get('value_display', row.get('value_fmt', '0')) }}</strong>
-            </article>
-            {% endfor %}
+          <div class="gerencial-chart-layout">
+            <div class="gerencial-bar-chart">
+              {% for row in nucleos_items[:7] %}
+              {% set ratio = ((row.get('value', 0)|float / max_nucleo_val) if max_nucleo_val else 0) %}
+              {% if ratio > 1 %}{% set ratio = 1 %}{% endif %}
+              {% if ratio < 0 %}{% set ratio = 0 %}{% endif %}
+              <article class="gerencial-bar-item">
+                <span class="bar" style="height: {{ '%.0f'|format(12 + (ratio * 82)) }}px;"></span>
+                <small>{{ row.get('value_display', row.get('value_fmt', '0')) }}</small>
+                <strong>{{ pretty_metric_label(row.get('label', '-')) }}</strong>
+              </article>
+              {% endfor %}
+            </div>
+            <div class="gerencial-rank-list">
+              {% for row in nucleos_items[:5] %}
+              <article class="gerencial-rank-row">
+                <span>{{ pretty_metric_label(row.get('label', '-')) }}</span>
+                <strong>{{ row.get('value_display', row.get('value_fmt', '0')) }}</strong>
+              </article>
+              {% endfor %}
+            </div>
           </div>
           {% else %}
-          <div class="pgm4-empty">Sem dados de nucleos no recorte.</div>
+          <div class="gerencial-empty">Sem dados de nucleos no recorte.</div>
           {% endif %}
         </section>
 
         <section data-tab-panel="servicos">
-          <div class="pgm4-service-mode">
+          <div class="gerencial-service-mode">
             <button type="button" class="is-active" data-service-mode-btn data-mode="ambos">Ambos</button>
             <button type="button" data-service-mode-btn data-mode="metragem">Metragem</button>
             <button type="button" data-service-mode-btn data-mode="quantitativo">Quantitativo</button>
           </div>
-          <div class="pgm4-rank-list" data-service-mode="ambos">
+
+          <div class="gerencial-rank-list gerencial-service-list" data-service-mode="ambos">
             {% for row in servicos_ambos_items[:6] %}
-            <article class="pgm4-rank-progress-row">
+            <article class="gerencial-rank-progress-row">
               <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
               <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
               <strong>{{ row.get('value_display', row.get('value_fmt', '0')) }}</strong>
             </article>
             {% endfor %}
             {% if not servicos_ambos_items %}
-            <div class="pgm4-empty">Sem servicos no recorte.</div>
+            <div class="gerencial-empty">Sem servicos no recorte.</div>
             {% endif %}
           </div>
-          <div class="pgm4-rank-list" data-service-mode="metragem" hidden>
+
+          <div class="gerencial-rank-list gerencial-service-list" data-service-mode="metragem" hidden>
             {% for row in servicos_metragem_items[:6] %}
-            <article class="pgm4-rank-progress-row">
+            <article class="gerencial-rank-progress-row">
               <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
               <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
               <strong>{{ row.get('value_display', row.get('value_fmt', '0')) }}</strong>
             </article>
             {% endfor %}
             {% if not servicos_metragem_items %}
-            <div class="pgm4-empty">Sem servicos de metragem no recorte.</div>
+            <div class="gerencial-empty">Sem servicos de metragem no recorte.</div>
             {% endif %}
           </div>
-          <div class="pgm4-rank-list" data-service-mode="quantitativo" hidden>
+
+          <div class="gerencial-rank-list gerencial-service-list" data-service-mode="quantitativo" hidden>
             {% for row in servicos_quantitativo_items[:6] %}
-            <article class="pgm4-rank-progress-row">
+            <article class="gerencial-rank-progress-row">
               <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
               <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
               <strong>{{ row.get('value_display', row.get('value_fmt', '0')) }}</strong>
             </article>
             {% endfor %}
             {% if not servicos_quantitativo_items %}
-            <div class="pgm4-empty">Sem servicos quantitativos no recorte.</div>
+            <div class="gerencial-empty">Sem servicos quantitativos no recorte.</div>
             {% endif %}
           </div>
         </section>
 
         <section data-tab-panel="equipes">
           {% if equipes_items %}
-          <div class="pgm4-rank-list">
+          <div class="gerencial-rank-list">
             {% for row in equipes_items[:7] %}
-            <article class="pgm4-rank-progress-row">
+            <article class="gerencial-rank-progress-row">
               <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
               <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
               <strong>{{ row.get('value_display', row.get('value_fmt', '0')) }}</strong>
@@ -262,15 +277,15 @@
             {% endfor %}
           </div>
           {% else %}
-          <div class="pgm4-empty">Sem dados de equipe no recorte.</div>
+          <div class="gerencial-empty">Sem dados de equipe no recorte.</div>
           {% endif %}
         </section>
 
         <section data-tab-panel="municipios">
           {% if municipios_items %}
-          <div class="pgm4-rank-list">
+          <div class="gerencial-rank-list">
             {% for row in municipios_items[:7] %}
-            <article class="pgm4-rank-progress-row">
+            <article class="gerencial-rank-progress-row">
               <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
               <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
               <strong>{{ row.get('value_display', row.get('value_fmt', '0')) }}</strong>
@@ -278,102 +293,183 @@
             {% endfor %}
           </div>
           {% else %}
-          <div class="pgm4-empty">Sem dados de municipio no recorte.</div>
+          <div class="gerencial-empty">Sem dados de municipio no recorte.</div>
           {% endif %}
         </section>
       </div>
-    </article>
+    {% endcall %}
 
-    <aside class="pgm4-side-stack">
-      <article class="pgm4-panel pgm4-panel-tight">
-        <header class="pgm4-panel-header">
-          <h3>Radar resumido</h3>
-        </header>
-        <div class="pgm4-risk-chips">
-          <span class="chip">Monitorados: {{ radar.get('monitorados', 0) }}</span>
-          <span class="chip critico">Critico: {{ radar.get('critico', 0) }}</span>
-          <span class="chip alto">Alto: {{ radar.get('alto', 0) }}</span>
-          <span class="chip moderado">Moderado: {{ radar.get('moderado', 0) }}</span>
-          <span class="chip baixo">Baixo: {{ radar.get('baixo', 0) }}</span>
+    <div class="gerencial-side-stack">
+      {% call premium_panel(
+        eyebrow='Radar resumido',
+        title='Risco de contratos',
+        subtitle='Uma leitura executiva dos contratos monitorados, com priorizacao imediata dos casos mais criticos.'
+      ) %}
+        <div class="gerencial-risk-chips">
+          <span class="gerencial-risk-chip">Monitorados: {{ radar.get('monitorados', 0) }}</span>
+          <span class="gerencial-risk-chip gerencial-risk-chip--critical">Critico: {{ radar.get('critico', 0) }}</span>
+          <span class="gerencial-risk-chip gerencial-risk-chip--high">Alto: {{ radar.get('alto', 0) }}</span>
+          <span class="gerencial-risk-chip gerencial-risk-chip--medium">Moderado: {{ radar.get('moderado', 0) }}</span>
+          <span class="gerencial-risk-chip gerencial-risk-chip--low">Baixo: {{ radar.get('baixo', 0) }}</span>
         </div>
+
         {% if radar_items %}
-        <div class="pgm4-risk-mini">
+        <div class="gerencial-risk-list">
           {% for item in radar_items[:3] %}
-          <article>
-            <div class="title">{{ item.get('contract_label', 'Sem contrato') }}</div>
-            <div class="score">{{ item.get('score', 0) }}/100</div>
+          <article class="gerencial-risk-item">
+            <div class="gerencial-risk-item__title">{{ item.get('contract_label', 'Sem contrato') }}</div>
+            <div class="gerencial-risk-item__meta">{{ item.get('score', 0) }}/100</div>
             <span class="track"><span style="width: {{ item.get('bar_width_pct', 0) }}%;"></span></span>
           </article>
           {% endfor %}
         </div>
         {% else %}
-        <div class="pgm4-empty">Sem contratos suficientes no recorte.</div>
+        <div class="gerencial-empty">Sem contratos suficientes no recorte.</div>
         {% endif %}
-      </article>
+      {% endcall %}
 
-      <article class="pgm4-panel pgm4-panel-tight">
-        <header class="pgm4-panel-header">
-          <h3>Blocos secundarios</h3>
-        </header>
-        <nav class="pgm4-tabs pgm4-tabs-small" data-tab-group="secundario">
-          <button type="button" class="is-active" data-tab="categoria">Categoria</button>
-          <button type="button" data-tab="ocorrencias">Ocorrencias</button>
-          <button type="button" data-tab="bi">BI</button>
-        </nav>
-        <div class="pgm4-tab-panels" data-tab-panels="secundario">
-          <section class="is-active" data-tab-panel="categoria">
-            {% if categorias_items %}
-            <div class="pgm4-cat-mini">
-              <div class="donut" data-cat-donut>
-                <div class="center">{{ consolidado.get('volume_total_fmt', '0') }}</div>
-              </div>
-              <div class="list">
-                {% for row in categorias_items[:5] %}
-                {% set pct = ((row.get('value', 0) / categorias_total) * 100) if categorias_total else 0 %}
-                <article data-cat-item data-value="{{ row.get('value', 0) }}" data-color="{{ cat_colors[loop.index0 % (cat_colors|length)] }}">
-                  <span class="dot" style="--dot: {{ cat_colors[loop.index0 % (cat_colors|length)] }};"></span>
-                  <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
-                  <strong>{{ '%.1f'|format(pct) }}%</strong>
-                </article>
-                {% endfor %}
-              </div>
-            </div>
-            {% else %}
-            <div class="pgm4-empty">Sem categorias no recorte.</div>
-            {% endif %}
-          </section>
-
-          <section data-tab-panel="ocorrencias">
-            {% if ocorrencias_tipo_items %}
-            <div class="pgm4-rank-list">
-              {% for row in ocorrencias_tipo_items[:5] %}
-              <article class="pgm4-rank-progress-row">
-                <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
-                <span class="track"><span style="width: {{ row.get('width_pct', 0) }}%;"></span></span>
-                <strong>{{ row.get('value_display', row.get('value_fmt', '0')) }}</strong>
-              </article>
-              {% endfor %}
-            </div>
-            {% else %}
-            <div class="pgm4-empty">Sem ocorrencias no recorte.</div>
-            {% endif %}
-          </section>
-
-          <section data-tab-panel="bi">
-            {% if bi_mvp.get('enabled') %}
-            <div class="pgm4-bi-mini-grid">
-              <article><small>Registros</small><strong>{{ bi_kpis.get('registros_fmt', '0') }}</strong></article>
-              <article><small>Volume</small><strong>{{ bi_kpis.get('volume_total_fmt', '0') }}</strong></article>
-              <article><small>Mapeado</small><strong>{{ bi_kpis.get('percentual_mapeado_fmt', '0') }}%</strong></article>
-              <article><small>Top ocorrencia</small><strong>{{ pretty_metric_label(bi_mvp.get('top_ocorrencia', {}).get('tipo_ocorrencia', '-')) }}</strong></article>
-            </div>
-            {% else %}
-            <div class="pgm4-empty">Camada BI indisponivel no ambiente.</div>
-            {% endif %}
-          </section>
+      {% call premium_panel(
+        eyebrow='Composicao por categoria',
+        title='Distribuicao do volume',
+        subtitle='Leitura compacta da composicao da demanda por categoria, com cores consistentes e sem criar uma identidade nova.'
+      ) %}
+        {% if categorias_items %}
+        <div class="gerencial-category-layout">
+          <div class="gerencial-category-donut" data-cat-donut>
+            <div class="center">{{ consolidado.get('volume_total_fmt', '0') }}</div>
+          </div>
+          <div class="gerencial-category-list">
+            {% for row in categorias_items[:5] %}
+            {% set pct = ((row.get('value', 0) / categorias_total) * 100) if categorias_total else 0 %}
+            <article data-cat-item data-value="{{ row.get('value', 0) }}" data-color="{{ cat_colors[loop.index0 % (cat_colors|length)] }}">
+              <span class="dot" style="--dot: {{ cat_colors[loop.index0 % (cat_colors|length)] }};"></span>
+              <span class="label">{{ pretty_metric_label(row.get('label', '-')) }}</span>
+              <strong>{{ '%.1f'|format(pct) }}%</strong>
+            </article>
+            {% endfor %}
+          </div>
         </div>
-      </article>
-    </aside>
+        {% else %}
+        <div class="gerencial-empty">Sem categorias no recorte.</div>
+        {% endif %}
+      {% endcall %}
+    </div>
+  </section>
+
+  <section class="gerencial-lower-grid">
+    {% call premium_panel(
+      eyebrow='Graficos leves',
+      title='Evolucao do volume',
+      subtitle='Acompanhamento enxuto da tendencia mais recente entregue pelo BI MVP, com foco em leitura rapida.'
+    ) %}
+      {% if timeline_items %}
+      <div class="gerencial-timeline">
+        {% for item in timeline_items %}
+        {% set ratio = ((item.get('volume_total', 0)|float / max_timeline_val) if max_timeline_val else 0) %}
+        {% if ratio > 1 %}{% set ratio = 1 %}{% endif %}
+        {% if ratio < 0 %}{% set ratio = 0 %}{% endif %}
+        <article class="gerencial-timeline-item">
+          <div class="gerencial-timeline-label">{{ item.get('data', '-') }}</div>
+          <div class="track"><span style="width: {{ '%.0f'|format(8 + (ratio * 92)) }}%;"></span></div>
+          <div class="gerencial-timeline-value">{{ item.get('volume_total_fmt', '0') }}</div>
+        </article>
+        {% endfor %}
+      </div>
+      {% elif bi_mvp.get('enabled') %}
+      <div class="gerencial-bi-grid">
+        <article><small>Registros</small><strong>{{ bi_kpis.get('registros_fmt', '0') }}</strong></article>
+        <article><small>Volume</small><strong>{{ bi_kpis.get('volume_total_fmt', '0') }}</strong></article>
+        <article><small>Mapeado</small><strong>{{ bi_kpis.get('percentual_mapeado_fmt', '0') }}%</strong></article>
+        <article><small>Top ocorrencia</small><strong>{{ pretty_metric_label(bi_mvp.get('top_ocorrencia', {}).get('tipo_ocorrencia', '-')) }}</strong></article>
+      </div>
+      {% else %}
+      <div class="gerencial-empty">Camada BI indisponivel no ambiente.</div>
+      {% endif %}
+    {% endcall %}
+
+    {% call premium_panel(
+      eyebrow='Tabelas e registros',
+      title='Top servicos e ocorrencias',
+      subtitle='Listas curtas para leitura executiva, sem ruido visual e com densidade de informacao controlada.'
+    ) %}
+      {% set service_rows = [] %}
+      {% for row in top_servicos_items[:5] %}
+        {% set _ = service_rows.append([
+          row.get('servico', '-'),
+          row.get('volume_total_fmt', '0'),
+          row.get('unidade', ''),
+          row.get('registros', 0)
+        ]) %}
+      {% endfor %}
+      {% set ocorr_rows = [] %}
+      {% for row in ocorrencias_tipo_items[:5] %}
+        {% set _ = ocorr_rows.append([
+          pretty_metric_label(row.get('label', '-')),
+          row.get('value_display', row.get('value_fmt', '0')),
+          row.get('width_pct', 0) ~ '%'
+        ]) %}
+      {% endfor %}
+
+      <div class="gerencial-table-grid">
+        <div>
+          <div class="gerencial-table-title">Top servicos</div>
+          <div class="ds-table-wrap gerencial-table-wrap">
+            <table class="ds-table gerencial-table">
+              <thead>
+                <tr>
+                  <th>Servico</th>
+                  <th>Volume</th>
+                  <th>Unidade</th>
+                  <th>Registros</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% if service_rows %}
+                {% for row in service_rows %}
+                <tr>
+                  <td>{{ row[0] }}</td>
+                  <td>{{ row[1] }}</td>
+                  <td>{{ row[2] or 'un' }}</td>
+                  <td>{{ row[3] }}</td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr><td colspan="4">Sem servicos no recorte.</td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div>
+          <div class="gerencial-table-title">Tipos de ocorrencia</div>
+          <div class="ds-table-wrap gerencial-table-wrap">
+            <table class="ds-table gerencial-table">
+              <thead>
+                <tr>
+                  <th>Tipo</th>
+                  <th>Ocorrencias</th>
+                  <th>Intensidade</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% if ocorr_rows %}
+                {% for row in ocorr_rows %}
+                <tr>
+                  <td>{{ row[0] }}</td>
+                  <td>{{ row[1] }}</td>
+                  <td>{{ row[2] }}</td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr><td colspan="3">Sem ocorrencias no recorte.</td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    {% endcall %}
   </section>
 </div>
 {% endblock %}
@@ -394,7 +490,7 @@
           filterBtn.textContent = 'Ocultar filtros';
         } else {
           filterForm.setAttribute('hidden', '');
-          filterBtn.textContent = 'Filtros';
+          filterBtn.textContent = 'Filtros avancados';
         }
       });
     }
@@ -438,8 +534,7 @@
     activateServiceMode('ambos');
 
     root.querySelectorAll('[data-cat-donut]').forEach(function (donut) {
-      const container = donut.closest('[data-tab-panel]');
-      if (!container) return;
+      const container = donut.closest('[data-tab-panel]') || root;
       const rows = container.querySelectorAll('[data-cat-item]');
       if (!rows.length) return;
 

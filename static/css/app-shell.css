@@ -1079,6 +1079,21 @@ body.auth-shell-mode .field-hint {
   color: #94a3b8;
 }
 
+body.auth-shell-mode .history-page .history-shortcuts {
+  margin-top: 12px;
+}
+
+body.auth-shell-mode .history-page .history-kpi-value--compact {
+  font-size: 16px;
+  line-height: 1.32;
+  letter-spacing: -0.02em;
+  word-break: break-word;
+}
+
+body.auth-shell-mode .history-page .section-lead {
+  max-width: 980px;
+}
+
 body.auth-shell-mode .field label {
   color: #94a3b8;
   font-size: 11px;
@@ -4981,5 +4996,311 @@ body.auth-shell-mode .section {
   }
   .mk-quick-dot {
     animation: none;
+  }
+}
+
+/* ---------- Admin users premium layout ---------- */
+.admin-users-page {
+  display: grid;
+  gap: 18px;
+}
+
+.admin-users-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.admin-users-summary-card {
+  padding: 18px 20px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(14, 20, 33, 0.98), rgba(8, 12, 22, 0.96));
+  box-shadow: 0 14px 26px rgba(4, 8, 15, 0.16);
+}
+
+.admin-users-summary-label,
+.admin-users-meta-label,
+.admin-users-editor-kicker {
+  margin: 0;
+  color: var(--muted-2);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.admin-users-summary-value {
+  display: block;
+  margin-top: 10px;
+  color: var(--text);
+  font-size: 42px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-weight: 700;
+}
+
+.admin-users-summary-note {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.admin-users-notice {
+  border: 1px solid rgba(245, 158, 11, 0.20);
+  background: rgba(113, 78, 34, 0.22);
+  color: #f2dfc0;
+  border-radius: 18px;
+  padding: 14px 16px;
+  box-shadow: 0 14px 26px rgba(4, 8, 15, 0.14);
+}
+
+.admin-users-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(360px, 0.92fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.admin-users-table-wrap {
+  margin-top: 6px;
+}
+
+.admin-users-table thead th {
+  white-space: nowrap;
+}
+
+.admin-users-table tbody tr {
+  transition: background 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+}
+
+.admin-users-table tbody tr:hover {
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.admin-users-table tbody tr.is-selected {
+  background: rgba(59, 130, 246, 0.12);
+  box-shadow: inset 3px 0 0 rgba(96, 165, 250, 0.72);
+}
+
+.admin-users-table tbody tr.is-selected td {
+  color: var(--text-primary);
+}
+
+.admin-users-user-cell {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-users-user-link {
+  color: #f8fbff;
+  font-weight: 700;
+}
+
+.admin-users-user-link:hover {
+  color: #bfdbfe;
+}
+
+.admin-users-user-subtitle {
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.admin-users-status-cell {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-users-role-tag,
+.admin-users-contract-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.admin-users-contract-chip--muted {
+  color: var(--muted);
+}
+
+.admin-users-scope,
+.admin-users-dates,
+.admin-users-row-actions,
+.admin-users-contract-list,
+.admin-users-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-users-scope {
+  flex-direction: column;
+}
+
+.admin-users-scope-label,
+.admin-users-dates span {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.admin-users-contract-list--wrap {
+  width: 100%;
+}
+
+.admin-users-row-action {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-users-empty-state {
+  padding: 20px;
+  border-radius: 18px;
+  border: 1px dashed rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary);
+}
+
+.admin-users-editor {
+  display: grid;
+  gap: 16px;
+}
+
+.admin-users-editor-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.admin-users-editor-title {
+  margin: 6px 0 0;
+  font-size: 30px;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+
+.admin-users-editor-subtitle {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.admin-users-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-users-meta-card,
+.admin-users-scope-detail,
+.admin-users-form {
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.admin-users-meta-card {
+  padding: 16px;
+  display: grid;
+  gap: 8px;
+}
+
+.admin-users-meta-card strong {
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.admin-users-scope-detail {
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.admin-users-form {
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.admin-users-form--footer {
+  margin-bottom: 0;
+}
+
+.admin-users-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-users-field-wide {
+  grid-column: 1 / -1;
+}
+
+.admin-users-form-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.admin-users-multiselect {
+  min-height: 154px;
+  padding: 12px 14px;
+}
+
+.admin-users-form-actions {
+  align-items: center;
+}
+
+.admin-users-form-actions .btn-primary,
+.admin-users-form-actions .btn-soft,
+.admin-users-form-actions .btn-danger {
+  min-height: 44px;
+}
+
+.admin-users-form-actions .btn-soft {
+  color: var(--text);
+}
+
+@media (max-width: 1200px) {
+  .admin-users-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-users-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-users-summary-grid,
+  .admin-users-meta-grid,
+  .admin-users-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-users-editor-head,
+  .admin-users-summary-card {
+    padding: 16px;
+  }
+
+  .admin-users-editor-title {
+    font-size: 24px;
   }
 }

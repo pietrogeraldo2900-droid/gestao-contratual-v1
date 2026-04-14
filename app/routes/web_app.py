@@ -1214,7 +1214,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         payload = dict(defaults)
         payload.update(dict(form_data or {}))
         return render_template(
-            "index.html",
+            "entries/index.html",
             form_data=payload,
             mensagem=str(mensagem or ""),
             error_message=str(error_message or ""),
@@ -1335,7 +1335,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         if auth_service is None:
             return (
                 render_template(
-                    "login.html",
+                    "auth/login.html",
                     title="Login",
                     next_url=next_url,
                     form_data={"email": ""},
@@ -1349,7 +1349,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                 current_role = normalize_role(session.get(SESSION_USER_ROLE_KEY, ""))
                 return redirect(_resolve_next(_default_home_endpoint_for_role(current_role)))
             return render_template(
-                "login.html",
+                "auth/login.html",
                 title="Login",
                 next_url=next_url,
                 form_data={"email": ""},
@@ -1361,7 +1361,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         if not email or not password:
             return (
                 render_template(
-                    "login.html",
+                    "auth/login.html",
                     title="Login",
                     next_url=next_url,
                     form_data={"email": email},
@@ -1375,7 +1375,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         except (UserValidationError, UserAuthError) as exc:
             return (
                 render_template(
-                    "login.html",
+                    "auth/login.html",
                     title="Login",
                     next_url=next_url,
                     form_data={"email": email},
@@ -1387,7 +1387,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             app.logger.exception("Falha no login web")
             return (
                 render_template(
-                    "login.html",
+                    "auth/login.html",
                     title="Login",
                     next_url=next_url,
                     form_data={"email": email},
@@ -1408,7 +1408,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         if auth_service is None:
             return (
                 render_template(
-                    "register.html",
+                    "auth/register.html",
                     title="Cadastro",
                     next_url=next_url,
                     form_data={"email": ""},
@@ -1421,7 +1421,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             if getattr(g, "current_web_user", None):
                 return redirect(next_url)
             return render_template(
-                "register.html",
+                "auth/register.html",
                 title="Cadastro",
                 next_url=next_url,
                 form_data={"email": ""},
@@ -1435,7 +1435,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         if not email or not password or not confirm_password:
             return (
                 render_template(
-                    "register.html",
+                    "auth/register.html",
                     title="Cadastro",
                     next_url=next_url,
                     form_data={"email": email},
@@ -1446,7 +1446,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         if password != confirm_password:
             return (
                 render_template(
-                    "register.html",
+                    "auth/register.html",
                     title="Cadastro",
                     next_url=next_url,
                     form_data={"email": email},
@@ -1460,7 +1460,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         except UserAlreadyExistsError:
             return (
                 render_template(
-                    "register.html",
+                    "auth/register.html",
                     title="Cadastro",
                     next_url=next_url,
                     form_data={"email": email},
@@ -1471,7 +1471,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         except UserValidationError as exc:
             return (
                 render_template(
-                    "register.html",
+                    "auth/register.html",
                     title="Cadastro",
                     next_url=next_url,
                     form_data={"email": email},
@@ -1483,7 +1483,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             app.logger.exception("Falha no cadastro web")
             return (
                 render_template(
-                    "register.html",
+                    "auth/register.html",
                     title="Cadastro",
                     next_url=next_url,
                     form_data={"email": email},
@@ -1571,7 +1571,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                 )
 
         return render_template(
-            "dashboard.html",
+            "dashboard/dashboard.html",
             title="Dashboard",
             warning_message=warning_message,
             empty_state_message=empty_state_message,
@@ -1590,7 +1590,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         created_at = str(user.get("created_at", "") or "").strip()
         account_status = "Sessao web ativa" if session.get(SESSION_USER_ID_KEY) else "Sessao indisponivel"
         return render_template(
-            "profile.html",
+            "account/profile.html",
             title="Perfil",
             user=user,
             created_at=created_at,
@@ -1608,7 +1608,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         user = dict(getattr(g, "current_web_user", None) or {})
         snapshot = _read_workspace_snapshot(report_limit=3)
         return render_template(
-            "settings.html",
+            "account/settings.html",
             title="Configuracoes",
             user=user,
             token_active=bool(session.get(SESSION_AUTH_TOKEN_KEY)),
@@ -1627,7 +1627,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         if repo is None:
             return (
                 render_template(
-                    "admin_users.html",
+                    "admin/admin_users.html",
                     title="Usuarios",
                     users=[],
                     status_filter="",
@@ -1636,8 +1636,43 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                 503,
             )
         status_filter = str(request.args.get("status", "") or "").strip().lower()
+        all_users = repo.list_users(None)
         users = repo.list_users(status_filter if status_filter else None)
         contract_options = _build_contract_options(limit=1000)
+        contract_label_map: dict[int, str] = {}
+        for item in contract_options:
+            try:
+                contract_id = int(str(item.get("id", "") or "").strip())
+            except Exception:
+                continue
+            label = str(item.get("label", "") or "").strip()
+            if contract_id > 0 and label:
+                contract_label_map[contract_id] = label
+
+        selected_user = None
+        selected_user_id_raw = str(request.args.get("user_id", "") or "").strip()
+        if selected_user_id_raw:
+            try:
+                selected_user_id = int(selected_user_id_raw)
+            except Exception:
+                selected_user_id = 0
+            if selected_user_id > 0:
+                try:
+                    selected_user = repo.get_user_by_id(selected_user_id)
+                except Exception as exc:
+                    app.logger.warning("Falha ao carregar usuario selecionado na tela de usuarios: %s", exc)
+        if selected_user is None:
+            selected_user = next(
+                (user for user in users if str(user.get("status", "") or "").strip().lower() == "pending"),
+                None,
+            )
+        if selected_user is None and users:
+            selected_user = users[0]
+
+        status_counts = Counter(
+            str(user.get("status", "") or "").strip().lower() or "unknown"
+            for user in all_users
+        )
 
         contractor_options: list[str] = []
         contracts_service = _active_contract_service()
@@ -1658,15 +1693,20 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                 app.logger.warning("Falha ao carregar opcoes de contratada na tela de usuarios: %s", exc)
 
         return render_template(
-            "admin_users.html",
+            "admin/admin_users.html",
             title="Usuarios",
+            total_users_count=len(all_users),
+            visible_users_count=len(users),
+            status_counts=dict(status_counts),
             users=users,
             status_filter=status_filter,
             error_message="",
             roles=[ROLE_SUPERADMIN, ROLE_ADMIN, ROLE_OPERADOR, ROLE_LEITOR, ROLE_CONTRATADA, ROLE_FISCAL],
             statuses=["pending", "active", "rejected", "disabled"],
             contract_options=contract_options,
+            contract_label_map=contract_label_map,
             contractor_options=contractor_options,
+            selected_user=selected_user,
         )
 
     @app.post("/admin/usuarios/<int:user_id>/update")
@@ -1872,7 +1912,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             "doc_reports": len(report_artifacts),
         }
         return render_template(
-            "results.html",
+            "results/results.html",
             title="Resultados gerados",
             rows=rows,
             summary=summary,
@@ -1892,7 +1932,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                 row["contract_label"] = resolved_label
 
         return render_template(
-            "result_detail.html",
+            "results/result_detail.html",
             title="Resultado do processamento",
             row=row,
         )
@@ -2019,7 +2059,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         }
 
         return render_template(
-            "base_mestra.html",
+            "catalog/base_mestra.html",
             title="Base Mestra",
             rows=rows,
             filters=filters,
@@ -2149,7 +2189,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             ]
 
         return render_template(
-            "contratada_declaracao_form.html",
+            "contractor/contratada_declaracao_form.html",
             title="Declaracao diaria de execucao",
             form_data=payload,
             items=item_rows,
@@ -2250,7 +2290,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                 for _ in range(4)
             ]
         return render_template(
-            "vistoria_form.html",
+            "inspection/vistoria_form.html",
             title="Nova vistoria",
             form_data=payload,
             items=item_rows,
@@ -2280,7 +2320,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         if declarations_service is None:
             return (
                 render_template(
-                    "contratada_declaracoes_list.html",
+                    "contractor/contratada_declaracoes_list.html",
                     title="Declaracoes diarias",
                     rows=[],
                     stats={"total": 0, "com_ficha": 0, "sem_ficha": 0},
@@ -2318,7 +2358,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             app.logger.warning("Falha ao carregar declaracoes diarias: %s", exc)
             return (
                 render_template(
-                    "contratada_declaracoes_list.html",
+                    "contractor/contratada_declaracoes_list.html",
                     title="Declaracoes diarias",
                     rows=[],
                     stats={"total": 0, "com_ficha": 0, "sem_ficha": 0},
@@ -2335,7 +2375,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             "sem_ficha": sum(1 for row in rows if not row.get("generated_inspection_id")),
         }
         return render_template(
-            "contratada_declaracoes_list.html",
+            "contractor/contratada_declaracoes_list.html",
             title="Declaracoes diarias",
             rows=rows,
             stats=stats,
@@ -2455,7 +2495,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                 return _deny_scoped_access()
 
         return render_template(
-            "contratada_declaracao_detail.html",
+            "contractor/contratada_declaracao_detail.html",
             title=f"Declaracao diaria #{declaration.id}",
             declaration=declaration.to_dict(),
             items=[item.to_dict() for item in items],
@@ -2471,7 +2511,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         if inspections_service is None:
             return (
                 render_template(
-                    "vistorias_list.html",
+                    "inspection/vistorias_list.html",
                     title="Vistorias",
                     rows=[],
                     filters={"status": "", "contract_id": "", "date_from": "", "date_to": "", "q": ""},
@@ -2495,7 +2535,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         if current_role == ROLE_FISCAL and not scoped_contract_ids:
             return (
                 render_template(
-                    "vistorias_list.html",
+                    "inspection/vistorias_list.html",
                     title="Vistorias",
                     rows=[],
                     filters=filters,
@@ -2545,7 +2585,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             app.logger.warning("Falha ao carregar vistorias: %s", exc)
             return (
                 render_template(
-                    "vistorias_list.html",
+                    "inspection/vistorias_list.html",
                     title="Vistorias",
                     rows=[],
                     filters=filters,
@@ -2557,7 +2597,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             )
 
         return render_template(
-            "vistorias_list.html",
+            "inspection/vistorias_list.html",
             title="Vistorias",
             rows=rows,
             filters=filters,
@@ -2657,7 +2697,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             "conforme": sum(1 for item in rows if str(item.get("status", "") or "") == "conforme"),
         }
         return render_template(
-            "vistoria_detail.html",
+            "inspection/vistoria_detail.html",
             title=f"Vistoria #{inspection.id}",
             inspection=inspection.to_dict(),
             items=rows,
@@ -2718,7 +2758,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                 abort(403)
 
         return render_template(
-            "vistoria_report.html",
+            "inspection/vistoria_report.html",
             title=f"Relatorio de vistoria #{inspection.id}",
             inspection=inspection.to_dict(),
             items=[item.to_dict() for item in items],
@@ -2740,7 +2780,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         if conference is None:
             return (
                 render_template(
-                    "conferencia_pendentes.html",
+                    "conference/conferencia_pendentes.html",
                     title="Conferencia Operacional",
                     rows=[],
                     stats={"total": 0},
@@ -2759,7 +2799,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             app.logger.warning("Falha ao carregar fila de conferencia operacional: %s", exc)
             return (
                 render_template(
-                    "conferencia_pendentes.html",
+                    "conference/conferencia_pendentes.html",
                     title="Conferencia Operacional",
                     rows=[],
                     stats={"total": 0},
@@ -2769,7 +2809,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             )
 
         return render_template(
-            "conferencia_pendentes.html",
+            "conference/conferencia_pendentes.html",
             title="Conferencia Operacional",
             rows=rows,
             stats={"total": len(rows)},
@@ -2799,7 +2839,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             abort(404)
 
         return render_template(
-            "conferencia_ficha_detail.html",
+            "conference/conferencia_ficha_detail.html",
             title=f"Ficha #{payload.get('inspection', {}).get('id', inspection_id)}",
             inspection=dict(payload.get("inspection", {}) or {}),
             items=list(payload.get("items", []) or []),
@@ -2831,7 +2871,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             abort(404)
 
         return render_template(
-            "conferencia_campo_mobile.html",
+            "conference/conferencia_campo_mobile.html",
             title=f"Conferencia em campo #{inspection_id}",
             inspection=dict(payload.get("inspection", {}) or {}),
             session=dict(payload.get("session", {}) or {}),
@@ -2941,7 +2981,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             abort(404)
 
         return render_template(
-            "conferencia_item_campo_form.html",
+            "conference/conferencia_item_campo_form.html",
             title=f"Adicionar item em campo #{inspection_id}",
             inspection=dict(payload.get("inspection", {}) or {}),
             session=dict(payload.get("session", {}) or {}),
@@ -3024,7 +3064,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             abort(404)
 
         return render_template(
-            "conferencia_resumo.html",
+            "conference/conferencia_resumo.html",
             title=f"Resumo da conferencia #{inspection_id}",
             inspection=dict(payload.get("inspection", {}) or {}),
             session=dict(payload.get("session", {}) or {}),
@@ -3095,7 +3135,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         payload = dict(defaults)
         payload.update(dict(form_data or {}))
         return render_template(
-            "contract_form.html",
+            "contracts/contract_form.html",
             title="Novo contrato",
             form_data=payload,
             error_message=str(error_message or ""),
@@ -3108,7 +3148,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         if contracts_service is None:
             return (
                 render_template(
-                    "contracts_list.html",
+                    "contracts/contracts_list.html",
                     title="Contratos",
                     contracts=[],
                     error_message=(
@@ -3126,7 +3166,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             app.logger.warning("Falha ao listar contratos na interface web: %s", exc)
             return (
                 render_template(
-                    "contracts_list.html",
+                    "contracts/contracts_list.html",
                     title="Contratos",
                     contracts=[],
                     error_message="Nao foi possivel carregar os contratos agora. Tente novamente em instantes.",
@@ -3135,7 +3175,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             )
 
         return render_template(
-            "contracts_list.html",
+            "contracts/contracts_list.html",
             title="Contratos",
             contracts=rows,
             error_message="",
@@ -3259,7 +3299,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         rows = service.list_nucleo_registry(search=search, status=status)
 
         return render_template(
-            "nucleos.html",
+            "catalog/nucleos.html",
             rows=rows,
             q=search,
             status_filter=status,
@@ -3292,7 +3332,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
 
         if error_message:
             return render_template(
-                "nucleos.html",
+                "catalog/nucleos.html",
                 rows=rows,
                 q=search,
                 status_filter=status,
@@ -3322,7 +3362,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         if repo is None:
             return (
                 render_template(
-                    "servicos.html",
+                    "catalog/servicos.html",
                     title="Servicos",
                     q=search,
                     services=[],
@@ -3345,7 +3385,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             recent_items_limit=30,
         )
         return render_template(
-            "servicos.html",
+            "catalog/servicos.html",
             title="Servicos",
             q=search,
             services=services_rows,
@@ -3520,7 +3560,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         )
 
         return render_template(
-            "review.html",
+            "results/review.html",
             draft_id=draft_id,
             parser_mode=preview_data["parser_mode"],
             main_fields=preview_data["main_fields"],
@@ -3646,7 +3686,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
                 incomplete_rows=incomplete_rows,
             )
             return render_template(
-                "review.html",
+                "results/review.html",
                 draft_id=draft_id,
                 parser_mode=str(draft.get("parser_mode", "desconhecido") or "desconhecido"),
                 main_fields=main_fields,
@@ -3723,7 +3763,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             "data": management_sync or {},
         }
 
-        return render_template("result.html", result=result)
+        return render_template("results/result.html", result=result)
 
     @app.get("/history")
     def history():
@@ -3831,7 +3871,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         unmapped_dashboard = service.build_unmapped_dashboard(window_days=nm_days, recent_runs=nm_runs)
 
         return render_template(
-            "history.html",
+            "results/history.html",
             rows=rows,
             q=q_raw,
             obra_data_filter=obra_data_filter_raw,
@@ -4099,7 +4139,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
         report = _build_institutional_report_with_fallback(filters)
 
         return render_template(
-            "institucional.html",
+            "institutional/institucional.html",
             report=report,
             obra_from=filters["obra_from"],
             obra_to=filters["obra_to"],
@@ -4126,7 +4166,7 @@ def create_app(test_config: dict | None = None, settings: AppSettings | None = N
             response.headers["Content-Disposition"] = f"attachment; filename={filename}"
             return response
 
-        html_doc = render_template("institucional_export.html", report=report)
+        html_doc = render_template("institutional/institucional_export.html", report=report)
         filename = f"relatorio_institucional_{datetime.now():%Y%m%d_%H%M%S}.html"
         response = make_response(html_doc)
         response.headers["Content-Type"] = "text/html; charset=utf-8"
@@ -4151,6 +4191,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
 
 
