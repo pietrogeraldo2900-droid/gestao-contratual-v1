@@ -1,11 +1,22 @@
 {% extends "base.html" %}
+{% from "design_system/components.html" import status_badge %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system/foundations.css') }}?v=20260415">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/conference.css') }}?v=20260415">
+{% endblock %}
 {% block content %}
+<div class="conference-premium-page conference-field-page">
 <section class="page-hero compact">
   <div class="page-hero-grid">
     <div>
       <div class="hero-eyebrow">Conferencia em campo</div>
       <h2 class="hero-title">{{ inspection.titulo or ('Ficha #' ~ inspection.id) }}</h2>
       <p class="hero-subtitle">{{ inspection.contract_label or 'Sem contrato' }} - {{ inspection.data_vistoria or '-' }}</p>
+      <div class="hero-chip-row">
+        {{ status_badge('Rascunho de campo', tone='info') }}
+        {{ status_badge('Planejados: ' ~ (planned_items|length), tone='success') }}
+        {{ status_badge('Encontrados: ' ~ (field_items|length), tone='warning') }}
+      </div>
     </div>
     <div class="hero-stat-grid">
       <div class="hero-stat">
@@ -38,7 +49,7 @@
                 <h4>{{ item.item_titulo or ('Item #' ~ loop.index) }}</h4>
                 <p>{{ item.area or 'Area nao informada' }}</p>
               </div>
-              <span class="badge info">Declarada: {{ item.quantidade_declarada or '0' }}</span>
+              {{ status_badge('Declarada: ' ~ (item.quantidade_declarada or '0'), tone='info') }}
             </div>
             {% if item.descricao %}
               <p class="conference-item-desc">{{ item.descricao }}</p>
@@ -103,7 +114,7 @@
                   <h4 class="conference-card-title">{{ item.item_titulo or ('Item #' ~ loop.index) }}</h4>
                   <p class="conference-card-subtitle">{{ item.area or 'Area nao informada' }}</p>
                 </div>
-                <span class="badge warning">{{ item.status or 'observacao' }}</span>
+                {{ status_badge(item.status or 'observacao', tone='warning') }}
               </div>
               <div class="conference-meta">
                 <span>Qtd verificada: {{ item.quantidade_verificada or '0' }}</span>
@@ -170,4 +181,5 @@
   })();
 </script>
 {% endif %}
+</div>
 {% endblock %}

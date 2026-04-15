@@ -1,11 +1,22 @@
 {% extends "base.html" %}
+{% from "design_system/components.html" import status_badge %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system/foundations.css') }}?v=20260415">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/contracts.css') }}?v=20260415">
+{% endblock %}
 {% block content %}
+<div class="contracts-premium-page contracts-form-page">
 <section class="page-hero compact">
   <div class="page-hero-grid">
     <div>
       <div class="hero-eyebrow">Novo registro</div>
       <h2 class="hero-title">Cadastrar contrato</h2>
       <p class="hero-subtitle">Contrato como cadastro mestre: preencha os campos essenciais e mantenha o contexto pronto para vincular relatorios sem retrabalho.</p>
+      <div class="hero-chip-row">
+        {{ status_badge('Formulario premium', tone='info') }}
+        {{ status_badge('Cadastro unico', tone='success') }}
+        {{ status_badge('Base de relatorios', tone='warning') }}
+      </div>
     </div>
     <div class="hero-stat-grid">
       <div class="hero-stat">
@@ -148,4 +159,5 @@
     </form>
   </div>
 </section>
+</div>
 {% endblock %}

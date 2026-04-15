@@ -1,9 +1,14 @@
 {% extends "base.html" %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system/foundations.css') }}?v=20260415">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/results.css') }}?v=20260415">
+{% endblock %}
 {% block content %}
 {% set audit = result.main_field_audit or {} %}
 {% set autopreenchidos = audit.get('autopreenchidos', []) %}
 {% set alterados = audit.get('alterados', []) %}
 {% set correcoes = result.correcoes_manuais or [] %}
+<div class="results-premium-page results-final-page">
 <h2>Geracao final</h2>
 
 <section class="entry-stepper" aria-label="Etapas da entrada">
@@ -340,4 +345,5 @@
   showNext();
 })();
 </script>
+</div>
 {% endblock %}

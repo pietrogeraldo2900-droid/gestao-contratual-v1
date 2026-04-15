@@ -1,4 +1,8 @@
 {% extends "base.html" %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system/foundations.css') }}?v=20260415">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/results.css') }}?v=20260415">
+{% endblock %}
 {% block content %}
 {% set has_missing_main = missing_main_fields|length > 0 %}
 {% set has_missing_nucleo = 'nucleo' in missing_main_fields %}
@@ -11,7 +15,7 @@
 {% set info_alerts = alert_groups.get('info', []) %}
 {% set municipio_status = municipio_profile_status or {} %}
 {% set service_options = (service_catalog.get('options', []) if service_catalog else []) %}
-<div class="review-page-shell">
+<div class="review-page-shell results-premium-page results-review-page">
 <section class="entry-stepper" aria-label="Etapas da entrada">
   <article class="entry-step is-complete" data-entry-step="1">
     <span class="entry-step-index">1</span>

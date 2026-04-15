@@ -1,11 +1,22 @@
 {% extends "base.html" %}
+{% from "design_system/components.html" import status_badge %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system/foundations.css') }}?v=20260415">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/conference.css') }}?v=20260415">
+{% endblock %}
 {% block content %}
+<div class="conference-premium-page conference-pending-page">
 <section class="page-hero compact">
   <div class="page-hero-grid">
     <div>
       <div class="hero-eyebrow">Conferencia operacional</div>
       <h2 class="hero-title">Fila do fiscal</h2>
       <p class="hero-subtitle">Fichas pendentes vinculadas automaticamente aos contratos do fiscal logado.</p>
+      <div class="hero-chip-row">
+        {{ status_badge('Fila ativa', tone='info') }}
+        {{ status_badge('Pendentes: ' ~ (stats.total or 0), tone='warning') }}
+        {{ status_badge('Fluxo protegido', tone='success') }}
+      </div>
     </div>
     <div class="hero-stat-grid">
       <div class="hero-stat">
@@ -33,7 +44,7 @@
                 <h4 class="conference-card-title">{{ row.titulo or ('Ficha #' ~ row.id) }}</h4>
                 <p class="conference-card-subtitle">{{ row.contract_label or 'Sem contrato vinculado' }}</p>
               </div>
-              <span class="badge info">{{ row.status or 'aberta' }}</span>
+              {{ status_badge(row.status or 'aberta', tone='info') }}
             </div>
             <div class="conference-meta">
               <span>Data: {{ row.data_vistoria or '-' }}</span>
@@ -53,4 +64,5 @@
     {% endif %}
   </div>
 </section>
+</div>
 {% endblock %}

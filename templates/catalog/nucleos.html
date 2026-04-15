@@ -1,5 +1,10 @@
 {% extends "base.html" %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system/foundations.css') }}?v=20260415">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/catalog.css') }}?v=20260415">
+{% endblock %}
 {% block content %}
+<div class="catalog-premium-page catalog-nucleos-page">
 <section class="page-hero compact">
   <div class="page-hero-grid">
     <div>
@@ -39,7 +44,7 @@
   <div class="body">
     <p class="section-lead">Use apenas o filtro de status para reduzir ruido visual na consulta do cadastro atual.</p>
     <input type="hidden" name="q" value="">
-    <div class="field" style="max-width: 360px;">
+    <div class="field catalog-filter-field">
       <label>Status</label>
       <select name="status">
         <option value="" {% if not status_filter %}selected{% endif %}>Todos</option>
@@ -48,8 +53,8 @@
       </select>
     </div>
   </div>
-  <div class="body" style="padding-top:0;">
-    <div class="actions" style="margin-top:0;">
+  <div class="body catalog-filter-actions-body">
+    <div class="actions catalog-inline-actions">
       <button type="submit">Aplicar filtros</button>
       <a href="{{ url_for('nucleos') }}"><button type="button" class="secondary">Limpar</button></a>
     </div>
@@ -94,22 +99,22 @@
     <div class="grid-2">
       <div class="field">
         <label>Aliases / variacoes</label>
-        <textarea name="aliases" style="min-height:120px;" placeholder="Um por linha ou separado por / e ;">{{ form_data.aliases }}</textarea>
+        <textarea name="aliases" class="catalog-textarea catalog-textarea--md" placeholder="Um por linha ou separado por / e ;">{{ form_data.aliases }}</textarea>
       </div>
       <div class="field">
         <label>Observacoes</label>
-        <textarea name="observacoes" style="min-height:120px;" placeholder="Observacoes internas opcionais">{{ form_data.observacoes }}</textarea>
+        <textarea name="observacoes" class="catalog-textarea catalog-textarea--md" placeholder="Observacoes internas opcionais">{{ form_data.observacoes }}</textarea>
       </div>
     </div>
 
     <div class="grid-2">
       <div class="field">
         <label>Logradouros padrao</label>
-        <textarea name="logradouros_padrao" style="min-height:110px;" placeholder="Um por linha">{{ form_data.logradouros_padrao }}</textarea>
+        <textarea name="logradouros_padrao" class="catalog-textarea catalog-textarea--sm" placeholder="Um por linha">{{ form_data.logradouros_padrao }}</textarea>
       </div>
       <div class="field">
         <label>Equipes padrao</label>
-        <textarea name="equipes_padrao" style="min-height:110px;" placeholder="Uma por linha">{{ form_data.equipes_padrao }}</textarea>
+        <textarea name="equipes_padrao" class="catalog-textarea catalog-textarea--sm" placeholder="Uma por linha">{{ form_data.equipes_padrao }}</textarea>
       </div>
     </div>
 
@@ -148,5 +153,6 @@
       <p class="muted">Nenhum nucleo encontrado para os filtros atuais.</p>
     {% endif %}
   </div>
+</div>
 </div>
 {% endblock %}

@@ -511,6 +511,7 @@ EXECUCAO:
         self.assertEqual(["Carlos"], groups[0]["equipes"])
 
     def test_cadastro_mestre_nucleos_permite_criar_e_editar(self):
+        self._auth_institutional_session()
         resp = self.client.post(
             "/nucleos",
             data={

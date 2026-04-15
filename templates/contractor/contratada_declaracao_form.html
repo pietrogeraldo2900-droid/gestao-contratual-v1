@@ -1,5 +1,11 @@
 {% extends "base.html" %}
+{% from "design_system/components.html" import status_badge %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system/foundations.css') }}?v=20260415">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/contractor.css') }}?v=20260415">
+{% endblock %}
 {% block content %}
+<div class="contractor-premium-page contractor-form-page">
 <section class="page-hero compact">
   <div class="page-hero-grid">
     <div>
@@ -8,6 +14,11 @@
       <p class="hero-subtitle">
         A declaracao diaria nao compoe a base oficial. Ela e usada somente como origem para gerar a Ficha de Conferencia.
       </p>
+      <div class="hero-chip-row">
+        {{ status_badge('Envio unico', tone='info') }}
+        {{ status_badge('Servico catalogado: ' ~ (service_catalog_options|length), tone='success') }}
+        {{ status_badge('Itens diarios', tone='warning') }}
+      </div>
     </div>
     <div class="hero-stat-grid">
       <div class="hero-stat">
@@ -153,6 +164,7 @@
     <a href="{{ url_for('contratada_declaracoes_list') }}"><button type="button" class="secondary">Cancelar</button></a>
   </div>
 </form>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}

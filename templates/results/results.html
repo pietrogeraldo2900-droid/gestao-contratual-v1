@@ -1,5 +1,10 @@
 {% extends "base.html" %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system/foundations.css') }}?v=20260415">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/results.css') }}?v=20260415">
+{% endblock %}
 {% block content %}
+<div class="results-premium-page results-list-page">
 <section class="page-hero compact">
   <div class="page-hero-grid">
     <div>
@@ -70,7 +75,7 @@
                 <td>{{ item.file_name }}</td>
                 <td>{{ (item.file_ext or '-').upper() }}</td>
                 <td>
-                  <div class="actions" style="margin-top:0;">
+                  <div class="actions results-table-actions">
                     <a href="{{ url_for('result_file', relative_path=item.file_relative_path) }}"><button type="button" class="secondary small">Abrir</button></a>
                     <a href="{{ url_for('result_file', relative_path=item.file_relative_path, download=1) }}"><button type="button" class="small">Baixar</button></a>
                     {% if item.result_id %}
@@ -198,7 +203,7 @@
                   {% endif %}
                 </td>
                 <td>
-                  <div class="actions" style="margin-top:0;">
+                  <div class="actions results-table-actions">
                     {% if row.result_id %}
                       <a href="{{ url_for('result_detail', output_name=row.result_id) }}"><button type="button" class="secondary small">Visualizar</button></a>
                     {% endif %}
@@ -309,4 +314,5 @@
   updateView();
 })();
 </script>
+</div>
 {% endblock %}

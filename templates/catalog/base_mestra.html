@@ -1,5 +1,10 @@
 {% extends "base.html" %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system/foundations.css') }}?v=20260415">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/catalog.css') }}?v=20260415">
+{% endblock %}
 {% block content %}
+<div class="catalog-premium-page catalog-base-page">
 <section class="page-hero compact">
   <div class="page-hero-grid">
     <div>
@@ -19,7 +24,7 @@
 <section class="section">
   <h3>Status da consulta</h3>
   <div class="body">
-    <div class="dashboard-empty" style="border-color:rgba(255,107,129,.35); color:#ffd6dc;">{{ db_error }}</div>
+    <div class="dashboard-empty catalog-db-error">{{ db_error }}</div>
   </div>
 </section>
 {% endif %}
@@ -158,4 +163,5 @@
     {% endif %}
   </div>
 </section>
+</div>
 {% endblock %}

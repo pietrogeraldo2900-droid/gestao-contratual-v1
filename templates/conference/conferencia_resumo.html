@@ -1,11 +1,22 @@
 {% extends "base.html" %}
+{% from "design_system/components.html" import status_badge %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system/foundations.css') }}?v=20260415">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/conference.css') }}?v=20260415">
+{% endblock %}
 {% block content %}
+<div class="conference-premium-page conference-summary-page">
 <section class="page-hero compact">
   <div class="page-hero-grid">
     <div>
       <div class="hero-eyebrow">Conferencia operacional</div>
       <h2 class="hero-title">Resumo final da conferencia</h2>
       <p class="hero-subtitle">{{ inspection.titulo or ('Ficha #' ~ inspection.id) }} - {{ inspection.contract_label or 'Sem contrato' }}</p>
+      <div class="hero-chip-row">
+        {{ status_badge('Planejados: ' ~ (summary.planned_count or 0), tone='info') }}
+        {{ status_badge('Campo: ' ~ (summary.field_found_count or 0), tone='warning') }}
+        {{ status_badge('Pronto para concluir: ' ~ ('sim' if summary.ready_to_conclude else 'nao'), tone='success') }}
+      </div>
     </div>
     <div class="hero-stat-grid">
       <div class="hero-stat">
@@ -82,7 +93,7 @@
             {% for item in planned_items %}
               <tr>
                 <td>{{ item.ordem or loop.index }}</td>
-                <td><span class="badge info">planejado</span></td>
+                <td>{{ status_badge('planejado', tone='info') }}</td>
                 <td>{{ item.area or '-' }}</td>
                 <td>{{ item.item_titulo or '-' }}</td>
                 <td>{{ item.status or 'pendente' }}</td>
@@ -94,7 +105,7 @@
             {% for item in field_items %}
               <tr>
                 <td>{{ item.ordem or loop.index }}</td>
-                <td><span class="badge warning">campo</span></td>
+                <td>{{ status_badge('campo', tone='warning') }}</td>
                 <td>{{ item.area or '-' }}</td>
                 <td>{{ item.item_titulo or '-' }}</td>
                 <td>{{ item.status or 'observacao' }}</td>
@@ -139,4 +150,5 @@
     </form>
   </div>
 </section>
+</div>
 {% endblock %}

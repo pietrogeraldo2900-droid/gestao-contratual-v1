@@ -4,9 +4,8 @@
 {% block title %}Painel Gerencial{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system/tokens.css') }}?v=20260414">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system/foundations.css') }}?v=20260414">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/gerencial.css') }}?v=20260414">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system/foundations.css') }}?v=20260415">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/gerencial.css') }}?v=20260415">
 {% endblock %}
 
 {% block content %}
@@ -358,8 +357,8 @@
 
   <section class="gerencial-lower-grid">
     {% call premium_panel(
-      eyebrow='Graficos leves',
-      title='Evolucao do volume',
+      eyebrow='Gráficos executivos',
+      title='Evolução de processamentos por período',
       subtitle='Acompanhamento enxuto da tendencia mais recente entregue pelo BI MVP, com foco em leitura rapida.'
     ) %}
       {% if timeline_items %}
@@ -390,7 +389,7 @@
     {% call premium_panel(
       eyebrow='Tabelas e registros',
       title='Top servicos e ocorrencias',
-      subtitle='Listas curtas para leitura executiva, sem ruido visual e com densidade de informacao controlada.'
+      subtitle='Mapeado x não mapeado, listas curtas para leitura executiva, sem ruido visual e com densidade de informacao controlada.'
     ) %}
       {% set service_rows = [] %}
       {% for row in top_servicos_items[:5] %}

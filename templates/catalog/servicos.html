@@ -1,25 +1,54 @@
 {% extends "base.html" %}
+{% from "design_system/components.html" import status_badge %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system/foundations.css') }}?v=20260415">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/catalog.css') }}?v=20260415">
+{% endblock %}
 {% block content %}
+<div class="catalog-premium-page catalog-servicos-page">
 <section class="section">
   <h3>Cadastro de servicos</h3>
   <div class="body">
     <p class="muted">Cadastre servicos oficiais e aliases para reduzir itens com servico_nao_mapeado nas proximas entradas.</p>
+    <div class="hero-chip-row">
+      {{ status_badge('Mapeamento premium', tone='info') }}
+      {{ status_badge('Servicos: ' ~ (services|length), tone='success') }}
+      {{ status_badge('Aliases: ' ~ (aliases|length), tone='info') }}
+      {{ status_badge('Nao mapeados: ' ~ (unmapped_dashboard.top_terms|length), tone='warning') }}
+    </div>
+    <div class="hero-stat-grid catalog-hero-stats">
+      <article class="hero-stat">
+        <div class="hero-stat-label">Base oficial</div>
+        <div class="hero-stat-value">{{ services|length }}</div>
+        <div class="hero-stat-subtitle">Servicos cadastrados</div>
+      </article>
+      <article class="hero-stat">
+        <div class="hero-stat-label">Aliases</div>
+        <div class="hero-stat-value">{{ aliases|length }}</div>
+        <div class="hero-stat-subtitle">Mapeamentos ativos</div>
+      </article>
+      <article class="hero-stat">
+        <div class="hero-stat-label">Termos em alerta</div>
+        <div class="hero-stat-value">{{ unmapped_dashboard.top_terms|length }}</div>
+        <div class="hero-stat-subtitle">Janela atual</div>
+      </article>
+    </div>
     {% if error_message %}
       <div class="notice warning">{{ error_message }}</div>
     {% endif %}
-    <form method="get" action="{{ url_for('servicos') }}" class="grid-2" style="margin-top:12px;">
+    <form method="get" action="{{ url_for('servicos') }}" class="grid-2 catalog-filter-form">
       <div class="field">
         <label>Busca</label>
         <input name="q" value="{{ q }}" placeholder="Servico, alias ou categoria">
       </div>
       <div class="field">
         <label>Janela (dias) / Runs</label>
-        <div class="grid-2" style="gap:8px;">
+        <div class="grid-2 catalog-tight-grid">
           <input type="number" min="1" max="3650" name="nm_days" value="{{ nm_days }}" placeholder="Dias">
           <input type="number" min="10" max="5000" name="nm_runs" value="{{ nm_runs }}" placeholder="Runs">
         </div>
       </div>
-      <div class="actions" style="align-items:flex-end;">
+      <div class="actions catalog-form-actions">
         <button type="submit">Filtrar</button>
         <button type="submit" formaction="{{ url_for('servicos_bootstrap') }}" formmethod="post">Mapear automatico</button>
         <a href="{{ url_for('servicos') }}"><button type="button" class="secondary">Limpar</button></a>
@@ -47,7 +76,7 @@
         <label>Unidade padrao</label>
         <input name="unidade_padrao" placeholder="Ex.: m ou un">
       </div>
-      <div class="actions" style="align-items:flex-end;">
+      <div class="actions catalog-form-actions">
         <button type="submit">Salvar servico</button>
       </div>
     </form>
@@ -83,7 +112,7 @@
         <label>Unidade padrao (opcional)</label>
         <input name="unidade_padrao" placeholder="Ex.: m ou un">
       </div>
-      <div class="actions" style="align-items:flex-end;">
+      <div class="actions catalog-form-actions">
         <button type="submit">Salvar alias</button>
       </div>
     </form>
@@ -112,7 +141,7 @@
                 <td class="text-right">{{ row.ocorrencias }}</td>
                 <td>{{ row.contexto_recorrente or '-' }}</td>
                 <td>
-                  <form method="post" action="{{ url_for('servicos_alias_upsert') }}" class="actions" style="gap:8px; margin:0;">
+                  <form method="post" action="{{ url_for('servicos_alias_upsert') }}" class="actions catalog-inline-form">
                     <input type="hidden" name="q" value="{{ q }}">
                     <input type="hidden" name="nm_days" value="{{ nm_days }}">
                     <input type="hidden" name="nm_runs" value="{{ nm_runs }}">
@@ -163,7 +192,7 @@
                 <td><strong>{{ row.servico_normalizado or row.servico_bruto or row.termo }}</strong></td>
                 <td>{{ row.contexto or '-' }}</td>
                 <td>
-                  <form method="post" action="{{ url_for('servicos_alias_upsert') }}" class="actions" style="gap:8px; margin:0;">
+                  <form method="post" action="{{ url_for('servicos_alias_upsert') }}" class="actions catalog-inline-form">
                     <input type="hidden" name="q" value="{{ q }}">
                     <input type="hidden" name="nm_days" value="{{ nm_days }}">
                     <input type="hidden" name="nm_runs" value="{{ nm_runs }}">
@@ -240,7 +269,7 @@
             <td>{{ row.source or '-' }}</td>
             <td>{{ row.updated_at or '-' }}</td>
             <td>
-              <form method="post" action="{{ url_for('servicos_alias_upsert') }}" class="actions" style="gap:8px; margin:0;">
+              <form method="post" action="{{ url_for('servicos_alias_upsert') }}" class="actions catalog-inline-form">
                 <input type="hidden" name="q" value="{{ q }}">
                 <input type="hidden" name="nm_days" value="{{ nm_days }}">
                 <input type="hidden" name="nm_runs" value="{{ nm_runs }}">
@@ -263,4 +292,5 @@
     </table>
   </div>
 </section>
+</div>
 {% endblock %}

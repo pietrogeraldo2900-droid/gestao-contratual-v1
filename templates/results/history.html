@@ -1,4 +1,8 @@
 {% extends "base.html" %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system/foundations.css') }}?v=20260415">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/results.css') }}?v=20260415">
+{% endblock %}
 {% block content %}
 {% set is_occurrences = alertas_filter == 'com_alerta' %}
 {% set page_title = 'Ocorrencias operacionais' if is_occurrences else 'Historico operacional' %}
@@ -6,7 +10,7 @@
 {% set page_mode_chip = 'Somente com alerta' if is_occurrences else 'Historico completo' %}
 {% set anchor_query = url_for('history', nm_days=7, nm_runs=120, alertas='com_alerta') if is_occurrences else url_for('history', nm_days=7, nm_runs=120) %}
 
-<div class="history-page">
+<div class="history-page results-premium-page results-history-page">
   <section class="page-hero compact">
     <div class="page-hero-grid">
       <div>

@@ -1,11 +1,22 @@
 {% extends "base.html" %}
+{% from "design_system/components.html" import status_badge %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system/foundations.css') }}?v=20260415">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/inspection.css') }}?v=20260415">
+{% endblock %}
 {% block content %}
+<div class="inspection-premium-page inspection-form-page">
 <section class="page-hero compact">
   <div class="page-hero-grid">
     <div>
       <div class="hero-eyebrow">Vistoria operacional</div>
       <h2 class="hero-title">Nova vistoria</h2>
       <p class="hero-subtitle">Fluxo de inspecao em campo com registro de itens, severidade e encaminhamentos por contrato.</p>
+      <div class="hero-chip-row">
+        {{ status_badge('Cadastro premium', tone='info') }}
+        {{ status_badge('Etapa 1', tone='success') }}
+        {{ status_badge('Checklist inicial', tone='warning') }}
+      </div>
     </div>
     <div class="hero-stat-grid">
       <div class="hero-stat">
@@ -181,4 +192,5 @@
     <a href="{{ url_for('vistorias_list') }}"><button type="button" class="secondary">Cancelar</button></a>
   </div>
 </form>
+</div>
 {% endblock %}

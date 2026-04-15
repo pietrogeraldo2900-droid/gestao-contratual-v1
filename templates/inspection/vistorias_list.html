@@ -1,11 +1,22 @@
 {% extends "base.html" %}
+{% from "design_system/components.html" import status_badge %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system/foundations.css') }}?v=20260415">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/inspection.css') }}?v=20260415">
+{% endblock %}
 {% block content %}
+<div class="inspection-premium-page inspection-list-page">
 <section class="page-hero compact">
   <div class="page-hero-grid">
     <div>
       <div class="hero-eyebrow">Fiscalizacao contratual</div>
       <h2 class="hero-title">Vistorias de campo</h2>
       <p class="hero-subtitle">Registre inspeções operacionais, acompanhe não conformidades e mantenha evidências auditáveis por contrato.</p>
+      <div class="hero-chip-row">
+        {{ status_badge('Auditoria premium', tone='info') }}
+        {{ status_badge('Total: ' ~ (stats.total or 0), tone='success') }}
+        {{ status_badge('Concluídas: ' ~ (stats.concluida or 0), tone='warning') }}
+      </div>
     </div>
     <div class="hero-stat-grid">
       <div class="hero-stat">
@@ -36,7 +47,7 @@
 <section class="section">
   <h3>Filtros de consulta</h3>
   <div class="body">
-    <form method="get" action="{{ url_for('vistorias_list') }}" class="grid-2" style="margin-bottom:0;">
+    <form method="get" action="{{ url_for('vistorias_list') }}" class="grid-2 inspection-filter-form">
       <div class="field">
         <label>Contrato</label>
         <select name="contract_id">
@@ -68,7 +79,7 @@
         <label>Busca rápida</label>
         <input type="text" name="q" value="{{ filters.q }}" placeholder="Título, núcleo, município, local">
       </div>
-      <div class="actions" style="align-items:flex-end;">
+      <div class="actions inspection-filter-actions">
         <button type="submit">Aplicar filtros</button>
         <a href="{{ url_for('vistorias_list') }}"><button type="button" class="secondary">Limpar</button></a>
       </div>
@@ -103,7 +114,7 @@
                 <td>{{ row.contract_label or '-' }}</td>
                 <td>{{ row.nucleo or '-' }}</td>
                 <td>{{ row.equipe or '-' }}</td>
-                <td><span class="badge info">{{ row.status or '-' }}</span></td>
+                <td>{{ status_badge(row.status or '-', tone='info') }}</td>
                 <td>{{ row.prioridade or '-' }}</td>
                 <td>{{ row.resultado or '-' }}</td>
                 <td><a href="{{ url_for('vistorias_detail', inspection_id=row.id) }}">Abrir</a></td>
@@ -117,4 +128,5 @@
     {% endif %}
   </div>
 </section>
+</div>
 {% endblock %}
