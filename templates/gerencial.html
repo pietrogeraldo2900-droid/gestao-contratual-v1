@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "design_system/components.html" import hero_header, kpi_card, premium_panel, primary_button, secondary_button %}
+{% from "design_system/components.html" import hero_header, kpi_card, premium_panel, primary_button, secondary_button, status_badge %}
 
 {% block title %}Painel Gerencial{% endblock %}
 
@@ -33,6 +33,7 @@
 {% if max_nucleo_val <= 0 %}{% set max_nucleo_val = 1.0 %}{% endif %}
 {% set max_timeline_val = (timeline_items | map(attribute='volume_total') | list | max if timeline_items else 0.0) %}
 {% if max_timeline_val <= 0 %}{% set max_timeline_val = 1.0 %}{% endif %}
+{% set data_source_label = dashboard.get('source', 'database') | replace('_', ' ') | title %}
 {% set pretty_label_map = {
   'rede_agua': 'Rede de Agua',
   'ramal_agua': 'Ramal de Agua',
@@ -66,9 +67,14 @@
   {{ hero_header(
     eyebrow='Painel gerencial',
     title='Painel Gerencial',
-    subtitle='Leitura executiva com os dados reais do periodo, recorte operacional, radar de risco e leitura analitica premium sem alterar a logica da tela.',
+    subtitle='Centro de comando executivo com recorte operacional, radar de risco e leitura analitica premium.',
     actions=hero_actions
   ) }}
+
+  <div class="gerencial-hero-meta">
+    {{ status_badge(data_source_label, tone='info', class_name='gerencial-source-badge') }}
+    <span class="gerencial-hero-meta-copy">Recorte ativo no periodo selecionado, com dados consolidados e leitura por dimensao.</span>
+  </div>
 
   <section class="gerencial-filter-rail" id="filters">
     <div class="gerencial-filter-bar">
@@ -100,6 +106,7 @@
         {% if not (contrato or obra_from or obra_to or processed_from or processed_to or municipio or nucleo or equipe or status_filter or alertas_filter) %}
         <span class="gerencial-filter-chip gerencial-filter-chip--muted">Sem filtros ativos</span>
         {% endif %}
+        <span class="gerencial-source-badge">{{ data_source_label }}</span>
       </div>
 
       <div class="gerencial-contract-strip" role="tablist" aria-label="Selecionar contrato">
@@ -130,7 +137,6 @@
 
       <div class="gerencial-filter-actions">
         <button type="button" class="gerencial-filter-toggle" data-pgm4-toggle-filters>Filtros avancados</button>
-        <span class="gerencial-source-badge">{{ dashboard.get('source', 'database') | replace('_', ' ') | title }}</span>
       </div>
     </div>
 
@@ -168,10 +174,10 @@
   </section>
 
   <section class="ds-grid ds-grid-4 gerencial-kpi-grid">
-    {{ kpi_card('Processamentos', kpi.get('total_processamentos', 0), 'Registros executados no recorte atual', delta='Base consolidada') }}
-    {{ kpi_card('Frentes', kpi.get('total_frentes', 0), 'Frentes acompanhadas na janela selecionada', delta='Fluxo operacional') }}
-    {{ kpi_card('Ocorrencias', kpi.get('total_ocorrencias', 0), 'Incidencias monitoradas pelo radar', delta='Sinal de risco') }}
-    {{ kpi_card('Mapeados', kpi.get('percentual_mapeado_fmt', '0') ~ '%', 'Participacao de itens com servico oficial', delta='Qualidade de mapeamento') }}
+    {{ kpi_card('Processamentos', kpi.get('total_processamentos', 0), 'Execucoes no recorte atual', delta='Base consolidada') }}
+    {{ kpi_card('Frentes', kpi.get('total_frentes', 0), 'Frentes monitoradas', delta='Fluxo operacional') }}
+    {{ kpi_card('Ocorrencias', kpi.get('total_ocorrencias', 0), 'Sinalizacoes do radar', delta='Sinal de risco') }}
+    {{ kpi_card('Mapeados', kpi.get('percentual_mapeado_fmt', '0') ~ '%', 'Cobertura do vocabulario', delta='Qualidade de mapeamento') }}
   </section>
 
   <section class="gerencial-main-layout">
